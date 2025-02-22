@@ -55,6 +55,7 @@ export const Canvas = () => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [key, setKey] = useState(0);
 
   const handleAddElement = (type: EditorElement["type"]) => {
     const newElement: EditorElement = {
@@ -187,29 +188,43 @@ export const Canvas = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handlePreviewAnimation = () => {
+    setKey(prev => prev + 1);
+  };
+
   return (
     <div className="flex flex-col h-screen">
       {/* Top Control Bar */}
       <div className="bg-editor-panel border-b border-editor-border p-4">
         <div className="flex items-center justify-between">
-          <Select
-            value={selectedSize.name}
-            onValueChange={(value) => {
-              const size = BANNER_SIZES.find(s => s.name === value);
-              if (size) setSelectedSize(size);
-            }}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Select size" />
-            </SelectTrigger>
-            <SelectContent>
-              {BANNER_SIZES.map((size) => (
-                <SelectItem key={size.name} value={size.name}>
-                  {size.name} ({size.width}x{size.height})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-4">
+            <Select
+              value={selectedSize.name}
+              onValueChange={(value) => {
+                const size = BANNER_SIZES.find(s => s.name === value);
+                if (size) setSelectedSize(size);
+              }}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select size" />
+              </SelectTrigger>
+              <SelectContent>
+                {BANNER_SIZES.map((size) => (
+                  <SelectItem key={size.name} value={size.name}>
+                    {size.name} ({size.width}x{size.height})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Button
+              onClick={handlePreviewAnimation}
+              variant="default"
+              className="ml-4"
+            >
+              Preview Animation
+            </Button>
+          </div>
 
           {selectedElement && (
             <div className="flex items-center gap-4">
@@ -351,7 +366,7 @@ export const Canvas = () => {
           >
             {elements.map((element) => (
               <div
-                key={element.id}
+                key={`${element.id}-${key}`}
                 style={{
                   position: "absolute",
                   left: element.style.x,
