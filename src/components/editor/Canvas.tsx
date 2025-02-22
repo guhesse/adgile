@@ -29,6 +29,7 @@ export type EditorElement = {
     animation?: string;
     animationDuration?: number;
     animationDelay?: number;
+    animationPlayState?: "running" | "paused";
   };
 };
 
@@ -41,11 +42,14 @@ const BANNER_SIZES: BannerSize[] = [
 ];
 
 const ANIMATION_PRESETS = [
-  { name: "Fade In", value: "fade-in 1s ease-out" },
-  { name: "Slide In Right", value: "slide-in-right 1s ease-out" },
-  { name: "Scale In", value: "scale-in 0.5s ease-out" },
-  { name: "Bounce", value: "bounce 1s infinite" },
-  { name: "Pulse", value: "pulse 2s infinite" },
+  { name: "Fade In", value: "animate-fade-in" },
+  { name: "Fade Out", value: "animate-fade-out" },
+  { name: "Scale In", value: "animate-scale-in" },
+  { name: "Scale Out", value: "animate-scale-out" },
+  { name: "Slide In Right", value: "animate-slide-in-right" },
+  { name: "Slide Out Right", value: "animate-slide-out-right" },
+  { name: "Bounce", value: "animate-bounce" },
+  { name: "Pulse", value: "animate-pulse" },
 ];
 
 export const Canvas = () => {
@@ -56,6 +60,9 @@ export const Canvas = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [key, setKey] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const timelineRef = useRef<HTMLDivElement>(null);
 
   const handleAddElement = (type: EditorElement["type"]) => {
     const newElement: EditorElement = {
@@ -190,6 +197,41 @@ export const Canvas = () => {
 
   const handlePreviewAnimation = () => {
     setKey(prev => prev + 1);
+  };
+
+  const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!timelineRef.current) return;
+    
+    const rect = timelineRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const width = rect.width;
+    const percentage = x / width;
+    
+    const maxDuration = Math.max(...elements.map(el => 
+      (el.style.animationDuration || 0) + (el.style.animationDelay || 0)
+    ), 0);
+    
+    setCurrentTime(percentage * maxDuration);
+    
+    setElements(elements.map(el => ({
+      ...el,
+      style: {
+        ...el.style,
+        animationPlayState: "paused",
+        animationDelay: `${-(percentage * maxDuration)}s`
+      }
+    })));
+  };
+
+  const togglePlayPause = () => {
+    setIsPlaying(!isPlaying);
+    setElements(elements.map(el => ({
+      ...el,
+      style: {
+        ...el.style,
+        animationPlayState: isPlaying ? "paused" : "running"
+      }
+    })));
   };
 
   return (
@@ -374,11 +416,11 @@ export const Canvas = () => {
                   width: element.style.width,
                   height: element.style.height,
                   border: selectedElement?.id === element.id ? "2px solid #007AFF" : "none",
-                  animation: element.style.animation,
-                  animationDuration: `${element.style.animationDuration || 1}s`,
-                  animationDelay: `${element.style.animationDelay || 0}s`,
+                  animationPlayState: element.style.animationPlayState,
+                  animationDelay: element.style.animationDelay ? `${element.style.animationDelay}s` : undefined,
+                  animationDuration: element.style.animationDuration ? `${element.style.animationDuration}s` : undefined,
                 }}
-                className={`cursor-move ${selectedElement?.id === element.id ? "ring-2 ring-editor-accent" : ""}`}
+                className={`cursor-move ${selectedElement?.id === element.id ? "ring-2 ring-editor-accent" : ""} ${element.style.animation}`}
                 onMouseDown={(e) => handleMouseDown(e, element)}
               >
                 {element.type === "text" && (
@@ -478,10 +520,37 @@ export const Canvas = () => {
       {/* Timeline */}
       <div className="h-32 bg-editor-panel border-t border-editor-border p-4">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-medium">Timeline</h3>
-          <div className="text-sm text-gray-500">Total Duration: {Math.max(...elements.map(el => (el.style.animationDuration || 0) + (el.style.animationDelay || 0)), 0)}s</div>
+          <div className="flex items-center gap-4">
+            <h3 className="text-sm font-medium">Timeline</h3>
+            <Button
+              onClick={togglePlayPause}
+              variant="outline"
+              size="sm"
+            >
+              {isPlaying ? "Pause" : "Play"}
+            </Button>
+          </div>
+          <div className="text-sm text-gray-500">
+            Current Time: {currentTime.toFixed(1)}s / Total Duration: {
+              Math.max(...elements.map(el => (el.style.animationDuration || 0) + (el.style.animationDelay || 0)), 0)
+            }s
+          </div>
         </div>
-        <div className="relative h-16 bg-white rounded border">
+        <div 
+          ref={timelineRef}
+          className="relative h-16 bg-white rounded border cursor-pointer"
+          onClick={handleTimelineClick}
+        >
+          <div 
+            className="absolute top-0 bottom-0 w-0.5 bg-editor-accent"
+            style={{
+              left: `${(currentTime / Math.max(...elements.map(el => 
+                (el.style.animationDuration || 0) + (el.style.animationDelay || 0)
+              ), 1)) * 100}%`,
+              zIndex: 20
+            }}
+          />
+          
           {elements.map((element) => (
             <div
               key={element.id}
@@ -491,8 +560,12 @@ export const Canvas = () => {
                 width: `${(element.style.animationDuration || 1) * 10}%`,
                 top: "50%",
                 transform: "translateY(-50%)",
+                opacity: 0.8
               }}
-              onClick={() => setSelectedElement(element)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedElement(element);
+              }}
             >
               <div className="text-xs text-white truncate px-2">
                 {element.content || element.type}
