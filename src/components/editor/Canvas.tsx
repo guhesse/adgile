@@ -1,4 +1,3 @@
-
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -22,7 +21,14 @@ export type EditorElement = {
     fontSize?: number;
     color?: string;
     fontFamily?: string;
+    lineHeight?: number;
+    letterSpacing?: number;
+    textAlign?: "left" | "center" | "right";
+    backgroundColor?: string;
+    padding?: string;
     animation?: string;
+    animationDuration?: number;
+    animationDelay?: number;
   };
 };
 
@@ -32,6 +38,14 @@ const BANNER_SIZES: BannerSize[] = [
   { name: "Twitter Post", width: 1024, height: 512 },
   { name: "LinkedIn Banner", width: 1584, height: 396 },
   { name: "YouTube Thumbnail", width: 1280, height: 720 },
+];
+
+const ANIMATION_PRESETS = [
+  { name: "Fade In", value: "fade-in 1s ease-out" },
+  { name: "Slide In Right", value: "slide-in-right 1s ease-out" },
+  { name: "Scale In", value: "scale-in 0.5s ease-out" },
+  { name: "Bounce", value: "bounce 1s infinite" },
+  { name: "Pulse", value: "pulse 2s infinite" },
 ];
 
 export const Canvas = () => {
@@ -99,6 +113,16 @@ export const Canvas = () => {
         : el
     ));
     setSelectedElement({ ...selectedElement, style: { ...selectedElement.style, [property]: value } });
+  };
+
+  const updateElementContent = (content: string) => {
+    if (!selectedElement) return;
+    setElements(elements.map(el =>
+      el.id === selectedElement.id
+        ? { ...el, content }
+        : el
+    ));
+    setSelectedElement({ ...selectedElement, content });
   };
 
   const exportBanner = () => {
@@ -192,6 +216,13 @@ export const Canvas = () => {
               {(selectedElement.type === "text" || selectedElement.type === "button") && (
                 <>
                   <input
+                    type="text"
+                    value={selectedElement.content}
+                    onChange={(e) => updateElementContent(e.target.value)}
+                    className="px-2 py-1 border rounded w-40"
+                    placeholder="Enter text..."
+                  />
+                  <input
                     type="color"
                     value={selectedElement.style.color}
                     onChange={(e) => updateElementStyle("color", e.target.value)}
@@ -218,6 +249,56 @@ export const Canvas = () => {
                       <SelectItem value="Times New Roman">Times New Roman</SelectItem>
                     </SelectContent>
                   </Select>
+                  <input
+                    type="number"
+                    value={selectedElement.style.lineHeight || 1.5}
+                    onChange={(e) => updateElementStyle("lineHeight", parseFloat(e.target.value))}
+                    className="w-20 px-2 py-1 border rounded"
+                    min="1"
+                    max="3"
+                    step="0.1"
+                    placeholder="Line Height"
+                  />
+                  <input
+                    type="number"
+                    value={selectedElement.style.letterSpacing || 0}
+                    onChange={(e) => updateElementStyle("letterSpacing", parseInt(e.target.value))}
+                    className="w-20 px-2 py-1 border rounded"
+                    min="-5"
+                    max="20"
+                    placeholder="Letter Spacing"
+                  />
+                  <Select
+                    value={selectedElement.style.textAlign || "left"}
+                    onValueChange={(value) => updateElementStyle("textAlign", value)}
+                  >
+                    <SelectTrigger className="w-[100px]">
+                      <SelectValue placeholder="Align" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="left">Left</SelectItem>
+                      <SelectItem value="center">Center</SelectItem>
+                      <SelectItem value="right">Right</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {selectedElement.type === "button" && (
+                    <>
+                      <input
+                        type="color"
+                        value={selectedElement.style.backgroundColor || "#000000"}
+                        onChange={(e) => updateElementStyle("backgroundColor", e.target.value)}
+                        className="w-8 h-8 rounded cursor-pointer"
+                        title="Background Color"
+                      />
+                      <input
+                        type="text"
+                        value={selectedElement.style.padding || "8px 16px"}
+                        onChange={(e) => updateElementStyle("padding", e.target.value)}
+                        className="w-24 px-2 py-1 border rounded"
+                        placeholder="Padding"
+                      />
+                    </>
+                  )}
                 </>
               )}
             </div>
@@ -225,7 +306,9 @@ export const Canvas = () => {
         </div>
       </div>
 
+      {/* Main Content */}
       <div className="flex flex-1">
+        {/* Left Sidebar */}
         <div className="w-64 bg-editor-panel border-r border-editor-border p-4 space-y-4">
           <h2 className="text-lg font-semibold">Tools</h2>
           <div className="space-y-2">
@@ -253,6 +336,7 @@ export const Canvas = () => {
           </div>
         </div>
 
+        {/* Canvas Area */}
         <div className="flex-1 bg-editor-background p-8 overflow-auto">
           <Card
             ref={canvasRef}
@@ -275,6 +359,9 @@ export const Canvas = () => {
                   width: element.style.width,
                   height: element.style.height,
                   border: selectedElement?.id === element.id ? "2px solid #007AFF" : "none",
+                  animation: element.style.animation,
+                  animationDuration: `${element.style.animationDuration || 1}s`,
+                  animationDelay: `${element.style.animationDelay || 0}s`,
                 }}
                 className={`cursor-move ${selectedElement?.id === element.id ? "ring-2 ring-editor-accent" : ""}`}
                 onMouseDown={(e) => handleMouseDown(e, element)}
@@ -284,6 +371,9 @@ export const Canvas = () => {
                     fontSize: element.style.fontSize,
                     color: element.style.color,
                     fontFamily: element.style.fontFamily,
+                    lineHeight: element.style.lineHeight,
+                    letterSpacing: element.style.letterSpacing ? `${element.style.letterSpacing}px` : undefined,
+                    textAlign: element.style.textAlign,
                   }}>
                     {element.content}
                   </p>
@@ -293,6 +383,10 @@ export const Canvas = () => {
                     fontSize: element.style.fontSize,
                     color: element.style.color,
                     fontFamily: element.style.fontFamily,
+                    backgroundColor: element.style.backgroundColor,
+                    padding: element.style.padding,
+                    width: "100%",
+                    height: "100%",
                   }}>
                     {element.content}
                   </Button>
@@ -309,11 +403,87 @@ export const Canvas = () => {
           </Card>
         </div>
 
+        {/* Right Properties Panel */}
         <div className="w-64 bg-editor-panel border-l border-editor-border p-4">
           <h2 className="text-lg font-semibold mb-4">Properties</h2>
-          <Button onClick={exportBanner} className="w-full" variant="default">
-            Export Banner
-          </Button>
+          {selectedElement && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-medium mb-2">Animation</h3>
+                <Select
+                  value={selectedElement.style.animation}
+                  onValueChange={(value) => updateElementStyle("animation", value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select animation" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ANIMATION_PRESETS.map((preset) => (
+                      <SelectItem key={preset.name} value={preset.value}>
+                        {preset.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="mt-2 space-y-2">
+                  <div>
+                    <label className="text-sm">Duration (s)</label>
+                    <input
+                      type="number"
+                      value={selectedElement.style.animationDuration || 1}
+                      onChange={(e) => updateElementStyle("animationDuration", parseFloat(e.target.value))}
+                      className="w-full px-2 py-1 border rounded"
+                      min="0.1"
+                      max="10"
+                      step="0.1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm">Delay (s)</label>
+                    <input
+                      type="number"
+                      value={selectedElement.style.animationDelay || 0}
+                      onChange={(e) => updateElementStyle("animationDelay", parseFloat(e.target.value))}
+                      className="w-full px-2 py-1 border rounded"
+                      min="0"
+                      max="10"
+                      step="0.1"
+                    />
+                  </div>
+                </div>
+              </div>
+              <Button onClick={exportBanner} className="w-full" variant="default">
+                Export Banner
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Timeline */}
+      <div className="h-32 bg-editor-panel border-t border-editor-border p-4">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-medium">Timeline</h3>
+          <div className="text-sm text-gray-500">Total Duration: {Math.max(...elements.map(el => (el.style.animationDuration || 0) + (el.style.animationDelay || 0)), 0)}s</div>
+        </div>
+        <div className="relative h-16 bg-white rounded border">
+          {elements.map((element) => (
+            <div
+              key={element.id}
+              className="absolute h-6 bg-editor-accent rounded cursor-pointer"
+              style={{
+                left: `${(element.style.animationDelay || 0) * 10}%`,
+                width: `${(element.style.animationDuration || 1) * 10}%`,
+                top: "50%",
+                transform: "translateY(-50%)",
+              }}
+              onClick={() => setSelectedElement(element)}
+            >
+              <div className="text-xs text-white truncate px-2">
+                {element.content || element.type}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
