@@ -13,87 +13,92 @@ interface PropertyPanelProps {
 }
 
 export const PropertyPanel = ({ selectedElement, updateElementStyle, updateElementContent }: PropertyPanelProps) => {
-  const [activeTab, setActiveTab] = useState("text");
+  const [activeTab, setActiveTab] = useState("content");
 
   if (!selectedElement) {
     return (
       <div className="flex items-center justify-center h-full text-gray-400">
-        Select an element to edit its properties
+        Selecione um elemento para editar suas propriedades
       </div>
     );
   }
 
+  // Função para renderizar o painel com base no tipo do elemento
+  const renderElementPanel = () => {
+    if (activeTab === 'text' || activeTab === 'content' || activeTab === 'styles') {
+      if (selectedElement.type === 'text') {
+        return (
+          <TextPanel 
+            element={selectedElement} 
+            updateElementStyle={updateElementStyle} 
+            updateElementContent={updateElementContent} 
+          />
+        );
+      } else if (selectedElement.type === 'image') {
+        return (
+          <ImagePanel 
+            element={selectedElement} 
+            updateElementStyle={updateElementStyle} 
+            updateElementContent={updateElementContent} 
+          />
+        );
+      } else if (selectedElement.type === 'button') {
+        return (
+          <ButtonPanel 
+            element={selectedElement} 
+            updateElementStyle={updateElementStyle} 
+            updateElementContent={updateElementContent} 
+          />
+        );
+      }
+    } else if (activeTab === 'animation') {
+      return (
+        <AnimationPanel element={selectedElement} updateElementStyle={updateElementStyle} />
+      );
+    }
+    
+    return null;
+  };
+
+  // Determinar o título do elemento selecionado
+  const getElementTitle = () => {
+    if (selectedElement.type === 'text') return 'Texto';
+    if (selectedElement.type === 'image') return 'Imagem';
+    if (selectedElement.type === 'button') return 'Botão';
+    if (selectedElement.type === 'layout') return 'Container';
+    return 'Elemento';
+  };
+
   return (
-    <div>
-      <div className="flex border-b">
-        <button
-          className={`px-4 py-2 text-sm font-medium ${activeTab === 'text' ? 'border-b-2 border-purple-500 text-purple-600' : 'text-gray-600'}`}
-          onClick={() => setActiveTab('text')}
-        >
-          Content
-        </button>
-        <button
-          className={`px-4 py-2 text-sm font-medium ${activeTab === 'styles' ? 'border-b-2 border-purple-500 text-purple-600' : 'text-gray-600'}`}
-          onClick={() => setActiveTab('styles')}
-        >
-          Style
-        </button>
-        <button
-          className={`px-4 py-2 text-sm font-medium ${activeTab === 'animation' ? 'border-b-2 border-purple-500 text-purple-600' : 'text-gray-600'}`}
-          onClick={() => setActiveTab('animation')}
-        >
-          Animation
-        </button>
+    <div className="flex flex-col h-full">
+      <div className="text-center py-4 text-lg font-medium">
+        {getElementTitle()}
       </div>
       
-      <div className="p-4">
-        {activeTab === 'text' && (
-          selectedElement.type === 'text' ? (
-            <TextPanel 
-              element={selectedElement} 
-              updateElementStyle={updateElementStyle} 
-              updateElementContent={updateElementContent} 
-            />
-          ) : selectedElement.type === 'image' ? (
-            <ImagePanel 
-              element={selectedElement} 
-              updateElementStyle={updateElementStyle} 
-              updateElementContent={updateElementContent} 
-            />
-          ) : selectedElement.type === 'button' ? (
-            <ButtonPanel 
-              element={selectedElement} 
-              updateElementStyle={updateElementStyle} 
-              updateElementContent={updateElementContent} 
-            />
-          ) : null
-        )}
-        
-        {activeTab === 'styles' && (
-          selectedElement.type === 'text' ? (
-            <TextPanel 
-              element={selectedElement} 
-              updateElementStyle={updateElementStyle} 
-              updateElementContent={updateElementContent} 
-            />
-          ) : selectedElement.type === 'image' ? (
-            <ImagePanel 
-              element={selectedElement} 
-              updateElementStyle={updateElementStyle} 
-              updateElementContent={updateElementContent} 
-            />
-          ) : selectedElement.type === 'button' ? (
-            <ButtonPanel 
-              element={selectedElement} 
-              updateElementStyle={updateElementStyle} 
-              updateElementContent={updateElementContent} 
-            />
-          ) : null
-        )}
-        
-        {activeTab === 'animation' && (
-          <AnimationPanel element={selectedElement} updateElementStyle={updateElementStyle} />
-        )}
+      <div className="flex-1 overflow-y-auto">
+        {renderElementPanel()}
+      </div>
+      
+      {/* Seletor de aba no rodapé */}
+      <div className="p-4 border-t">
+        <div className="flex rounded-md overflow-hidden bg-gray-100">
+          <button
+            onClick={() => setActiveTab("content")}
+            className={`flex-1 py-3 px-4 text-sm font-medium ${
+              activeTab === "content" ? "bg-purple-600 text-white" : "text-gray-600"
+            }`}
+          >
+            Conteúdo
+          </button>
+          <button
+            onClick={() => setActiveTab("styles")}
+            className={`flex-1 py-3 px-4 text-sm font-medium ${
+              activeTab === "styles" ? "bg-purple-600 text-white" : "text-gray-600"
+            }`}
+          >
+            Estilo
+          </button>
+        </div>
       </div>
     </div>
   );
