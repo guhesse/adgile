@@ -3,56 +3,12 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-export type BannerSize = {
-  name: string;
-  width: number;
-  height: number;
-};
-
-export type EditorElement = {
-  id: string;
-  type: "text" | "image" | "button";
-  content: string;
-  style: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    fontSize?: number;
-    color?: string;
-    fontFamily?: string;
-    lineHeight?: number;
-    letterSpacing?: number;
-    textAlign?: "left" | "center" | "right";
-    backgroundColor?: string;
-    padding?: string;
-    animation?: string;
-    animationDuration?: number;
-    animationDelay?: number;
-    animationPlayState?: "running" | "paused";
-  };
-};
-
-const BANNER_SIZES: BannerSize[] = [
-  { name: "Email Template", width: 600, height: 800 },
-  { name: "Facebook Post", width: 1200, height: 630 },
-  { name: "Instagram Post", width: 1080, height: 1080 },
-  { name: "Twitter Post", width: 1024, height: 512 },
-  { name: "LinkedIn Banner", width: 1584, height: 396 },
-  { name: "YouTube Thumbnail", width: 1280, height: 720 },
-];
-
-const ANIMATION_PRESETS = [
-  { name: "Fade In", value: "animate-fade-in" },
-  { name: "Fade Out", value: "animate-fade-out" },
-  { name: "Scale In", value: "animate-scale-in" },
-  { name: "Scale Out", value: "animate-scale-out" },
-  { name: "Slide In Right", value: "animate-slide-in-right" },
-  { name: "Slide Out Right", value: "animate-slide-out-right" },
-  { name: "Bounce", value: "animate-bounce" },
-  { name: "Pulse", value: "animate-pulse" },
-];
+import { EditorElement, BannerSize, BANNER_SIZES } from "./types";
+import { PropertyPanel } from "./PropertyPanel";
+import { LayersPanel } from "./LayersPanel";
+import { ElementsPanel } from "./ElementsPanel";
+import { Timeline } from "./Timeline";
+import { exportEmailHTML, downloadEmailTemplate } from "./utils/emailExporter";
 
 export const Canvas = () => {
   const [elements, setElements] = useState<EditorElement[]>([]);
@@ -66,8 +22,6 @@ export const Canvas = () => {
   const [key, setKey] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
-  const timelineRef = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState("text");
   const [showLayers, setShowLayers] = useState(false);
 
   const handleAddElement = (type: EditorElement["type"]) => {
@@ -195,142 +149,31 @@ export const Canvas = () => {
     setSelectedElement({ ...selectedElement, content });
   };
 
+  const removeElement = (elementId: string) => {
+    const newElements = elements.filter(el => el.id !== elementId);
+    setElements(newElements);
+    if (selectedElement?.id === elementId) {
+      setSelectedElement(null);
+    }
+  };
+
   const exportEmail = () => {
     if (!canvasRef.current) return;
-
-    // Create email-friendly HTML with tables
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Email Template</title>
-        <style>
-          body, table, td, p, a, li, blockquote {
-            -webkit-text-size-adjust: 100%;
-            -ms-text-size-adjust: 100%;
-          }
-          body {
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-          }
-          table, td {
-            border-collapse: collapse;
-            mso-table-lspace: 0pt;
-            mso-table-rspace: 0pt;
-          }
-          img {
-            border: 0;
-            height: auto;
-            line-height: 100%;
-            outline: none;
-            text-decoration: none;
-            -ms-interpolation-mode: bicubic;
-          }
-          ${elements
-            .map(
-              (el) => `
-            #${el.id} {
-              ${el.style.color ? `color: ${el.style.color};` : ""}
-              ${el.style.fontSize ? `font-size: ${el.style.fontSize}px;` : ""}
-              ${el.style.fontFamily ? `font-family: ${el.style.fontFamily}, Arial, sans-serif;` : ""}
-              ${el.style.lineHeight ? `line-height: ${el.style.lineHeight};` : ""}
-              ${el.style.textAlign ? `text-align: ${el.style.textAlign};` : ""}
-              ${el.style.backgroundColor ? `background-color: ${el.style.backgroundColor};` : ""}
-              ${el.style.padding ? `padding: ${el.style.padding};` : ""}
-            }
-          `
-            )
-            .join("\n")}
-        </style>
-      </head>
-      <body>
-        <table width="${selectedSize.width}" border="0" cellpadding="0" cellspacing="0" align="center">
-          <tr>
-            <td>
-              <table width="100%" border="0" cellpadding="0" cellspacing="0">
-                ${elements
-                  .map((el) => {
-                    if (el.type === "text") {
-                      return `
-                        <tr>
-                          <td style="position: absolute; left: ${el.style.x}px; top: ${el.style.y}px;">
-                            <div id="${el.id}">${el.content}</div>
-                          </td>
-                        </tr>
-                      `;
-                    }
-                    if (el.type === "button") {
-                      return `
-                        <tr>
-                          <td style="position: absolute; left: ${el.style.x}px; top: ${el.style.y}px;">
-                            <table border="0" cellspacing="0" cellpadding="0">
-                              <tr>
-                                <td align="center" style="border-radius: 4px;" bgcolor="${el.style.backgroundColor}">
-                                  <a href="#" target="_blank" id="${el.id}" style="display: inline-block; padding: ${el.style.padding}; font-family: ${el.style.fontFamily || 'Arial'}, sans-serif; font-size: ${el.style.fontSize}px; color: ${el.style.color}; text-decoration: none;">${el.content}</a>
-                                </td>
-                              </tr>
-                            </table>
-                          </td>
-                        </tr>
-                      `;
-                    }
-                    if (el.type === "image") {
-                      return `
-                        <tr>
-                          <td style="position: absolute; left: ${el.style.x}px; top: ${el.style.y}px;">
-                            <img src="${el.content}" width="${el.style.width}" height="${el.style.height}" alt="Image" style="display: block; border: 0;" />
-                          </td>
-                        </tr>
-                      `;
-                    }
-                    return "";
-                  })
-                  .join("\n")}
-              </table>
-            </td>
-          </tr>
-        </table>
-      </body>
-      </html>
-    `;
-
-    const blob = new Blob([html], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "email-template.html";
-    a.click();
-    URL.revokeObjectURL(url);
+    const html = exportEmailHTML(elements, selectedSize);
+    downloadEmailTemplate(html);
   };
 
   const handlePreviewAnimation = () => {
     setKey(prev => prev + 1);
   };
 
-  const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!timelineRef.current) return;
-    
-    const rect = timelineRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const width = rect.width;
-    const percentage = x / width;
-    
-    const maxDuration = Math.max(...elements.map(el => 
-      (el.style.animationDuration || 0) + (el.style.animationDelay || 0)
-    ), 0);
-    
-    setCurrentTime(percentage * maxDuration);
-    
-    // Update animation states for all elements
+  const updateAnimations = (time: number) => {
     setElements(elements.map(el => ({
       ...el,
       style: {
         ...el.style,
         animationPlayState: "paused",
-        animationDelay: -(percentage * maxDuration)
+        animationDelay: -(time)
       }
     })));
   };
@@ -344,451 +187,6 @@ export const Canvas = () => {
         animationPlayState: isPlaying ? "paused" : "running"
       }
     })));
-  };
-
-  const renderTextPanel = () => {
-    if (!selectedElement || selectedElement.type !== "text") return null;
-    
-    return (
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-sm font-medium mb-2">Text Content</h3>
-          <textarea
-            value={selectedElement.content}
-            onChange={(e) => updateElementContent(e.target.value)}
-            className="w-full px-3 py-2 border rounded resize-none"
-            rows={3}
-          />
-        </div>
-        
-        <div>
-          <h3 className="text-sm font-medium mb-2">Typography</h3>
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs text-gray-500">Font</label>
-              <Select
-                value={selectedElement.style.fontFamily}
-                onValueChange={(value) => updateElementStyle("fontFamily", value)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Font family" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Inter">Inter</SelectItem>
-                  <SelectItem value="Arial">Arial</SelectItem>
-                  <SelectItem value="Times New Roman">Times New Roman</SelectItem>
-                  <SelectItem value="Georgia">Georgia</SelectItem>
-                  <SelectItem value="Verdana">Verdana</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs text-gray-500">Size</label>
-                <input
-                  type="number"
-                  value={selectedElement.style.fontSize}
-                  onChange={(e) => updateElementStyle("fontSize", parseInt(e.target.value))}
-                  className="w-full px-3 py-2 border rounded"
-                  min="8"
-                  max="72"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500">Line Height</label>
-                <input
-                  type="number"
-                  value={selectedElement.style.lineHeight || 1.5}
-                  onChange={(e) => updateElementStyle("lineHeight", parseFloat(e.target.value))}
-                  className="w-full px-3 py-2 border rounded"
-                  min="1"
-                  max="3"
-                  step="0.1"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label className="text-xs text-gray-500">Color</label>
-              <div className="flex mt-1">
-                <input
-                  type="color"
-                  value={selectedElement.style.color}
-                  onChange={(e) => updateElementStyle("color", e.target.value)}
-                  className="w-10 h-10 rounded cursor-pointer"
-                />
-                <input
-                  type="text"
-                  value={selectedElement.style.color}
-                  onChange={(e) => updateElementStyle("color", e.target.value)}
-                  className="flex-1 px-3 py-2 border rounded ml-2"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label className="text-xs text-gray-500">Alignment</label>
-              <div className="flex space-x-2 mt-1">
-                <button
-                  className={`px-3 py-2 border rounded flex-1 ${selectedElement.style.textAlign === 'left' ? 'bg-gray-100 font-medium' : ''}`}
-                  onClick={() => updateElementStyle("textAlign", "left")}
-                >
-                  Left
-                </button>
-                <button
-                  className={`px-3 py-2 border rounded flex-1 ${selectedElement.style.textAlign === 'center' ? 'bg-gray-100 font-medium' : ''}`}
-                  onClick={() => updateElementStyle("textAlign", "center")}
-                >
-                  Center
-                </button>
-                <button
-                  className={`px-3 py-2 border rounded flex-1 ${selectedElement.style.textAlign === 'right' ? 'bg-gray-100 font-medium' : ''}`}
-                  onClick={() => updateElementStyle("textAlign", "right")}
-                >
-                  Right
-                </button>
-              </div>
-            </div>
-            
-            <div>
-              <label className="text-xs text-gray-500">Letter Spacing</label>
-              <input
-                type="number"
-                value={selectedElement.style.letterSpacing || 0}
-                onChange={(e) => updateElementStyle("letterSpacing", parseInt(e.target.value))}
-                className="w-full px-3 py-2 border rounded"
-                min="-5"
-                max="20"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderImagePanel = () => {
-    if (!selectedElement || selectedElement.type !== "image") return null;
-    
-    return (
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-sm font-medium mb-2">Image</h3>
-          <div className="border rounded p-2 flex flex-col items-center justify-center">
-            <div className="h-36 w-full bg-gray-100 rounded flex items-center justify-center mb-2">
-              {selectedElement.content ? (
-                <img 
-                  src={selectedElement.content} 
-                  alt="Preview" 
-                  className="max-h-full max-w-full object-contain"
-                />
-              ) : (
-                <div className="text-gray-400">No Image</div>
-              )}
-            </div>
-            <div className="flex space-x-2 w-full">
-              <Button variant="outline" className="flex-1 text-xs">Upload</Button>
-              <Button variant="outline" className="flex-1 text-xs">Gallery</Button>
-            </div>
-          </div>
-        </div>
-        
-        <div>
-          <h3 className="text-sm font-medium mb-2">Size</h3>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-xs text-gray-500">Width</label>
-              <input
-                type="number"
-                value={selectedElement.style.width}
-                onChange={(e) => updateElementStyle("width", parseInt(e.target.value))}
-                className="w-full px-3 py-2 border rounded"
-                min="10"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500">Height</label>
-              <input
-                type="number"
-                value={selectedElement.style.height}
-                onChange={(e) => updateElementStyle("height", parseInt(e.target.value))}
-                className="w-full px-3 py-2 border rounded"
-                min="10"
-              />
-            </div>
-          </div>
-        </div>
-        
-        <div>
-          <h3 className="text-sm font-medium mb-2">Alt Text</h3>
-          <input
-            type="text"
-            value={selectedElement.content || ""}
-            onChange={(e) => updateElementContent(e.target.value)}
-            className="w-full px-3 py-2 border rounded"
-            placeholder="Image description for accessibility"
-          />
-        </div>
-      </div>
-    );
-  };
-
-  const renderButtonPanel = () => {
-    if (!selectedElement || selectedElement.type !== "button") return null;
-    
-    return (
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-sm font-medium mb-2">Button Text</h3>
-          <input
-            type="text"
-            value={selectedElement.content}
-            onChange={(e) => updateElementContent(e.target.value)}
-            className="w-full px-3 py-2 border rounded"
-          />
-        </div>
-        
-        <div>
-          <h3 className="text-sm font-medium mb-2">Styles</h3>
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs text-gray-500">Background Color</label>
-              <div className="flex mt-1">
-                <input
-                  type="color"
-                  value={selectedElement.style.backgroundColor || "#000000"}
-                  onChange={(e) => updateElementStyle("backgroundColor", e.target.value)}
-                  className="w-10 h-10 rounded cursor-pointer"
-                />
-                <input
-                  type="text"
-                  value={selectedElement.style.backgroundColor || "#000000"}
-                  onChange={(e) => updateElementStyle("backgroundColor", e.target.value)}
-                  className="flex-1 px-3 py-2 border rounded ml-2"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label className="text-xs text-gray-500">Text Color</label>
-              <div className="flex mt-1">
-                <input
-                  type="color"
-                  value={selectedElement.style.color}
-                  onChange={(e) => updateElementStyle("color", e.target.value)}
-                  className="w-10 h-10 rounded cursor-pointer"
-                />
-                <input
-                  type="text"
-                  value={selectedElement.style.color}
-                  onChange={(e) => updateElementStyle("color", e.target.value)}
-                  className="flex-1 px-3 py-2 border rounded ml-2"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label className="text-xs text-gray-500">Padding</label>
-              <input
-                type="text"
-                value={selectedElement.style.padding || "8px 16px"}
-                onChange={(e) => updateElementStyle("padding", e.target.value)}
-                className="w-full px-3 py-2 border rounded"
-                placeholder="e.g. 8px 16px"
-              />
-            </div>
-            
-            <div>
-              <label className="text-xs text-gray-500">Font Size</label>
-              <input
-                type="number"
-                value={selectedElement.style.fontSize}
-                onChange={(e) => updateElementStyle("fontSize", parseInt(e.target.value))}
-                className="w-full px-3 py-2 border rounded"
-                min="8"
-                max="36"
-              />
-            </div>
-            
-            <div>
-              <label className="text-xs text-gray-500">Font</label>
-              <Select
-                value={selectedElement.style.fontFamily}
-                onValueChange={(value) => updateElementStyle("fontFamily", value)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Font family" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Inter">Inter</SelectItem>
-                  <SelectItem value="Arial">Arial</SelectItem>
-                  <SelectItem value="Times New Roman">Times New Roman</SelectItem>
-                  <SelectItem value="Georgia">Georgia</SelectItem>
-                  <SelectItem value="Verdana">Verdana</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-        
-        <div>
-          <h3 className="text-sm font-medium mb-2">Link</h3>
-          <input
-            type="text"
-            className="w-full px-3 py-2 border rounded"
-            placeholder="https://example.com"
-          />
-        </div>
-      </div>
-    );
-  };
-
-  const renderAnimationPanel = () => {
-    if (!selectedElement) return null;
-    
-    return (
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-sm font-medium mb-2">Animation</h3>
-          <Select
-            value={selectedElement.style.animation}
-            onValueChange={(value) => updateElementStyle("animation", value)}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select animation" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">None</SelectItem>
-              {ANIMATION_PRESETS.map((preset) => (
-                <SelectItem key={preset.name} value={preset.value}>
-                  {preset.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="mt-2 space-y-2">
-            <div>
-              <label className="text-xs text-gray-500">Duration (s)</label>
-              <input
-                type="number"
-                value={selectedElement.style.animationDuration || 1}
-                onChange={(e) => updateElementStyle("animationDuration", parseFloat(e.target.value))}
-                className="w-full px-3 py-2 border rounded"
-                min="0.1"
-                max="10"
-                step="0.1"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500">Delay (s)</label>
-              <input
-                type="number"
-                value={selectedElement.style.animationDelay || 0}
-                onChange={(e) => updateElementStyle("animationDelay", parseFloat(e.target.value))}
-                className="w-full px-3 py-2 border rounded"
-                min="0"
-                max="10"
-                step="0.1"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderPanel = () => {
-    if (!selectedElement) {
-      return (
-        <div className="flex items-center justify-center h-full text-gray-400">
-          Select an element to edit its properties
-        </div>
-      );
-    }
-
-    return (
-      <div>
-        <div className="flex border-b">
-          <button
-            className={`px-4 py-2 text-sm font-medium ${activeTab === 'text' ? 'border-b-2 border-purple-500 text-purple-600' : 'text-gray-600'}`}
-            onClick={() => setActiveTab('text')}
-          >
-            Content
-          </button>
-          <button
-            className={`px-4 py-2 text-sm font-medium ${activeTab === 'styles' ? 'border-b-2 border-purple-500 text-purple-600' : 'text-gray-600'}`}
-            onClick={() => setActiveTab('styles')}
-          >
-            Style
-          </button>
-          <button
-            className={`px-4 py-2 text-sm font-medium ${activeTab === 'animation' ? 'border-b-2 border-purple-500 text-purple-600' : 'text-gray-600'}`}
-            onClick={() => setActiveTab('animation')}
-          >
-            Animation
-          </button>
-        </div>
-        
-        <div className="p-4">
-          {activeTab === 'text' && (
-            selectedElement.type === 'text' ? renderTextPanel() :
-            selectedElement.type === 'image' ? renderImagePanel() :
-            selectedElement.type === 'button' ? renderButtonPanel() : null
-          )}
-          
-          {activeTab === 'styles' && (
-            selectedElement.type === 'text' ? renderTextPanel() :
-            selectedElement.type === 'image' ? renderImagePanel() :
-            selectedElement.type === 'button' ? renderButtonPanel() : null
-          )}
-          
-          {activeTab === 'animation' && renderAnimationPanel()}
-        </div>
-      </div>
-    );
-  };
-
-  const renderLayersPanel = () => {
-    return (
-      <div className="p-4">
-        <h3 className="text-sm font-medium mb-2">Camadas</h3>
-        <div className="space-y-1">
-          {elements.map((element, index) => (
-            <div 
-              key={element.id}
-              className={`px-3 py-2 text-sm rounded flex items-center justify-between ${selectedElement?.id === element.id ? 'bg-purple-100' : 'hover:bg-gray-50'}`}
-              onClick={() => setSelectedElement(element)}
-            >
-              <div className="flex items-center">
-                <span className="w-4 h-4 mr-2 inline-block">
-                  {element.type === 'text' ? 'T' : 
-                   element.type === 'image' ? 'I' :
-                   element.type === 'button' ? 'B' : ''}
-                </span>
-                <span className="truncate">{element.content || element.type}</span>
-              </div>
-              <div className="flex items-center">
-                <button 
-                  className="text-gray-400 hover:text-gray-600 p-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const newElements = [...elements];
-                    newElements.splice(index, 1);
-                    setElements(newElements);
-                    if (selectedElement?.id === element.id) {
-                      setSelectedElement(null);
-                    }
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -820,38 +218,14 @@ export const Canvas = () => {
       {/* Elements Panel */}
       <div className="w-64 bg-white border-r flex flex-col">
         {showLayers ? (
-          renderLayersPanel()
+          <LayersPanel 
+            elements={elements}
+            selectedElement={selectedElement}
+            setSelectedElement={setSelectedElement}
+            removeElement={removeElement}
+          />
         ) : (
-          <>
-            <div className="border-b p-4">
-              <div className="text-lg font-medium">Elements</div>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <Button variant="outline" className="justify-start" onClick={() => handleAddElement("text")}>
-                  <span className="mr-2">T</span> Text
-                </Button>
-                <Button variant="outline" className="justify-start" onClick={() => handleAddElement("image")}>
-                  <span className="mr-2">I</span> Image
-                </Button>
-                <Button variant="outline" className="justify-start" onClick={() => handleAddElement("button")}>
-                  <span className="mr-2">B</span> Button
-                </Button>
-                <Button variant="outline" className="justify-start" disabled>
-                  <span className="mr-2">D</span> Divider
-                </Button>
-              </div>
-            </div>
-            <div className="p-4">
-              <div className="text-lg font-medium">Templates</div>
-              <div className="mt-2 space-y-2">
-                <div className="h-16 bg-gray-100 rounded flex items-center justify-center text-gray-400">
-                  Template 1
-                </div>
-                <div className="h-16 bg-gray-100 rounded flex items-center justify-center text-gray-400">
-                  Template 2
-                </div>
-              </div>
-            </div>
-          </>
+          <ElementsPanel addElement={handleAddElement} />
         )}
       </div>
 
@@ -980,67 +354,24 @@ export const Canvas = () => {
         </div>
         
         <div className="flex-1 overflow-y-auto">
-          {renderPanel()}
+          <PropertyPanel 
+            selectedElement={selectedElement}
+            updateElementStyle={updateElementStyle}
+            updateElementContent={updateElementContent}
+          />
         </div>
       </div>
 
       {/* Timeline */}
-      <div className="h-32 bg-white border-t p-4 absolute bottom-0 left-0 right-0">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-4">
-            <h3 className="text-sm font-medium">Timeline</h3>
-            <Button
-              onClick={togglePlayPause}
-              variant="outline"
-              size="sm"
-            >
-              {isPlaying ? "Pause" : "Play"}
-            </Button>
-          </div>
-          <div className="text-sm text-gray-500">
-            Current Time: {currentTime.toFixed(1)}s / Total Duration: {
-              Math.max(...elements.map(el => (el.style.animationDuration || 0) + (el.style.animationDelay || 0)), 0)
-            }s
-          </div>
-        </div>
-        <div 
-          ref={timelineRef}
-          className="relative h-16 bg-gray-50 rounded border cursor-pointer"
-          onClick={handleTimelineClick}
-        >
-          <div 
-            className="absolute top-0 bottom-0 w-0.5 bg-purple-500"
-            style={{
-              left: `${(currentTime / Math.max(...elements.map(el => 
-                (el.style.animationDuration || 0) + (el.style.animationDelay || 0)
-              ), 1)) * 100}%`,
-              zIndex: 20
-            }}
-          />
-          
-          {elements.map((element) => (
-            <div
-              key={element.id}
-              className="absolute h-6 bg-purple-500 rounded cursor-pointer"
-              style={{
-                left: `${(element.style.animationDelay || 0) * 10}%`,
-                width: `${(element.style.animationDuration || 1) * 10}%`,
-                top: "50%",
-                transform: "translateY(-50%)",
-                opacity: 0.8
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedElement(element);
-              }}
-            >
-              <div className="text-xs text-white truncate px-2">
-                {element.content || element.type}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <Timeline 
+        elements={elements} 
+        currentTime={currentTime} 
+        isPlaying={isPlaying}
+        togglePlayPause={togglePlayPause}
+        setCurrentTime={setCurrentTime}
+        updateAnimations={updateAnimations}
+        setSelectedElement={setSelectedElement}
+      />
     </div>
   );
 };
