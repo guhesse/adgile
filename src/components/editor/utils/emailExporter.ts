@@ -5,6 +5,108 @@ export const exportEmailHTML = (
   elements: EditorElement[],
   selectedSize: BannerSize,
 ): string => {
+  const generateElementHTML = (element: EditorElement, isChild = false): string => {
+    if (element.type === "text") {
+      return `
+        <div id="${element.id}" style="
+          ${element.style.color ? `color: ${element.style.color};` : ""}
+          ${element.style.fontSize ? `font-size: ${element.style.fontSize}px;` : ""}
+          ${element.style.fontFamily ? `font-family: ${element.style.fontFamily}, Arial, sans-serif;` : ""}
+          ${element.style.lineHeight ? `line-height: ${element.style.lineHeight};` : ""}
+          ${element.style.textAlign ? `text-align: ${element.style.textAlign};` : ""}
+          ${element.style.fontWeight ? `font-weight: ${element.style.fontWeight};` : ""}
+          ${element.style.fontStyle ? `font-style: ${element.style.fontStyle};` : ""}
+          ${element.style.textDecoration ? `text-decoration: ${element.style.textDecoration};` : ""}
+          ${!isChild ? `position: absolute; left: ${element.style.x}px; top: ${element.style.y}px; width: ${element.style.width}px;` : ""}
+        ">${element.content}</div>
+      `;
+    }
+    
+    if (element.type === "button") {
+      return `
+        <table border="0" cellspacing="0" cellpadding="0" style="${!isChild ? `position: absolute; left: ${element.style.x}px; top: ${element.style.y}px;` : ""}">
+          <tr>
+            <td align="center" style="border-radius: 4px;" bgcolor="${element.style.backgroundColor}">
+              <a href="#" target="_blank" id="${element.id}" style="
+                display: inline-block; 
+                padding: ${element.style.padding || '8px 16px'}; 
+                font-family: ${element.style.fontFamily || 'Arial'}, sans-serif; 
+                font-size: ${element.style.fontSize || 16}px; 
+                color: ${element.style.color || '#ffffff'}; 
+                text-decoration: none;
+                width: ${element.style.width}px;
+              ">${element.content}</a>
+            </td>
+          </tr>
+        </table>
+      `;
+    }
+    
+    if (element.type === "image") {
+      return `
+        <img 
+          src="${element.content || '/placeholder.svg'}" 
+          width="${element.style.width}" 
+          height="${element.style.height}" 
+          alt="Image" 
+          style="
+            display: block; 
+            border: 0;
+            ${!isChild ? `position: absolute; left: ${element.style.x}px; top: ${element.style.y}px;` : ""}
+          " 
+        />
+      `;
+    }
+    
+    if (element.type === "layout") {
+      // Create a table for the layout
+      let columnWidth = 100 / (element.columns || 1);
+      
+      // Generate content for each column
+      let columnContent = '';
+      
+      if (element.childElements && element.childElements.length > 0) {
+        // Group child elements by column
+        const columns = Array.from({ length: element.columns || 1 }, () => []);
+        
+        element.childElements.forEach((child, index) => {
+          const columnIndex = index % (element.columns || 1);
+          columns[columnIndex].push(child);
+        });
+        
+        // Generate content for each column
+        columnContent = columns.map((columnElements, colIndex) => {
+          return `
+            <td class="column" width="${columnWidth}%" style="padding: 5px; vertical-align: top;">
+              ${columnElements.map(child => generateElementHTML(child, true)).join('')}
+            </td>
+          `;
+        }).join('');
+      } else {
+        // Empty columns
+        columnContent = Array.from({ length: element.columns || 1 }, () => {
+          return `<td class="column" width="${columnWidth}%" style="padding: 5px; vertical-align: top;"></td>`;
+        }).join('');
+      }
+      
+      return `
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="
+          position: absolute; 
+          left: ${element.style.x}px; 
+          top: ${element.style.y}px; 
+          width: ${element.style.width}px;
+          ${element.style.backgroundColor ? `background-color: ${element.style.backgroundColor};` : ""}
+        ">
+          <tr>
+            ${columnContent}
+          </tr>
+        </table>
+      `;
+    }
+    
+    return "";
+  };
+
   const html = `
     <!DOCTYPE html>
     <html>
@@ -35,21 +137,6 @@ export const exportEmailHTML = (
           text-decoration: none;
           -ms-interpolation-mode: bicubic;
         }
-        ${elements
-          .map(
-            (el) => `
-          #${el.id} {
-            ${el.style.color ? `color: ${el.style.color};` : ""}
-            ${el.style.fontSize ? `font-size: ${el.style.fontSize}px;` : ""}
-            ${el.style.fontFamily ? `font-family: ${el.style.fontFamily}, Arial, sans-serif;` : ""}
-            ${el.style.lineHeight ? `line-height: ${el.style.lineHeight};` : ""}
-            ${el.style.textAlign ? `text-align: ${el.style.textAlign};` : ""}
-            ${el.style.backgroundColor ? `background-color: ${el.style.backgroundColor};` : ""}
-            ${el.style.padding ? `padding: ${el.style.padding};` : ""}
-          }
-        `
-          )
-          .join("\n")}
       </style>
     </head>
     <body>
@@ -57,44 +144,11 @@ export const exportEmailHTML = (
         <tr>
           <td>
             <table width="100%" border="0" cellpadding="0" cellspacing="0">
-              ${elements
-                .map((el) => {
-                  if (el.type === "text") {
-                    return `
-                      <tr>
-                        <td style="position: absolute; left: ${el.style.x}px; top: ${el.style.y}px;">
-                          <div id="${el.id}">${el.content}</div>
-                        </td>
-                      </tr>
-                    `;
-                  }
-                  if (el.type === "button") {
-                    return `
-                      <tr>
-                        <td style="position: absolute; left: ${el.style.x}px; top: ${el.style.y}px;">
-                          <table border="0" cellspacing="0" cellpadding="0">
-                            <tr>
-                              <td align="center" style="border-radius: 4px;" bgcolor="${el.style.backgroundColor}">
-                                <a href="#" target="_blank" id="${el.id}" style="display: inline-block; padding: ${el.style.padding}; font-family: ${el.style.fontFamily || 'Arial'}, sans-serif; font-size: ${el.style.fontSize}px; color: ${el.style.color}; text-decoration: none;">${el.content}</a>
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-                    `;
-                  }
-                  if (el.type === "image") {
-                    return `
-                      <tr>
-                        <td style="position: absolute; left: ${el.style.x}px; top: ${el.style.y}px;">
-                          <img src="${el.content}" width="${el.style.width}" height="${el.style.height}" alt="Image" style="display: block; border: 0;" />
-                        </td>
-                      </tr>
-                    `;
-                  }
-                  return "";
-                })
-                .join("\n")}
+              <tr>
+                <td style="position: relative; height: ${selectedSize.height}px;">
+                  ${elements.map(el => generateElementHTML(el)).join("\n")}
+                </td>
+              </tr>
             </table>
           </td>
         </tr>

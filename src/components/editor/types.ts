@@ -7,7 +7,7 @@ export type BannerSize = {
 
 export type EditorElement = {
   id: string;
-  type: "text" | "image" | "button";
+  type: "text" | "image" | "button" | "layout";
   content: string;
   style: {
     x: number;
@@ -15,11 +15,15 @@ export type EditorElement = {
     width: number;
     height: number;
     fontSize?: number;
+    fontWeight?: string;
+    fontStyle?: string;
+    textDecoration?: string;
     color?: string;
     fontFamily?: string;
     lineHeight?: number;
     letterSpacing?: number;
     textAlign?: "left" | "center" | "right";
+    verticalAlign?: "top" | "middle" | "bottom";
     backgroundColor?: string;
     padding?: string;
     animation?: string;
@@ -27,6 +31,8 @@ export type EditorElement = {
     animationDelay?: number;
     animationPlayState?: "running" | "paused";
   };
+  columns?: number;
+  childElements?: EditorElement[];
 };
 
 export const BANNER_SIZES: BannerSize[] = [
@@ -47,4 +53,26 @@ export const ANIMATION_PRESETS = [
   { name: "Slide Out Right", value: "animate-slide-out-right" },
   { name: "Bounce", value: "animate-bounce" },
   { name: "Pulse", value: "animate-pulse" },
+];
+
+export type LayoutTemplate = {
+  id: string;
+  name: string;
+  columns: number;
+  preview: string;
+  type: "blank" | "preset";
+};
+
+export const BLANK_LAYOUTS: LayoutTemplate[] = [
+  { id: "blank-1", name: "1 coluna", columns: 1, preview: "1", type: "blank" },
+  { id: "blank-2-left", name: "2 colunas (E)", columns: 2, preview: "2", type: "blank" },
+  { id: "blank-2-right", name: "2 colunas (D)", columns: 2, preview: "2", type: "blank" },
+  { id: "blank-2-equal", name: "2 colunas iguais", columns: 2, preview: "2", type: "blank" },
+  { id: "blank-3", name: "3 colunas", columns: 3, preview: "3", type: "blank" },
+  { id: "blank-4", name: "4 colunas", columns: 4, preview: "4", type: "blank" },
+];
+
+export const PRESET_LAYOUTS: LayoutTemplate[] = [
+  { id: "preset-image-text", name: "Imagem e texto", columns: 2, preview: "IT", type: "preset" },
+  { id: "preset-text-text", name: "Texto e texto", columns: 2, preview: "TT", type: "preset" },
 ];

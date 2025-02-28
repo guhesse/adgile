@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { EditorElement, BannerSize, BANNER_SIZES } from "./types";
+import { EditorElement, BannerSize, BANNER_SIZES, LayoutTemplate } from "./types";
 import { PropertyPanel } from "./PropertyPanel";
 import { LayersPanel } from "./LayersPanel";
 import { ElementsPanel } from "./ElementsPanel";
@@ -45,6 +45,103 @@ export const Canvas = () => {
     };
     setElements([...elements, newElement]);
     setSelectedElement(newElement);
+  };
+
+  const handleAddLayout = (template: LayoutTemplate) => {
+    // Calculate vertical position after last element
+    const lastY = elements.length > 0 
+      ? Math.max(...elements.map(el => el.style.y + el.style.height)) + 20
+      : 20;
+
+    const layoutWidth = selectedSize.width - 40; // 20px padding on each side
+    const layoutElement: EditorElement = {
+      id: Date.now().toString(),
+      type: "layout",
+      content: template.name,
+      style: {
+        x: 20,
+        y: lastY,
+        width: layoutWidth,
+        height: 150,
+        backgroundColor: "#ffffff",
+        padding: "10px",
+      },
+      columns: template.columns,
+      childElements: []
+    };
+
+    if (template.type === "preset") {
+      // Add children based on the template type
+      if (template.id === "preset-image-text") {
+        layoutElement.childElements = [
+          {
+            id: Date.now().toString() + "-1",
+            type: "image",
+            content: "",
+            style: {
+              x: 0,
+              y: 0,
+              width: layoutWidth / 2 - 5,
+              height: 130,
+            }
+          },
+          {
+            id: Date.now().toString() + "-2",
+            type: "text",
+            content: "Add your text here",
+            style: {
+              x: layoutWidth / 2 + 5,
+              y: 0,
+              width: layoutWidth / 2 - 5,
+              height: 130,
+              fontSize: 16,
+              color: "#000000",
+              fontFamily: "Inter",
+              lineHeight: 1.5,
+              textAlign: "left",
+            }
+          }
+        ];
+      } else if (template.id === "preset-text-text") {
+        layoutElement.childElements = [
+          {
+            id: Date.now().toString() + "-1",
+            type: "text",
+            content: "First column text",
+            style: {
+              x: 0,
+              y: 0,
+              width: layoutWidth / 2 - 5,
+              height: 130,
+              fontSize: 16,
+              color: "#000000",
+              fontFamily: "Inter",
+              lineHeight: 1.5,
+              textAlign: "left",
+            }
+          },
+          {
+            id: Date.now().toString() + "-2",
+            type: "text",
+            content: "Second column text",
+            style: {
+              x: layoutWidth / 2 + 5,
+              y: 0,
+              width: layoutWidth / 2 - 5,
+              height: 130,
+              fontSize: 16,
+              color: "#000000",
+              fontFamily: "Inter",
+              lineHeight: 1.5,
+              textAlign: "left",
+            }
+          }
+        ];
+      }
+    }
+
+    setElements([...elements, layoutElement]);
+    setSelectedElement(layoutElement);
   };
 
   const handleMouseDown = (e: React.MouseEvent, element: EditorElement) => {
@@ -189,6 +286,88 @@ export const Canvas = () => {
     })));
   };
 
+  const renderElement = (element: EditorElement) => {
+    if (element.type === "text") {
+      return (
+        <p style={{
+          fontSize: element.style.fontSize,
+          fontWeight: element.style.fontWeight,
+          fontStyle: element.style.fontStyle,
+          textDecoration: element.style.textDecoration,
+          color: element.style.color,
+          fontFamily: element.style.fontFamily,
+          lineHeight: element.style.lineHeight,
+          letterSpacing: element.style.letterSpacing ? `${element.style.letterSpacing}px` : undefined,
+          textAlign: element.style.textAlign,
+        }}>
+          {element.content}
+        </p>
+      );
+    } 
+    
+    if (element.type === "button") {
+      return (
+        <Button style={{
+          fontSize: element.style.fontSize,
+          color: element.style.color,
+          fontFamily: element.style.fontFamily,
+          backgroundColor: element.style.backgroundColor,
+          padding: element.style.padding,
+          width: "100%",
+          height: "100%",
+        }}>
+          {element.content}
+        </Button>
+      );
+    } 
+    
+    if (element.type === "image") {
+      return (
+        <img
+          src={element.content || "/placeholder.svg"}
+          alt="Banner element"
+          className="w-full h-full object-cover"
+        />
+      );
+    }
+
+    if (element.type === "layout") {
+      // Render layout with columns
+      return (
+        <div className="w-full h-full bg-white rounded border border-dashed border-gray-300 flex">
+          {element.columns && Array.from({ length: element.columns }).map((_, index) => (
+            <div 
+              key={index} 
+              className={`h-full ${index > 0 ? "border-l border-dashed border-gray-300" : ""}`} 
+              style={{ width: `${100 / element.columns!}%` }}
+            >
+              {/* If we have child elements for this layout, render them */}
+              {element.childElements?.map((child, childIndex) => {
+                const columnIndex = childIndex % element.columns!;
+                if (columnIndex === index) {
+                  return (
+                    <div
+                      key={child.id}
+                      className="relative p-2"
+                      style={{
+                        height: "100%",
+                      }}
+                    >
+                      {renderElement(child)}
+                    </div>
+                  );
+                }
+                return null;
+              })}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div className="flex flex-1">
       {/* Left Sidebar */}
@@ -225,7 +404,10 @@ export const Canvas = () => {
             removeElement={removeElement}
           />
         ) : (
-          <ElementsPanel addElement={handleAddElement} />
+          <ElementsPanel 
+            addElement={handleAddElement}
+            addLayout={handleAddLayout}
+          />
         )}
       </div>
 
@@ -289,38 +471,7 @@ export const Canvas = () => {
                 className={`cursor-move ${selectedElement?.id === element.id ? "outline outline-2 outline-blue-500" : ""} ${element.style.animation}`}
                 onMouseDown={(e) => handleMouseDown(e, element)}
               >
-                {element.type === "text" && (
-                  <p style={{
-                    fontSize: element.style.fontSize,
-                    color: element.style.color,
-                    fontFamily: element.style.fontFamily,
-                    lineHeight: element.style.lineHeight,
-                    letterSpacing: element.style.letterSpacing ? `${element.style.letterSpacing}px` : undefined,
-                    textAlign: element.style.textAlign,
-                  }}>
-                    {element.content}
-                  </p>
-                )}
-                {element.type === "button" && (
-                  <Button style={{
-                    fontSize: element.style.fontSize,
-                    color: element.style.color,
-                    fontFamily: element.style.fontFamily,
-                    backgroundColor: element.style.backgroundColor,
-                    padding: element.style.padding,
-                    width: "100%",
-                    height: "100%",
-                  }}>
-                    {element.content}
-                  </Button>
-                )}
-                {element.type === "image" && (
-                  <img
-                    src={element.content || "/placeholder.svg"}
-                    alt="Banner element"
-                    className="w-full h-full object-cover"
-                  />
-                )}
+                {renderElement(element)}
                 
                 {/* Resize Handles */}
                 {selectedElement?.id === element.id && (
@@ -346,10 +497,11 @@ export const Canvas = () => {
         <div className="p-4 border-b">
           <div className="text-lg font-medium">
             {selectedElement ? (
-              selectedElement.type === 'text' ? 'Text' :
-              selectedElement.type === 'image' ? 'Image' :
-              selectedElement.type === 'button' ? 'Button' : 'Properties'
-            ) : 'Properties'}
+              selectedElement.type === 'text' ? 'Texto' :
+              selectedElement.type === 'image' ? 'Imagem' :
+              selectedElement.type === 'button' ? 'Botão' : 
+              selectedElement.type === 'layout' ? 'Layout' : 'Propriedades'
+            ) : 'Propriedades'}
           </div>
         </div>
         
