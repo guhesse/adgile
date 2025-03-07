@@ -10,8 +10,8 @@ import {
 } from "@/components/ui/accordion";
 import { 
   ChevronDown,
-  TextIcon,
-  ImageIcon,
+  Type as TextIcon,
+  Image as ImageIcon,
   Square,
   Layers as LayersIcon,
   LayoutGrid
@@ -63,7 +63,7 @@ export const ElementsPanel = ({ addElement, addLayout }: ElementsPanelProps) => 
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="border-b p-4">
+      <div className="p-4">
         <div className="text-lg font-medium mb-4">Elementos</div>
         
         <Accordion type="single" collapsible className="w-full">
@@ -201,43 +201,6 @@ export const ElementsPanel = ({ addElement, addLayout }: ElementsPanelProps) => 
               >
                 <div className="h-4 w-4 mr-2 border-t-2 border-gray-500" />
                 Divisor
-              </Button>
-            </AccordionContent>
-          </AccordionItem>
-          
-          <AccordionItem value="mailchimp">
-            <AccordionTrigger className="py-2 text-left text-sm font-medium">
-              <div className="flex items-center">
-                <LayoutGrid className="h-4 w-4 mr-2" />
-                Mailchimp
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="space-y-2 pt-2">
-              <Button 
-                variant="outline" 
-                className="w-full justify-between" 
-                disabled
-              >
-                Input de Email
-                <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">@</div>
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                className="w-full justify-between" 
-                disabled
-              >
-                Botão de assinatura
-                <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">Sub</div>
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                className="w-full justify-between" 
-                disabled
-              >
-                Campo de nome
-                <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">N</div>
               </Button>
             </AccordionContent>
           </AccordionItem>
