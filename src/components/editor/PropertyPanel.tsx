@@ -77,8 +77,13 @@ export const PropertyPanel = ({ selectedElement, updateElementStyle, updateEleme
         {getElementTitle()}
       </div>
       
-      {/* Tabs Selector */}
-      <div className="flex h-[39px] p-1 justify-center items-center gap-0 rounded bg-[#E9EAEB] mx-4 mb-4">
+      {/* Panel Content */}
+      <div className="flex-1 overflow-y-auto">
+        {renderElementPanel()}
+      </div>
+      
+      {/* Tabs Selector - Now at the bottom */}
+      <div className="flex h-[39px] p-1 justify-center items-center gap-0 rounded bg-[#E9EAEB] mx-4 my-4">
         <div 
           className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm text-[#717680] font-['Geist',sans-serif] text-xs cursor-pointer ${activeTab === "content" ? "bg-white" : ""}`}
           onClick={() => setActiveTab("content")}
@@ -92,12 +97,6 @@ export const PropertyPanel = ({ selectedElement, updateElementStyle, updateEleme
           Estilo
         </div>
       </div>
-      
-      {/* Panel Content */}
-      <div className="flex-1 overflow-y-auto">
-        {renderElementPanel()}
-      </div>
     </div>
   );
 };
-
