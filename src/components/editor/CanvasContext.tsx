@@ -1,6 +1,7 @@
 
 import { createContext, useContext, useState } from "react";
 import { EditorElement, BannerSize, BANNER_SIZES } from "./types";
+import { organizeElementsInContainers, snapToGrid } from "./utils/gridUtils";
 
 interface CanvasContextType {
   elements: EditorElement[];
@@ -31,6 +32,7 @@ interface CanvasContextType {
   handlePreviewAnimation: () => void;
   togglePlayPause: () => void;
   updateAnimations: (time: number) => void;
+  organizeElements: () => void;
 }
 
 const CanvasContext = createContext<CanvasContextType | undefined>(undefined);
@@ -52,11 +54,12 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       id: Date.now().toString(),
       type,
       content: type === "text" ? "Text Element" : type === "button" ? "Button Element" : "",
+      inContainer: false,
       style: {
-        x: 100,
-        y: 100,
-        width: 200,
-        height: type === "text" ? 40 : type === "image" ? 150 : 50,
+        x: snapToGrid(100),
+        y: snapToGrid(100),
+        width: snapToGrid(type === "text" ? 200 : type === "image" ? 150 : 200),
+        height: snapToGrid(type === "text" ? 40 : type === "image" ? 150 : 50),
         fontSize: 16,
         color: "#000000",
         fontFamily: "Inter",
@@ -66,7 +69,9 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         padding: type === "button" ? "8px 16px" : undefined,
       },
     };
-    setElements([...elements, newElement]);
+    
+    const updatedElements = [...elements, newElement];
+    setElements(updatedElements);
     setSelectedElement(newElement);
   };
 
@@ -81,9 +86,10 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       id: Date.now().toString(),
       type: "layout",
       content: template.name,
+      inContainer: false,
       style: {
         x: 20,
-        y: lastY,
+        y: snapToGrid(lastY),
         width: layoutWidth,
         height: 150,
         backgroundColor: "#ffffff",
@@ -101,6 +107,8 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             id: Date.now().toString() + "-1",
             type: "image",
             content: "",
+            inContainer: true,
+            parentId: layoutElement.id,
             style: {
               x: 0,
               y: 0,
@@ -112,6 +120,8 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             id: Date.now().toString() + "-2",
             type: "text",
             content: "Add your text here",
+            inContainer: true,
+            parentId: layoutElement.id,
             style: {
               x: layoutWidth / 2 + 5,
               y: 0,
@@ -131,6 +141,8 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             id: Date.now().toString() + "-1",
             type: "text",
             content: "First column text",
+            inContainer: true,
+            parentId: layoutElement.id,
             style: {
               x: 0,
               y: 0,
@@ -147,6 +159,8 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             id: Date.now().toString() + "-2",
             type: "text",
             content: "Second column text",
+            inContainer: true,
+            parentId: layoutElement.id,
             style: {
               x: layoutWidth / 2 + 5,
               y: 0,
@@ -168,7 +182,14 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const removeElement = (elementId: string) => {
-    const newElements = elements.filter(el => el.id !== elementId);
+    // Remove the element and update parent references if needed
+    const newElements = elements.map(el => {
+      if (el.childElements) {
+        el.childElements = el.childElements.filter(child => child.id !== elementId);
+      }
+      return el;
+    }).filter(el => el.id !== elementId);
+    
     setElements(newElements);
     if (selectedElement?.id === elementId) {
       setSelectedElement(null);
@@ -178,21 +199,59 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const updateElementStyle = (property: string, value: any) => {
     if (!selectedElement) return;
 
-    setElements(elements.map(el =>
-      el.id === selectedElement.id
-        ? { ...el, style: { ...el.style, [property]: value } }
-        : el
-    ));
+    // Update the element in the main elements array if it's not in a container
+    if (!selectedElement.inContainer) {
+      setElements(elements.map(el =>
+        el.id === selectedElement.id
+          ? { ...el, style: { ...el.style, [property]: value } }
+          : el
+      ));
+    } else {
+      // Update the element in its parent's childElements array
+      setElements(elements.map(el => {
+        if (el.childElements && el.id === selectedElement.parentId) {
+          return {
+            ...el,
+            childElements: el.childElements.map(child =>
+              child.id === selectedElement.id
+                ? { ...child, style: { ...child.style, [property]: value } }
+                : child
+            )
+          };
+        }
+        return el;
+      }));
+    }
+    
     setSelectedElement({ ...selectedElement, style: { ...selectedElement.style, [property]: value } });
   };
 
   const updateElementContent = (content: string) => {
     if (!selectedElement) return;
-    setElements(elements.map(el =>
-      el.id === selectedElement.id
-        ? { ...el, content }
-        : el
-    ));
+
+    // Update content in main elements or in parent's childElements
+    if (!selectedElement.inContainer) {
+      setElements(elements.map(el =>
+        el.id === selectedElement.id
+          ? { ...el, content }
+          : el
+      ));
+    } else {
+      setElements(elements.map(el => {
+        if (el.childElements && el.id === selectedElement.parentId) {
+          return {
+            ...el,
+            childElements: el.childElements.map(child =>
+              child.id === selectedElement.id
+                ? { ...child, content }
+                : child
+            )
+          };
+        }
+        return el;
+      }));
+    }
+    
     setSelectedElement({ ...selectedElement, content });
   };
 
@@ -220,6 +279,11 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         animationDelay: -time
       }
     })));
+  };
+
+  const organizeElements = () => {
+    const organizedElements = organizeElementsInContainers(elements, selectedSize.width);
+    setElements(organizedElements);
   };
 
   return (
@@ -252,6 +316,7 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       handlePreviewAnimation,
       togglePlayPause,
       updateAnimations,
+      organizeElements,
     }}>
       {children}
     </CanvasContext.Provider>

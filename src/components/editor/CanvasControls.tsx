@@ -4,13 +4,15 @@ import { Button } from "@/components/ui/button";
 import { BANNER_SIZES } from "./types";
 import { useCanvas } from "./CanvasContext";
 import { exportEmailHTML, downloadEmailTemplate } from "./utils/emailExporter";
+import { Grid3X3 } from "lucide-react";
 
 export const CanvasControls = () => {
   const { 
     selectedSize, 
     setSelectedSize, 
     handlePreviewAnimation, 
-    elements 
+    elements,
+    organizeElements
   } = useCanvas();
 
   const exportEmail = () => {
@@ -40,6 +42,10 @@ export const CanvasControls = () => {
       </Select>
       
       <div className="flex gap-2">
+        <Button variant="outline" size="sm" onClick={organizeElements}>
+          <Grid3X3 size={16} className="mr-2" />
+          Organize Elements
+        </Button>
         <Button variant="outline" size="sm" onClick={handlePreviewAnimation}>
           Preview Animation
         </Button>

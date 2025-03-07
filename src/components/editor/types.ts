@@ -7,7 +7,7 @@ export type BannerSize = {
 
 export type EditorElement = {
   id: string;
-  type: "text" | "image" | "button" | "layout";
+  type: "text" | "image" | "button" | "layout" | "container";
   content: string;
   style: {
     x: number;
@@ -38,10 +38,15 @@ export type EditorElement = {
     borderTopRightRadius?: number;
     borderBottomLeftRadius?: number;
     borderBottomRightRadius?: number;
+    gridArea?: string;
+    gridColumn?: string;
+    gridRow?: string;
   };
   columns?: number;
   childElements?: EditorElement[];
   alt?: string;
+  parentId?: string; // Reference to parent container/layout
+  inContainer: boolean; // Whether element is inside a container
 };
 
 export const BANNER_SIZES: BannerSize[] = [
