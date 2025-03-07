@@ -30,9 +30,18 @@ export type EditorElement = {
     animationDuration?: number;
     animationDelay?: number;
     animationPlayState?: "running" | "paused";
+    borderRadius?: number;
+    borderWidth?: number;
+    borderColor?: string;
+    borderStyle?: string; 
+    borderTopLeftRadius?: number;
+    borderTopRightRadius?: number;
+    borderBottomLeftRadius?: number;
+    borderBottomRightRadius?: number;
   };
   columns?: number;
   childElements?: EditorElement[];
+  alt?: string;
 };
 
 export const BANNER_SIZES: BannerSize[] = [

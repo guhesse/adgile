@@ -1,372 +1,31 @@
 
-import { useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { EditorElement, BannerSize, BANNER_SIZES, LayoutTemplate } from "./types";
+import { useState } from "react";
 import { PropertyPanel } from "./PropertyPanel";
 import { LayersPanel } from "./LayersPanel";
 import { ElementsPanel } from "./ElementsPanel";
 import { Timeline } from "./Timeline";
-import { exportEmailHTML, downloadEmailTemplate } from "./utils/emailExporter";
+import { CanvasProvider } from "./CanvasContext";
+import { CanvasControls } from "./CanvasControls";
+import { CanvasWorkspace } from "./CanvasWorkspace";
+import { useCanvas } from "./CanvasContext";
 
-export const Canvas = () => {
-  const [elements, setElements] = useState<EditorElement[]>([]);
-  const [selectedElement, setSelectedElement] = useState<EditorElement | null>(null);
-  const [selectedSize, setSelectedSize] = useState<BannerSize>(BANNER_SIZES[0]);
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeDirection, setResizeDirection] = useState("");
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [key, setKey] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
+const CanvasContent = () => {
   const [showLayers, setShowLayers] = useState(false);
-
-  const handleAddElement = (type: EditorElement["type"]) => {
-    const newElement: EditorElement = {
-      id: Date.now().toString(),
-      type,
-      content: type === "text" ? "Text Element" : type === "button" ? "Button Element" : "",
-      style: {
-        x: 100,
-        y: 100,
-        width: 200,
-        height: type === "text" ? 40 : type === "image" ? 150 : 50,
-        fontSize: 16,
-        color: "#000000",
-        fontFamily: "Inter",
-        lineHeight: 1.5,
-        textAlign: "left",
-        backgroundColor: type === "button" ? "#1a1f2c" : undefined,
-        padding: type === "button" ? "8px 16px" : undefined,
-      },
-    };
-    setElements([...elements, newElement]);
-    setSelectedElement(newElement);
-  };
-
-  const handleAddLayout = (template: LayoutTemplate) => {
-    // Calculate vertical position after last element
-    const lastY = elements.length > 0 
-      ? Math.max(...elements.map(el => el.style.y + el.style.height)) + 20
-      : 20;
-
-    const layoutWidth = selectedSize.width - 40; // 20px padding on each side
-    const layoutElement: EditorElement = {
-      id: Date.now().toString(),
-      type: "layout",
-      content: template.name,
-      style: {
-        x: 20,
-        y: lastY,
-        width: layoutWidth,
-        height: 150,
-        backgroundColor: "#ffffff",
-        padding: "10px",
-      },
-      columns: template.columns,
-      childElements: []
-    };
-
-    if (template.type === "preset") {
-      // Add children based on the template type
-      if (template.id === "preset-image-text") {
-        layoutElement.childElements = [
-          {
-            id: Date.now().toString() + "-1",
-            type: "image",
-            content: "",
-            style: {
-              x: 0,
-              y: 0,
-              width: layoutWidth / 2 - 5,
-              height: 130,
-            }
-          },
-          {
-            id: Date.now().toString() + "-2",
-            type: "text",
-            content: "Add your text here",
-            style: {
-              x: layoutWidth / 2 + 5,
-              y: 0,
-              width: layoutWidth / 2 - 5,
-              height: 130,
-              fontSize: 16,
-              color: "#000000",
-              fontFamily: "Inter",
-              lineHeight: 1.5,
-              textAlign: "left",
-            }
-          }
-        ];
-      } else if (template.id === "preset-text-text") {
-        layoutElement.childElements = [
-          {
-            id: Date.now().toString() + "-1",
-            type: "text",
-            content: "First column text",
-            style: {
-              x: 0,
-              y: 0,
-              width: layoutWidth / 2 - 5,
-              height: 130,
-              fontSize: 16,
-              color: "#000000",
-              fontFamily: "Inter",
-              lineHeight: 1.5,
-              textAlign: "left",
-            }
-          },
-          {
-            id: Date.now().toString() + "-2",
-            type: "text",
-            content: "Second column text",
-            style: {
-              x: layoutWidth / 2 + 5,
-              y: 0,
-              width: layoutWidth / 2 - 5,
-              height: 130,
-              fontSize: 16,
-              color: "#000000",
-              fontFamily: "Inter",
-              lineHeight: 1.5,
-              textAlign: "left",
-            }
-          }
-        ];
-      }
-    }
-
-    setElements([...elements, layoutElement]);
-    setSelectedElement(layoutElement);
-  };
-
-  const handleMouseDown = (e: React.MouseEvent, element: EditorElement) => {
-    e.stopPropagation();
-    setIsDragging(true);
-    setSelectedElement(element);
-    setDragStart({
-      x: e.clientX - element.style.x,
-      y: e.clientY - element.style.y,
-    });
-  };
-
-  const handleResizeStart = (e: React.MouseEvent, direction: string, element: EditorElement) => {
-    e.stopPropagation();
-    setIsResizing(true);
-    setResizeDirection(direction);
-    setSelectedElement(element);
-    setDragStart({
-      x: e.clientX,
-      y: e.clientY,
-    });
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging && !isResizing) return;
-    
-    const bounds = canvasRef.current?.getBoundingClientRect();
-    if (!bounds || !selectedElement) return;
-
-    if (isDragging) {
-      const newX = Math.max(0, Math.min(e.clientX - dragStart.x, selectedSize.width - selectedElement.style.width));
-      const newY = Math.max(0, Math.min(e.clientY - dragStart.y, selectedSize.height - selectedElement.style.height));
-
-      setElements(elements.map(el =>
-        el.id === selectedElement.id
-          ? { ...el, style: { ...el.style, x: newX, y: newY } }
-          : el
-      ));
-    } else if (isResizing) {
-      const deltaX = e.clientX - dragStart.x;
-      const deltaY = e.clientY - dragStart.y;
-      
-      let newWidth = selectedElement.style.width;
-      let newHeight = selectedElement.style.height;
-      let newX = selectedElement.style.x;
-      let newY = selectedElement.style.y;
-      
-      // Handle different resize directions
-      if (resizeDirection.includes('e')) {
-        newWidth = Math.max(50, selectedElement.style.width + deltaX);
-      }
-      if (resizeDirection.includes('w')) {
-        const possibleWidth = Math.max(50, selectedElement.style.width - deltaX);
-        newX = selectedElement.style.x + (selectedElement.style.width - possibleWidth);
-        newWidth = possibleWidth;
-      }
-      if (resizeDirection.includes('s')) {
-        newHeight = Math.max(20, selectedElement.style.height + deltaY);
-      }
-      if (resizeDirection.includes('n')) {
-        const possibleHeight = Math.max(20, selectedElement.style.height - deltaY);
-        newY = selectedElement.style.y + (selectedElement.style.height - possibleHeight);
-        newHeight = possibleHeight;
-      }
-      
-      setElements(elements.map(el =>
-        el.id === selectedElement.id
-          ? { ...el, style: { ...el.style, x: newX, y: newY, width: newWidth, height: newHeight } }
-          : el
-      ));
-      
-      setDragStart({
-        x: e.clientX,
-        y: e.clientY,
-      });
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    setIsResizing(false);
-  };
-
-  const updateElementStyle = (property: string, value: any) => {
-    if (!selectedElement) return;
-
-    setElements(elements.map(el =>
-      el.id === selectedElement.id
-        ? { ...el, style: { ...el.style, [property]: value } }
-        : el
-    ));
-    setSelectedElement({ ...selectedElement, style: { ...selectedElement.style, [property]: value } });
-  };
-
-  const updateElementContent = (content: string) => {
-    if (!selectedElement) return;
-    setElements(elements.map(el =>
-      el.id === selectedElement.id
-        ? { ...el, content }
-        : el
-    ));
-    setSelectedElement({ ...selectedElement, content });
-  };
-
-  const removeElement = (elementId: string) => {
-    const newElements = elements.filter(el => el.id !== elementId);
-    setElements(newElements);
-    if (selectedElement?.id === elementId) {
-      setSelectedElement(null);
-    }
-  };
-
-  const exportEmail = () => {
-    if (!canvasRef.current) return;
-    const html = exportEmailHTML(elements, selectedSize);
-    downloadEmailTemplate(html);
-  };
-
-  const handlePreviewAnimation = () => {
-    setKey(prev => prev + 1);
-  };
-
-  const updateAnimations = (time: number) => {
-    setElements(elements.map(el => ({
-      ...el,
-      style: {
-        ...el.style,
-        animationPlayState: "paused",
-        animationDelay: -(time)
-      }
-    })));
-  };
-
-  const togglePlayPause = () => {
-    setIsPlaying(!isPlaying);
-    setElements(elements.map(el => ({
-      ...el,
-      style: {
-        ...el.style,
-        animationPlayState: isPlaying ? "paused" : "running"
-      }
-    })));
-  };
-
-  const renderElement = (element: EditorElement) => {
-    if (element.type === "text") {
-      return (
-        <p style={{
-          fontSize: element.style.fontSize,
-          fontWeight: element.style.fontWeight,
-          fontStyle: element.style.fontStyle,
-          textDecoration: element.style.textDecoration,
-          color: element.style.color,
-          fontFamily: element.style.fontFamily,
-          lineHeight: element.style.lineHeight,
-          letterSpacing: element.style.letterSpacing ? `${element.style.letterSpacing}px` : undefined,
-          textAlign: element.style.textAlign,
-        }}>
-          {element.content}
-        </p>
-      );
-    } 
-    
-    if (element.type === "button") {
-      return (
-        <Button style={{
-          fontSize: element.style.fontSize,
-          color: element.style.color,
-          fontFamily: element.style.fontFamily,
-          backgroundColor: element.style.backgroundColor,
-          padding: element.style.padding,
-          width: "100%",
-          height: "100%",
-        }}>
-          {element.content}
-        </Button>
-      );
-    } 
-    
-    if (element.type === "image") {
-      return (
-        <img
-          src={element.content || "/placeholder.svg"}
-          alt="Banner element"
-          className="w-full h-full object-cover"
-        />
-      );
-    }
-
-    if (element.type === "layout") {
-      // Render layout with columns
-      return (
-        <div className="w-full h-full bg-white rounded border border-dashed border-gray-300 flex">
-          {element.columns && Array.from({ length: element.columns }).map((_, index) => (
-            <div 
-              key={index} 
-              className={`h-full ${index > 0 ? "border-l border-dashed border-gray-300" : ""}`} 
-              style={{ width: `${100 / element.columns!}%` }}
-            >
-              {/* If we have child elements for this layout, render them */}
-              {element.childElements?.map((child, childIndex) => {
-                const columnIndex = childIndex % element.columns!;
-                if (columnIndex === index) {
-                  return (
-                    <div
-                      key={child.id}
-                      className="relative p-2"
-                      style={{
-                        height: "100%",
-                      }}
-                    >
-                      {renderElement(child)}
-                    </div>
-                  );
-                }
-                return null;
-              })}
-            </div>
-          ))}
-        </div>
-      );
-    }
-
-    return null;
-  };
+  const { 
+    elements, 
+    selectedElement, 
+    setSelectedElement,
+    removeElement, 
+    updateElementStyle,
+    updateElementContent,
+    handleAddElement,
+    handleAddLayout,
+    currentTime,
+    isPlaying,
+    togglePlayPause,
+    setCurrentTime,
+    updateAnimations
+  } = useCanvas();
 
   return (
     <div className="flex flex-1">
@@ -413,83 +72,8 @@ export const Canvas = () => {
 
       {/* Canvas Area */}
       <div className="flex-1 bg-gray-100 overflow-auto">
-        <div className="flex justify-between items-center p-4">
-          <Select
-            value={selectedSize.name}
-            onValueChange={(value) => {
-              const size = BANNER_SIZES.find(s => s.name === value);
-              if (size) setSelectedSize(size);
-            }}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Select size" />
-            </SelectTrigger>
-            <SelectContent>
-              {BANNER_SIZES.map((size) => (
-                <SelectItem key={size.name} value={size.name}>
-                  {size.name} ({size.width}x{size.height})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handlePreviewAnimation}>
-              Preview Animation
-            </Button>
-            <Button variant="default" size="sm" onClick={exportEmail}>
-              Export
-            </Button>
-          </div>
-        </div>
-        
-        <div className="p-8 flex justify-center min-h-[calc(100vh-14rem)]">
-          <Card
-            ref={canvasRef}
-            className="relative bg-white shadow-lg"
-            style={{
-              width: selectedSize.width,
-              height: selectedSize.height,
-            }}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-          >
-            {elements.map((element) => (
-              <div
-                key={`${element.id}-${key}`}
-                style={{
-                  position: "absolute",
-                  left: element.style.x,
-                  top: element.style.y,
-                  width: element.style.width,
-                  height: element.style.height,
-                  animationPlayState: element.style.animationPlayState,
-                  animationDelay: element.style.animationDelay != null ? `${element.style.animationDelay}s` : undefined,
-                  animationDuration: element.style.animationDuration != null ? `${element.style.animationDuration}s` : undefined,
-                }}
-                className={`cursor-move ${selectedElement?.id === element.id ? "outline outline-2 outline-blue-500" : ""} ${element.style.animation}`}
-                onMouseDown={(e) => handleMouseDown(e, element)}
-              >
-                {renderElement(element)}
-                
-                {/* Resize Handles */}
-                {selectedElement?.id === element.id && (
-                  <>
-                    <div className="resize-handle resize-handle-n" onMouseDown={(e) => handleResizeStart(e, 'n', element)}></div>
-                    <div className="resize-handle resize-handle-e" onMouseDown={(e) => handleResizeStart(e, 'e', element)}></div>
-                    <div className="resize-handle resize-handle-s" onMouseDown={(e) => handleResizeStart(e, 's', element)}></div>
-                    <div className="resize-handle resize-handle-w" onMouseDown={(e) => handleResizeStart(e, 'w', element)}></div>
-                    <div className="resize-handle resize-handle-nw" onMouseDown={(e) => handleResizeStart(e, 'nw', element)}></div>
-                    <div className="resize-handle resize-handle-ne" onMouseDown={(e) => handleResizeStart(e, 'ne', element)}></div>
-                    <div className="resize-handle resize-handle-se" onMouseDown={(e) => handleResizeStart(e, 'se', element)}></div>
-                    <div className="resize-handle resize-handle-sw" onMouseDown={(e) => handleResizeStart(e, 'sw', element)}></div>
-                  </>
-                )}
-              </div>
-            ))}
-          </Card>
-        </div>
+        <CanvasControls />
+        <CanvasWorkspace />
       </div>
 
       {/* Right Properties Panel */}
@@ -525,5 +109,13 @@ export const Canvas = () => {
         setSelectedElement={setSelectedElement}
       />
     </div>
+  );
+};
+
+export const Canvas = () => {
+  return (
+    <CanvasProvider>
+      <CanvasContent />
+    </CanvasProvider>
   );
 };
