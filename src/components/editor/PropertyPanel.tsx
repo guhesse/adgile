@@ -23,7 +23,16 @@ export const PropertyPanel = ({ selectedElement, updateElementStyle, updateEleme
     );
   }
 
-  // Função para renderizar o painel com base no tipo do elemento
+  // Get element title based on type
+  const getElementTitle = () => {
+    if (selectedElement.type === 'text') return 'Texto';
+    if (selectedElement.type === 'image') return 'Imagem';
+    if (selectedElement.type === 'button') return 'Botão';
+    if (selectedElement.type === 'layout') return 'Container';
+    return 'Elemento';
+  };
+
+  // Render the appropriate panel based on element type and active tab
   const renderElementPanel = () => {
     if (selectedElement.type === 'text') {
       return (
@@ -61,46 +70,34 @@ export const PropertyPanel = ({ selectedElement, updateElementStyle, updateEleme
     return null;
   };
 
-  // Determinar o título do elemento selecionado
-  const getElementTitle = () => {
-    if (selectedElement.type === 'text') return 'Texto';
-    if (selectedElement.type === 'image') return 'Imagem';
-    if (selectedElement.type === 'button') return 'Botão';
-    if (selectedElement.type === 'layout') return 'Container';
-    return 'Elemento';
-  };
-
   return (
     <div className="flex flex-col h-full">
+      {/* Element Title */}
       <div className="text-center py-4 text-lg font-medium">
         {getElementTitle()}
       </div>
       
-      <div className="flex-1 overflow-y-auto">
-        {renderElementPanel()}
+      {/* Tabs Selector */}
+      <div className="flex h-[39px] p-1 justify-center items-center gap-0 rounded bg-[#E9EAEB] mx-4 mb-4">
+        <div 
+          className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm text-[#717680] font-['Geist',sans-serif] text-xs cursor-pointer ${activeTab === "content" ? "bg-white" : ""}`}
+          onClick={() => setActiveTab("content")}
+        >
+          Conteúdo
+        </div>
+        <div 
+          className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm text-[#717680] font-['Geist',sans-serif] text-xs cursor-pointer ${activeTab === "styles" ? "bg-white" : ""}`}
+          onClick={() => setActiveTab("styles")}
+        >
+          Estilo
+        </div>
       </div>
       
-      {/* Seletor de aba no rodapé */}
-      <div className="p-4 border-t">
-        <div className="flex rounded-md overflow-hidden bg-gray-100">
-          <button
-            onClick={() => setActiveTab("content")}
-            className={`flex-1 py-3 px-4 text-sm font-medium ${
-              activeTab === "content" ? "bg-purple-600 text-white" : "text-gray-600"
-            }`}
-          >
-            Conteúdo
-          </button>
-          <button
-            onClick={() => setActiveTab("styles")}
-            className={`flex-1 py-3 px-4 text-sm font-medium ${
-              activeTab === "styles" ? "bg-purple-600 text-white" : "text-gray-600"
-            }`}
-          >
-            Estilo
-          </button>
-        </div>
+      {/* Panel Content */}
+      <div className="flex-1 overflow-y-auto">
+        {renderElementPanel()}
       </div>
     </div>
   );
 };
+
