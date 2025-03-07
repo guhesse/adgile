@@ -1,4 +1,3 @@
-
 import {
   Box,
   Crown,
@@ -7,7 +6,7 @@ import {
   Layers2,
   LayoutTemplate,
   Maximize,
-  MousePointerSquare,
+  MousePointer,
   PictureInPicture2,
   Play,
   Plus,
@@ -54,7 +53,7 @@ const componentIcons = {
   Container: <Box className="w-4 h-4" />,
   Image: <ImageIcon className="w-4 h-4" />,
   Text: <TypeIcon className="w-4 h-4" />,
-  Button: <MousePointerSquare className="w-4 h-4" />,
+  Button: <MousePointer className="w-4 h-4" />,
 };
 
 export const LeftSidebar = () => {

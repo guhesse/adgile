@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState } from "react";
 import { EditorElement, BannerSize, BANNER_SIZES } from "./types";
 import { organizeElementsInContainers, snapToGrid } from "./utils/gridUtils";
@@ -33,6 +32,7 @@ interface CanvasContextType {
   togglePlayPause: () => void;
   updateAnimations: (time: number) => void;
   organizeElements: () => void;
+  handleImageUpload: (file: File) => Promise<string>;
 }
 
 const CanvasContext = createContext<CanvasContextType | undefined>(undefined);
@@ -76,12 +76,11 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const handleAddLayout = (template: any) => {
-    // Calculate vertical position after last element
     const lastY = elements.length > 0 
       ? Math.max(...elements.map(el => el.style.y + el.style.height)) + 20
       : 20;
 
-    const layoutWidth = selectedSize.width - 40; // 20px padding on each side
+    const layoutWidth = selectedSize.width - 40;
     const layoutElement: EditorElement = {
       id: Date.now().toString(),
       type: "layout",
@@ -100,7 +99,6 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     if (template.type === "preset") {
-      // Add children based on the template type
       if (template.id === "preset-image-text") {
         layoutElement.childElements = [
           {
@@ -182,7 +180,6 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const removeElement = (elementId: string) => {
-    // Remove the element and update parent references if needed
     const newElements = elements.map(el => {
       if (el.childElements) {
         el.childElements = el.childElements.filter(child => child.id !== elementId);
@@ -199,7 +196,6 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const updateElementStyle = (property: string, value: any) => {
     if (!selectedElement) return;
 
-    // Update the element in the main elements array if it's not in a container
     if (!selectedElement.inContainer) {
       setElements(elements.map(el =>
         el.id === selectedElement.id
@@ -207,7 +203,6 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           : el
       ));
     } else {
-      // Update the element in its parent's childElements array
       setElements(elements.map(el => {
         if (el.childElements && el.id === selectedElement.parentId) {
           return {
@@ -229,7 +224,6 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const updateElementContent = (content: string) => {
     if (!selectedElement) return;
 
-    // Update content in main elements or in parent's childElements
     if (!selectedElement.inContainer) {
       setElements(elements.map(el =>
         el.id === selectedElement.id
@@ -286,6 +280,23 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setElements(organizedElements);
   };
 
+  const handleImageUpload = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          resolve(e.target.result as string);
+        } else {
+          reject(new Error("Failed to load image"));
+        }
+      };
+      reader.onerror = (e) => {
+        reject(new Error("Error reading file"));
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   return (
     <CanvasContext.Provider value={{
       elements,
@@ -317,6 +328,7 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       togglePlayPause,
       updateAnimations,
       organizeElements,
+      handleImageUpload,
     }}>
       {children}
     </CanvasContext.Provider>

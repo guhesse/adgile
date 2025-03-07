@@ -1,3 +1,4 @@
+
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,20 +9,21 @@ import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 
 interface ImagePanelProps {
-  selectedElement: any;
-  updateElementStyle: (elementId: string, property: string, value: any) => void;
-  updateElementContent: (elementId: string, content: string) => void;
+  element: any;
+  updateElementStyle: (property: string, value: any) => void;
+  updateElementContent: (content: string) => void;
+  activeTab: string;
 }
 
-export const ImagePanel = ({ selectedElement, updateElementStyle, updateElementContent }: ImagePanelProps) => {
-  const [imageUrl, setImageUrl] = useState(selectedElement?.content || "");
+export const ImagePanel = ({ element, updateElementStyle, updateElementContent, activeTab }: ImagePanelProps) => {
+  const [imageUrl, setImageUrl] = useState(element?.content || "");
   const { handleImageUpload } = useCanvas();
 
   useEffect(() => {
-    if (selectedElement) {
-      setImageUrl(selectedElement.content);
+    if (element) {
+      setImageUrl(element.content);
     }
-  }, [selectedElement]);
+  }, [element]);
 
   const handleUpload = async (e: any) => {
     const file = e.target.files?.[0];
@@ -30,7 +32,7 @@ export const ImagePanel = ({ selectedElement, updateElementStyle, updateElementC
     try {
       const url = await handleImageUpload(file);
       setImageUrl(url);
-      updateElementContent(selectedElement.id, url);
+      updateElementContent(url);
     } catch (error) {
       console.error("Error uploading image:", error);
       alert("Error uploading image.");
@@ -47,7 +49,7 @@ export const ImagePanel = ({ selectedElement, updateElementStyle, updateElementC
           value={imageUrl}
           onChange={(e) => {
             setImageUrl(e.target.value);
-            updateElementContent(selectedElement.id, e.target.value);
+            updateElementContent(e.target.value);
           }}
         />
       </div>
@@ -69,8 +71,8 @@ export const ImagePanel = ({ selectedElement, updateElementStyle, updateElementC
             <Input
               type="number"
               id="width"
-              value={selectedElement?.style.width || 100}
-              onChange={(e) => updateElementStyle(selectedElement.id, "width", Number(e.target.value))}
+              value={element?.style.width || 100}
+              onChange={(e) => updateElementStyle("width", Number(e.target.value))}
             />
           </div>
           <div>
@@ -78,8 +80,8 @@ export const ImagePanel = ({ selectedElement, updateElementStyle, updateElementC
             <Input
               type="number"
               id="height"
-              value={selectedElement?.style.height || 100}
-              onChange={(e) => updateElementStyle(selectedElement.id, "height", Number(e.target.value))}
+              value={element?.style.height || 100}
+              onChange={(e) => updateElementStyle("height", Number(e.target.value))}
             />
           </div>
         </div>
@@ -93,8 +95,8 @@ export const ImagePanel = ({ selectedElement, updateElementStyle, updateElementC
             <Input
               type="number"
               id="x"
-              value={selectedElement?.style.x || 0}
-              onChange={(e) => updateElementStyle(selectedElement.id, "x", Number(e.target.value))}
+              value={element?.style.x || 0}
+              onChange={(e) => updateElementStyle("x", Number(e.target.value))}
             />
           </div>
           <div>
@@ -102,8 +104,8 @@ export const ImagePanel = ({ selectedElement, updateElementStyle, updateElementC
             <Input
               type="number"
               id="y"
-              value={selectedElement?.style.y || 0}
-              onChange={(e) => updateElementStyle(selectedElement.id, "y", Number(e.target.value))}
+              value={element?.style.y || 0}
+              onChange={(e) => updateElementStyle("y", Number(e.target.value))}
             />
           </div>
         </div>
@@ -112,8 +114,8 @@ export const ImagePanel = ({ selectedElement, updateElementStyle, updateElementC
       <div className="space-y-2">
         <Label htmlFor="animation">Animação</Label>
         <Select
-          value={selectedElement?.style.animation || ""}
-          onValueChange={(value) => updateElementStyle(selectedElement.id, "animation", value)}
+          value={element?.style.animation || ""}
+          onValueChange={(value) => updateElementStyle("animation", value)}
         >
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Selecione a animação" />
@@ -128,25 +130,25 @@ export const ImagePanel = ({ selectedElement, updateElementStyle, updateElementC
         </Select>
       </div>
 
-      {selectedElement?.style.animation && (
+      {element?.style.animation && (
         <>
           <div className="space-y-2">
             <Label htmlFor="animationDuration">Duração da animação (s)</Label>
             <Slider
-              defaultValue={[selectedElement?.style.animationDuration || 1]}
+              defaultValue={[element?.style.animationDuration || 1]}
               max={10}
               step={0.1}
-              onValueChange={(value) => updateElementStyle(selectedElement.id, "animationDuration", value[0])}
+              onValueChange={(value) => updateElementStyle("animationDuration", value[0])}
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="animationDelay">Delay da animação (s)</Label>
             <Slider
-              defaultValue={[selectedElement?.style.animationDelay || 0]}
+              defaultValue={[element?.style.animationDelay || 0]}
               max={5}
               step={0.1}
-              onValueChange={(value) => updateElementStyle(selectedElement.id, "animationDelay", value[0])}
+              onValueChange={(value) => updateElementStyle("animationDelay", value[0])}
             />
           </div>
         </>
