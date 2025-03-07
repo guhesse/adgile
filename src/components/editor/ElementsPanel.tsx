@@ -28,8 +28,8 @@ export const ElementsPanel = ({ addElement, addLayout }: ElementsPanelProps) => 
   // Simula um container selecionado para adicionar elementos
   const handleAddElement = (type: EditorElement["type"]) => {
     if (!activeContainer) {
-      // Necessário ter um container primeiro
-      alert("Por favor, selecione um container primeiro");
+      // Adiciona elemento solto (não é o ideal, mas vamos manter para compatibilidade)
+      addElement(type);
       return;
     }
     
@@ -48,6 +48,17 @@ export const ElementsPanel = ({ addElement, addLayout }: ElementsPanelProps) => 
       type: "blank"
     });
     setActiveContainer(containerId);
+  };
+
+  // Adiciona layout predefinido
+  const handleAddPresetLayout = (presetId: string) => {
+    addLayout({
+      id: presetId,
+      name: presetId === "preset-image-text" ? "Imagem e texto" : "Texto e texto",
+      columns: 2,
+      preview: presetId === "preset-image-text" ? "IT" : "TT",
+      type: "preset"
+    });
   };
 
   return (
@@ -94,19 +105,56 @@ export const ElementsPanel = ({ addElement, addLayout }: ElementsPanelProps) => 
               <Button 
                 variant="outline" 
                 className="w-full justify-between" 
-                onClick={() => handleAddContainer(2)}
+                onClick={() => handleAddContainer(4)}
               >
-                Coluna esquerda menor
-                <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">2E</div>
+                4 Colunas iguais
+                <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">4</div>
+              </Button>
+            </AccordionContent>
+          </AccordionItem>
+          
+          <AccordionItem value="presets">
+            <AccordionTrigger className="py-2 text-left text-sm font-medium">
+              <div className="flex items-center">
+                <LayoutGrid className="h-4 w-4 mr-2" />
+                Layouts predefinidos
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="space-y-2 pt-2">
+              <Button 
+                variant="outline" 
+                className="w-full justify-between" 
+                onClick={() => handleAddPresetLayout("preset-image-text")}
+              >
+                Imagem e texto
+                <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">IT</div>
               </Button>
               
               <Button 
                 variant="outline" 
                 className="w-full justify-between" 
-                onClick={() => handleAddContainer(2)}
+                onClick={() => handleAddPresetLayout("preset-text-text")}
               >
-                Coluna direita menor
-                <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">2D</div>
+                Texto e texto
+                <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">TT</div>
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="w-full justify-between" 
+                disabled
+              >
+                Cabeçalho
+                <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">H</div>
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="w-full justify-between" 
+                disabled
+              >
+                Rodapé
+                <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">F</div>
               </Button>
             </AccordionContent>
           </AccordionItem>
@@ -153,6 +201,43 @@ export const ElementsPanel = ({ addElement, addLayout }: ElementsPanelProps) => 
               >
                 <div className="h-4 w-4 mr-2 border-t-2 border-gray-500" />
                 Divisor
+              </Button>
+            </AccordionContent>
+          </AccordionItem>
+          
+          <AccordionItem value="mailchimp">
+            <AccordionTrigger className="py-2 text-left text-sm font-medium">
+              <div className="flex items-center">
+                <LayoutGrid className="h-4 w-4 mr-2" />
+                Mailchimp
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="space-y-2 pt-2">
+              <Button 
+                variant="outline" 
+                className="w-full justify-between" 
+                disabled
+              >
+                Input de Email
+                <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">@</div>
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="w-full justify-between" 
+                disabled
+              >
+                Botão de assinatura
+                <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">Sub</div>
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="w-full justify-between" 
+                disabled
+              >
+                Campo de nome
+                <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">N</div>
               </Button>
             </AccordionContent>
           </AccordionItem>

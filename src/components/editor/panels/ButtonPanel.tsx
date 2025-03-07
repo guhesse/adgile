@@ -1,4 +1,3 @@
-
 import { EditorElement } from "../types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -6,9 +5,10 @@ interface ButtonPanelProps {
   element: EditorElement;
   updateElementStyle: (property: string, value: any) => void;
   updateElementContent: (content: string) => void;
+  activeTab: string;
 }
 
-export const ButtonPanel = ({ element, updateElementStyle, updateElementContent }: ButtonPanelProps) => {
+export const ButtonPanel = ({ element, updateElementStyle, updateElementContent, activeTab }: ButtonPanelProps) => {
   return (
     <div className="space-y-4">
       <div>

@@ -2,15 +2,15 @@
 import { EditorElement } from "../types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useState } from "react";
 
 interface TextPanelProps {
   element: EditorElement;
   updateElementStyle: (property: string, value: any) => void;
   updateElementContent: (content: string) => void;
+  activeTab: string;
 }
 
-export const TextPanel = ({ element, updateElementStyle, updateElementContent }: TextPanelProps) => {
+export const TextPanel = ({ element, updateElementStyle, updateElementContent, activeTab }: TextPanelProps) => {
   // Componente de conteúdo conforme imagem de referência
   const ContentPanel = () => (
     <div className="space-y-6 p-4">
@@ -60,7 +60,6 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent }:
     <div className="space-y-4 p-4">
       <div className="text-center text-sm text-gray-500 mb-4">Estilo</div>
       
-      {/* Estilo existente foi mantido */}
       <div>
         <h3 className="text-sm font-medium mb-2">Typography</h3>
         <div className="space-y-3">
@@ -155,10 +154,9 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent }:
     </div>
   );
 
-  // O corpo principal do componente TextPanel agora depende do que foi selecionado no PropertyPanel
   return (
     <div>
-      {element.style.activeTab === "content" ? <ContentPanel /> : <StylePanel />}
+      {activeTab === "content" ? <ContentPanel /> : <StylePanel />}
     </div>
   );
 };

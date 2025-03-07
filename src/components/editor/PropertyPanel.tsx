@@ -25,32 +25,33 @@ export const PropertyPanel = ({ selectedElement, updateElementStyle, updateEleme
 
   // Função para renderizar o painel com base no tipo do elemento
   const renderElementPanel = () => {
-    if (activeTab === 'text' || activeTab === 'content' || activeTab === 'styles') {
-      if (selectedElement.type === 'text') {
-        return (
-          <TextPanel 
-            element={selectedElement} 
-            updateElementStyle={updateElementStyle} 
-            updateElementContent={updateElementContent} 
-          />
-        );
-      } else if (selectedElement.type === 'image') {
-        return (
-          <ImagePanel 
-            element={selectedElement} 
-            updateElementStyle={updateElementStyle} 
-            updateElementContent={updateElementContent} 
-          />
-        );
-      } else if (selectedElement.type === 'button') {
-        return (
-          <ButtonPanel 
-            element={selectedElement} 
-            updateElementStyle={updateElementStyle} 
-            updateElementContent={updateElementContent} 
-          />
-        );
-      }
+    if (selectedElement.type === 'text') {
+      return (
+        <TextPanel 
+          element={selectedElement} 
+          updateElementStyle={updateElementStyle} 
+          updateElementContent={updateElementContent} 
+          activeTab={activeTab}
+        />
+      );
+    } else if (selectedElement.type === 'image') {
+      return (
+        <ImagePanel 
+          element={selectedElement} 
+          updateElementStyle={updateElementStyle} 
+          updateElementContent={updateElementContent} 
+          activeTab={activeTab}
+        />
+      );
+    } else if (selectedElement.type === 'button') {
+      return (
+        <ButtonPanel 
+          element={selectedElement} 
+          updateElementStyle={updateElementStyle} 
+          updateElementContent={updateElementContent} 
+          activeTab={activeTab}
+        />
+      );
     } else if (activeTab === 'animation') {
       return (
         <AnimationPanel element={selectedElement} updateElementStyle={updateElementStyle} />

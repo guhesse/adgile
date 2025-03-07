@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { EditorElement } from "../types";
 
@@ -6,9 +5,10 @@ interface ImagePanelProps {
   element: EditorElement;
   updateElementStyle: (property: string, value: any) => void;
   updateElementContent: (content: string) => void;
+  activeTab: string;
 }
 
-export const ImagePanel = ({ element, updateElementStyle, updateElementContent }: ImagePanelProps) => {
+export const ImagePanel = ({ element, updateElementStyle, updateElementContent, activeTab }: ImagePanelProps) => {
   return (
     <div className="space-y-4">
       <div>
