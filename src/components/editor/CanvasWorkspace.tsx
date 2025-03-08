@@ -1,3 +1,4 @@
+
 import { useRef, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { ElementRenderer } from "./ElementRenderer";
@@ -101,32 +102,50 @@ export const CanvasWorkspace = () => {
 
     if (isDragging) {
       // Calculate new position with grid snapping
-      const newX = snapToGrid(Math.max(0, Math.min(e.clientX - dragStart.x, selectedSize.width - selectedElement.style.width)));
-      const newY = snapToGrid(Math.max(0, Math.min(e.clientY - dragStart.y, selectedSize.height - selectedElement.style.height)));
-
-      // If the element is in a container, update it differently
-      if (selectedElement.inContainer) {
-        setElements(elements.map(el => {
-          if (el.id === selectedElement.parentId && el.childElements) {
-            return {
-              ...el,
-              childElements: el.childElements.map(child => 
-                child.id === selectedElement.id
-                  ? { ...child, style: { ...child.style, x: newX, y: newY } }
-                  : child
-              )
-            };
-          }
-          return el;
-        }));
+      let newX: number;
+      let newY: number;
+      
+      // If element is in a container, calculate position relative to container
+      if (selectedElement.inContainer && selectedElement.parentId) {
+        const parent = elements.find(el => el.id === selectedElement.parentId);
+        if (parent) {
+          // Get position relative to the container
+          newX = snapToGrid(Math.max(0, Math.min(e.clientX - dragStart.x, parent.style.width - selectedElement.style.width)));
+          newY = snapToGrid(Math.max(0, Math.min(e.clientY - dragStart.y, parent.style.height - selectedElement.style.height)));
+        } else {
+          // Fallback
+          newX = snapToGrid(Math.max(0, Math.min(e.clientX - dragStart.x, selectedSize.width - selectedElement.style.width)));
+          newY = snapToGrid(Math.max(0, Math.min(e.clientY - dragStart.y, selectedSize.height - selectedElement.style.height)));
+        }
       } else {
-        // Update standalone element
-        setElements(elements.map(el =>
-          el.id === selectedElement.id
-            ? { ...el, style: { ...el.style, x: newX, y: newY } }
-            : el
-        ));
+        // Standard positioning
+        newX = snapToGrid(Math.max(0, Math.min(e.clientX - dragStart.x, selectedSize.width - selectedElement.style.width)));
+        newY = snapToGrid(Math.max(0, Math.min(e.clientY - dragStart.y, selectedSize.height - selectedElement.style.height)));
       }
+
+      // Update elements array
+      const updatedElements = elements.map(el => {
+        // If this is a child element being dragged
+        if (el.id === selectedElement.id && !selectedElement.inContainer) {
+          return { ...el, style: { ...el.style, x: newX, y: newY } };
+        }
+        
+        // If this is the parent container of the element being dragged
+        if (selectedElement.inContainer && el.id === selectedElement.parentId && el.childElements) {
+          return {
+            ...el,
+            childElements: el.childElements.map(child => 
+              child.id === selectedElement.id
+                ? { ...child, style: { ...child.style, x: newX, y: newY } }
+                : child
+            )
+          };
+        }
+        
+        return el;
+      });
+      
+      setElements(updatedElements);
 
       // Update the selected element reference
       setSelectedElement({
@@ -161,27 +180,31 @@ export const CanvasWorkspace = () => {
       }
       
       // Update element dimensions based on container status
-      if (selectedElement.inContainer) {
-        setElements(elements.map(el => {
-          if (el.id === selectedElement.parentId && el.childElements) {
-            return {
-              ...el,
-              childElements: el.childElements.map(child => 
-                child.id === selectedElement.id
-                  ? { ...child, style: { ...child.style, x: newX, y: newY, width: newWidth, height: newHeight } }
-                  : child
-              )
-            };
-          }
-          return el;
-        }));
-      } else {
-        setElements(elements.map(el =>
-          el.id === selectedElement.id
-            ? { ...el, style: { ...el.style, x: newX, y: newY, width: newWidth, height: newHeight } }
-            : el
-        ));
-      }
+      const updatedElements = elements.map(el => {
+        // If this element is being resized directly
+        if (el.id === selectedElement.id && !selectedElement.inContainer) {
+          return { 
+            ...el, 
+            style: { ...el.style, x: newX, y: newY, width: newWidth, height: newHeight }
+          };
+        }
+        
+        // If this is the parent container of the element being resized
+        if (selectedElement.inContainer && el.id === selectedElement.parentId && el.childElements) {
+          return {
+            ...el,
+            childElements: el.childElements.map(child => 
+              child.id === selectedElement.id
+                ? { ...child, style: { ...child.style, x: newX, y: newY, width: newWidth, height: newHeight } }
+                : child
+            )
+          };
+        }
+        
+        return el;
+      });
+
+      setElements(updatedElements);
       
       // Update selected element reference
       setSelectedElement({
@@ -218,54 +241,64 @@ export const CanvasWorkspace = () => {
     const container = elements.find(el => el.id === containerId);
     if (!container) return;
     
-    // Update the element to be a child of the container
-    const updatedElements = elements.filter(el => {
-      // If element is a container, ensure we don't remove its children from the elements array
-      if (el.id === element.id && el.childElements) {
-        return false;
+    // Create a copy of the elements array to modify
+    const updatedElements = [...elements];
+    
+    // If the element is already in a container, remove it from that container first
+    if (element.inContainer && element.parentId) {
+      const oldParentIndex = updatedElements.findIndex(el => el.id === element.parentId);
+      if (oldParentIndex !== -1 && updatedElements[oldParentIndex].childElements) {
+        updatedElements[oldParentIndex] = {
+          ...updatedElements[oldParentIndex],
+          childElements: updatedElements[oldParentIndex].childElements?.filter(child => child.id !== element.id) || []
+        };
       }
-      
-      // Remove the element from its current parent's childElements array
-      if (el.childElements) {
-        el.childElements = el.childElements.filter(child => child.id !== element.id);
+    } else {
+      // If not in a container, remove it from the main elements array
+      const elementIndex = updatedElements.findIndex(el => el.id === element.id);
+      if (elementIndex !== -1) {
+        updatedElements.splice(elementIndex, 1);
       }
-      
-      // Keep all other elements
-      return el.id !== element.id;
-    });
-
-    // Update the container with the new child element
-    const updatedContainer = {
-      ...container,
+    }
+    
+    // Find the container in our updated array
+    const containerIndex = updatedElements.findIndex(el => el.id === containerId);
+    if (containerIndex === -1) return;
+    
+    // Add the element to the container
+    const childElements = updatedElements[containerIndex].childElements || [];
+    
+    // Update container with the new child
+    updatedElements[containerIndex] = {
+      ...updatedElements[containerIndex],
       childElements: [
-        ...(container.childElements || []),
+        ...childElements,
         {
           ...element,
           inContainer: true,
-          parentId: container.id,
+          parentId: containerId,
           style: {
             ...element.style,
-            // Adjust position relative to container
-            x: element.style.x - container.style.x,
-            y: element.style.y - container.style.y
+            // Reset position relative to the container
+            x: 0,
+            y: 0
           }
         }
       ]
     };
-
-    setElements([
-      ...updatedElements.filter(el => el.id !== container.id),
-      updatedContainer
-    ]);
     
+    // Update the elements state
+    setElements(updatedElements);
+    
+    // Update the selected element to reflect its new container status
     setSelectedElement({
       ...element,
       inContainer: true,
-      parentId: container.id,
+      parentId: containerId,
       style: {
         ...element.style,
-        x: element.style.x - container.style.x,
-        y: element.style.y - container.style.y
+        x: 0,
+        y: 0
       }
     });
   };

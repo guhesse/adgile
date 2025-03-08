@@ -32,6 +32,11 @@ export const PropertyPanel = ({ selectedElement, updateElementStyle, updateEleme
     return 'Elemento';
   };
 
+  // Handle tab changes
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+  };
+
   // Render the appropriate panel based on element type and active tab
   const renderElementPanel = () => {
     if (selectedElement.type === 'text') {
@@ -77,25 +82,29 @@ export const PropertyPanel = ({ selectedElement, updateElementStyle, updateEleme
         {getElementTitle()}
       </div>
       
+      {/* Tab Selector at the top for non-Animation panels */}
+      {selectedElement.type !== 'layout' && (
+        <div className="mx-4 mb-4">
+          <div className="flex h-[39px] p-1 justify-center items-center gap-0 rounded bg-[#E9EAEB]">
+            <div 
+              className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm font-['Geist',sans-serif] text-xs cursor-pointer ${activeTab === "content" ? "bg-white text-[#414651]" : "text-[#717680]"}`}
+              onClick={() => handleTabChange("content")}
+            >
+              Conteúdo
+            </div>
+            <div 
+              className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm font-['Geist',sans-serif] text-xs cursor-pointer ${activeTab === "styles" ? "bg-white text-[#414651]" : "text-[#717680]"}`}
+              onClick={() => handleTabChange("styles")}
+            >
+              Estilo
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Panel Content */}
       <div className="flex-1 overflow-y-auto">
         {renderElementPanel()}
-      </div>
-      
-      {/* Tabs Selector - Now at the bottom */}
-      <div className="flex h-[39px] p-1 justify-center items-center gap-0 rounded bg-[#E9EAEB] mx-4 my-4">
-        <div 
-          className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm text-[#717680] font-['Geist',sans-serif] text-xs cursor-pointer ${activeTab === "content" ? "bg-white" : ""}`}
-          onClick={() => setActiveTab("content")}
-        >
-          Conteúdo
-        </div>
-        <div 
-          className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm text-[#717680] font-['Geist',sans-serif] text-xs cursor-pointer ${activeTab === "styles" ? "bg-white" : ""}`}
-          onClick={() => setActiveTab("styles")}
-        >
-          Estilo
-        </div>
       </div>
     </div>
   );

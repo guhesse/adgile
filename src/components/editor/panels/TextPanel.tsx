@@ -1,7 +1,24 @@
 
+import { useState } from "react";
 import { EditorElement } from "../types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { 
+  Italic, 
+  Underline, 
+  Strikethrough, 
+  AlignLeft, 
+  AlignCenter, 
+  AlignRight, 
+  AlignStartVertical,
+  AlignVerticalDistributeCenter,
+  AlignEndVertical,
+  ArrowsVertical,
+  ArrowsHorizontal,
+  Plus,
+  Minus,
+  Check
+} from "lucide-react";
 
 interface TextPanelProps {
   element: EditorElement;
@@ -11,24 +28,77 @@ interface TextPanelProps {
 }
 
 export const TextPanel = ({ element, updateElementStyle, updateElementContent, activeTab }: TextPanelProps) => {
-  // Componente de conteúdo conforme imagem de referência
+  const [linkType, setLinkType] = useState("webpage");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [newTab, setNewTab] = useState(true);
+  const [colorPickerValue, setColorPickerValue] = useState(element.style.color || "#414651");
+  
+  // Font size controls
+  const increaseFontSize = () => {
+    const currentSize = element.style.fontSize || 16;
+    updateElementStyle("fontSize", currentSize + 1);
+  };
+  
+  const decreaseFontSize = () => {
+    const currentSize = element.style.fontSize || 16;
+    updateElementStyle("fontSize", Math.max(8, currentSize - 1));
+  };
+  
+  // Line height controls
+  const increaseLineHeight = () => {
+    const currentLineHeight = element.style.lineHeight || 1.5;
+    updateElementStyle("lineHeight", Math.min(3, parseFloat((currentLineHeight + 0.1).toFixed(1))));
+  };
+  
+  const decreaseLineHeight = () => {
+    const currentLineHeight = element.style.lineHeight || 1.5;
+    updateElementStyle("lineHeight", Math.max(1, parseFloat((currentLineHeight - 0.1).toFixed(1))));
+  };
+  
+  // Letter spacing controls
+  const increaseLetterSpacing = () => {
+    const currentSpacing = element.style.letterSpacing || 0;
+    updateElementStyle("letterSpacing", parseFloat((currentSpacing + 0.1).toFixed(1)));
+  };
+  
+  const decreaseLetterSpacing = () => {
+    const currentSpacing = element.style.letterSpacing || 0;
+    updateElementStyle("letterSpacing", Math.max(-0.5, parseFloat((currentSpacing - 0.1).toFixed(1))));
+  };
+  
+  // Text style controls
+  const toggleFontStyle = (style: string) => {
+    if (style === 'italic') {
+      updateElementStyle("fontStyle", element.style.fontStyle === "italic" ? "normal" : "italic");
+    } else if (style === 'underline' || style === 'line-through') {
+      const currentDecoration = element.style.textDecoration || "none";
+      if (currentDecoration.includes(style)) {
+        updateElementStyle("textDecoration", currentDecoration.replace(style, "").trim() || "none");
+      } else {
+        updateElementStyle("textDecoration", currentDecoration === "none" ? style : `${currentDecoration} ${style}`);
+      }
+    }
+  };
+  
+  // Content Panel - for editing the content and link
   const ContentPanel = () => (
     <div className="space-y-6 p-4">
       <div className="text-center text-sm text-gray-500 mb-4">Conteúdo</div>
       
-      <div className="border rounded-lg p-3">
+      <div className="border rounded-lg p-3 relative">
         <textarea
           value={element.content}
           onChange={(e) => updateElementContent(e.target.value)}
-          className="w-full resize-none border-0 focus:outline-none"
-          rows={4}
+          className="w-full resize-none border-0 focus:outline-none min-h-[80px]"
           placeholder="Text Element"
         />
+        <div className="w-2 h-2 bg-gray-600 opacity-60 absolute bottom-3 right-3"></div>
       </div>
       
-      <div>
-        <div className="text-sm text-gray-500 mb-2">Vincular a</div>
-        <Select defaultValue="webpage">
+      <div className="space-y-2">
+        <div className="text-center text-sm text-gray-500">Vincular a</div>
+        
+        <Select value={linkType} onValueChange={setLinkType}>
           <SelectTrigger className="w-full mb-2">
             <SelectValue placeholder="Página da Web" />
           </SelectTrigger>
@@ -41,12 +111,18 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
         
         <input
           type="text"
+          value={linkUrl}
+          onChange={(e) => setLinkUrl(e.target.value)}
           placeholder="Link"
-          className="w-full px-3 py-2 border rounded-md"
+          className="w-full px-3 py-2 border rounded-md bg-white"
         />
         
         <div className="flex items-center space-x-2 mt-4">
-          <Checkbox id="newTab" />
+          <Checkbox 
+            id="newTab" 
+            checked={newTab} 
+            onCheckedChange={(checked) => setNewTab(checked as boolean)} 
+          />
           <label htmlFor="newTab" className="text-sm text-gray-700">
             Abrir link em nova guia
           </label>
@@ -55,98 +131,232 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
     </div>
   );
   
-  // Componente de estilo (usando o mesmo que já temos)
+  // Style Panel - for typography, alignment, and colors
   const StylePanel = () => (
     <div className="space-y-4 p-4">
       <div className="text-center text-sm text-gray-500 mb-4">Estilo</div>
       
-      <div>
-        <h3 className="text-sm font-medium mb-2">Typography</h3>
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs text-gray-500">Font</label>
-            <Select
-              value={element.style.fontFamily}
-              onValueChange={(value) => updateElementStyle("fontFamily", value)}
+      {/* Typography Section */}
+      <div className="space-y-2">
+        <div className="text-center text-sm text-gray-500">Tipografia</div>
+        <div className="flex items-center p-2 px-3 border rounded-md bg-white">
+          <span className="flex-1 text-xs">
+            {element.style.fontFamily || "Arial"}
+          </span>
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+      </div>
+      
+      {/* Font Style Section */}
+      <div className="space-y-2">
+        <div className="text-center text-sm text-gray-500">Estilo de fonte</div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center p-2 px-3 border rounded-md bg-white w-1/2 mr-2">
+            <span className="flex-1 text-xs">
+              {element.style.fontWeight === 'bold' ? "Bold" : "Medium"}
+            </span>
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          
+          <div className="flex space-x-2">
+            <button 
+              onClick={() => toggleFontStyle("italic")}
+              className={`p-2 rounded-md ${element.style.fontStyle === "italic" ? "bg-gray-200" : "bg-white border"}`}
             >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Font family" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Inter">Inter</SelectItem>
-                <SelectItem value="Arial">Arial</SelectItem>
-                <SelectItem value="Times New Roman">Times New Roman</SelectItem>
-                <SelectItem value="Georgia">Georgia</SelectItem>
-                <SelectItem value="Verdana">Verdana</SelectItem>
-              </SelectContent>
-            </Select>
+              <Italic size={16} />
+            </button>
+            <button 
+              onClick={() => toggleFontStyle("underline")}
+              className={`p-2 rounded-md ${element.style.textDecoration?.includes("underline") ? "bg-gray-200" : "bg-white border"}`}
+            >
+              <Underline size={16} />
+            </button>
+            <button 
+              onClick={() => toggleFontStyle("line-through")}
+              className={`p-2 rounded-md ${element.style.textDecoration?.includes("line-through") ? "bg-gray-200" : "bg-white border"}`}
+            >
+              <Strikethrough size={16} />
+            </button>
           </div>
+        </div>
+      </div>
+      
+      {/* Font Size, Line Height, Letter Spacing Controls */}
+      <div className="flex justify-center space-x-4">
+        {/* Font Size */}
+        <div className="flex flex-col items-center space-y-1">
+          <span className="text-xs text-gray-700">Aa</span>
+          <div className="flex items-center bg-gray-100 rounded-md px-2 py-1">
+            <button onClick={decreaseFontSize} className="p-1">
+              <Minus size={14} />
+            </button>
+            <span className="mx-2 text-xs">{element.style.fontSize || 16}</span>
+            <button onClick={increaseFontSize} className="p-1">
+              <Plus size={14} />
+            </button>
+          </div>
+        </div>
+        
+        {/* Line Height */}
+        <div className="flex flex-col items-center space-y-1">
+          <span className="text-xs text-gray-700">
+            <ArrowsVertical size={14} />
+          </span>
+          <div className="flex items-center bg-gray-100 rounded-md px-2 py-1">
+            <button onClick={decreaseLineHeight} className="p-1">
+              <Minus size={14} />
+            </button>
+            <span className="mx-2 text-xs">{element.style.lineHeight || 1.5}</span>
+            <button onClick={increaseLineHeight} className="p-1">
+              <Plus size={14} />
+            </button>
+          </div>
+        </div>
+        
+        {/* Letter Spacing */}
+        <div className="flex flex-col items-center space-y-1">
+          <span className="text-xs text-gray-700">
+            <ArrowsHorizontal size={14} />
+          </span>
+          <div className="flex items-center bg-gray-100 rounded-md px-2 py-1">
+            <button onClick={decreaseLetterSpacing} className="p-1">
+              <Minus size={14} />
+            </button>
+            <span className="mx-2 text-xs">{element.style.letterSpacing || 0}</span>
+            <button onClick={increaseLetterSpacing} className="p-1">
+              <Plus size={14} />
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      {/* Text Alignment */}
+      <div className="space-y-2">
+        <div className="text-center text-sm text-gray-500">Parágrafo</div>
+        <div className="flex justify-center space-x-2">
+          <button 
+            onClick={() => updateElementStyle("textAlign", "left")}
+            className={`p-2 rounded-md ${element.style.textAlign === "left" ? "bg-gray-200" : "bg-white border"}`}
+          >
+            <AlignLeft size={16} />
+          </button>
+          <button 
+            onClick={() => updateElementStyle("textAlign", "center")}
+            className={`p-2 rounded-md ${element.style.textAlign === "center" ? "bg-gray-200" : "bg-white border"}`}
+          >
+            <AlignCenter size={16} />
+          </button>
+          <button 
+            onClick={() => updateElementStyle("textAlign", "right")}
+            className={`p-2 rounded-md ${element.style.textAlign === "right" ? "bg-gray-200" : "bg-white border"}`}
+          >
+            <AlignRight size={16} />
+          </button>
+        </div>
+      </div>
+      
+      {/* Vertical Alignment */}
+      <div className="space-y-2">
+        <div className="text-center text-sm text-gray-500">Alinhamento</div>
+        <div className="flex justify-center space-x-2">
+          <button 
+            onClick={() => updateElementStyle("verticalAlign", "top")}
+            className={`p-2 rounded-md ${element.style.verticalAlign === "top" ? "bg-gray-200" : "bg-white border"}`}
+          >
+            <AlignStartVertical size={16} />
+          </button>
+          <button 
+            onClick={() => updateElementStyle("verticalAlign", "middle")}
+            className={`p-2 rounded-md ${element.style.verticalAlign === "middle" ? "bg-gray-200" : "bg-white border"}`}
+          >
+            <AlignVerticalDistributeCenter size={16} />
+          </button>
+          <button 
+            onClick={() => updateElementStyle("verticalAlign", "bottom")}
+            className={`p-2 rounded-md ${element.style.verticalAlign === "bottom" ? "bg-gray-200" : "bg-white border"}`}
+          >
+            <AlignEndVertical size={16} />
+          </button>
+        </div>
+      </div>
+      
+      {/* Color Section */}
+      <div className="space-y-2">
+        <div className="text-center text-sm text-gray-500">Cor</div>
+        
+        <div className="relative rounded-md overflow-hidden">
+          {/* Color gradient placeholder */}
+          <div className="w-full h-[120px] bg-gradient-to-br from-purple-500 via-blue-400 to-white"></div>
           
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-xs text-gray-500">Size</label>
+          {/* Color preview and sliders */}
+          <div className="flex justify-between items-center mt-2">
+            <div 
+              className="w-7 h-7 rounded border" 
+              style={{ backgroundColor: colorPickerValue }}
+            ></div>
+            
+            <div className="flex-1 ml-4 space-y-2">
+              {/* Color hue slider */}
               <input
-                type="number"
-                value={element.style.fontSize}
-                onChange={(e) => updateElementStyle("fontSize", parseInt(e.target.value))}
-                className="w-full px-3 py-2 border rounded"
-                min="8"
-                max="72"
+                type="range"
+                min="0"
+                max="360"
+                className="w-full"
+                value="270"
+                onChange={(e) => {
+                  // In a real implementation, this would convert hue to RGB/HEX
+                  const newColor = `#${Math.floor(Math.random()*16777215).toString(16)}`;
+                  setColorPickerValue(newColor);
+                  updateElementStyle("color", newColor);
+                }}
+              />
+              
+              {/* Opacity slider */}
+              <input
+                type="range"
+                min="0"
+                max="100"
+                className="w-full"
+                value="100"
+                onChange={() => {
+                  // Opacity would be handled here
+                }}
               />
             </div>
-            <div>
-              <label className="text-xs text-gray-500">Line Height</label>
-              <input
-                type="number"
-                value={element.style.lineHeight || 1.5}
-                onChange={(e) => updateElementStyle("lineHeight", parseFloat(e.target.value))}
-                className="w-full px-3 py-2 border rounded"
-                min="1"
-                max="3"
-                step="0.1"
-              />
-            </div>
           </div>
           
-          <div>
-            <label className="text-xs text-gray-500">Color</label>
-            <div className="flex mt-1">
-              <input
-                type="color"
-                value={element.style.color}
-                onChange={(e) => updateElementStyle("color", e.target.value)}
-                className="w-10 h-10 rounded cursor-pointer"
-              />
+          {/* Color values */}
+          <div className="flex justify-between mt-4 text-xs">
+            <div className="flex items-center">
+              <span className="mr-1">HEX</span>
               <input
                 type="text"
-                value={element.style.color}
-                onChange={(e) => updateElementStyle("color", e.target.value)}
-                className="flex-1 px-3 py-2 border rounded ml-2"
+                value={colorPickerValue}
+                onChange={(e) => {
+                  setColorPickerValue(e.target.value);
+                  updateElementStyle("color", e.target.value);
+                }}
+                className="w-20 px-2 py-1 border rounded text-xs"
               />
             </div>
-          </div>
-          
-          <div>
-            <label className="text-xs text-gray-500">Alignment</label>
-            <div className="flex space-x-2 mt-1">
-              <button
-                className={`px-3 py-2 border rounded flex-1 ${element.style.textAlign === 'left' ? 'bg-gray-100 font-medium' : ''}`}
-                onClick={() => updateElementStyle("textAlign", "left")}
-              >
-                Left
-              </button>
-              <button
-                className={`px-3 py-2 border rounded flex-1 ${element.style.textAlign === 'center' ? 'bg-gray-100 font-medium' : ''}`}
-                onClick={() => updateElementStyle("textAlign", "center")}
-              >
-                Center
-              </button>
-              <button
-                className={`px-3 py-2 border rounded flex-1 ${element.style.textAlign === 'right' ? 'bg-gray-100 font-medium' : ''}`}
-                onClick={() => updateElementStyle("textAlign", "right")}
-              >
-                Right
-              </button>
+            
+            <div className="flex space-x-2">
+              <div className="flex items-center">
+                <span className="text-xs mr-1">R</span>
+                <input type="text" value="151" className="w-12 px-2 py-1 border rounded text-xs" readOnly />
+              </div>
+              <div className="flex items-center">
+                <span className="text-xs mr-1">G</span>
+                <input type="text" value="81" className="w-12 px-2 py-1 border rounded text-xs" readOnly />
+              </div>
+              <div className="flex items-center">
+                <span className="text-xs mr-1">B</span>
+                <input type="text" value="242" className="w-12 px-2 py-1 border rounded text-xs" readOnly />
+              </div>
             </div>
           </div>
         </div>
@@ -154,8 +364,27 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
     </div>
   );
 
+  // Render the appropriate panel based on active tab
   return (
     <div>
+      {/* Tab selector at the top */}
+      <div className="mx-4 mb-4 mt-2">
+        <div className="flex h-[39px] p-1 justify-center items-center gap-0 rounded bg-[#E9EAEB]">
+          <div 
+            className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm font-['Geist',sans-serif] text-xs cursor-pointer ${activeTab === "content" ? "bg-white text-[#414651]" : "text-[#717680]"}`}
+            onClick={() => updateElementStyle("_activeTab", "content")}
+          >
+            Conteúdo
+          </div>
+          <div 
+            className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm font-['Geist',sans-serif] text-xs cursor-pointer ${activeTab === "styles" ? "bg-white text-[#414651]" : "text-[#717680]"}`}
+            onClick={() => updateElementStyle("_activeTab", "styles")}
+          >
+            Estilo
+          </div>
+        </div>
+      </div>
+      
       {activeTab === "content" ? <ContentPanel /> : <StylePanel />}
     </div>
   );

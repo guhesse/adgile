@@ -1,10 +1,25 @@
 
 import { Canvas } from "@/components/editor/Canvas";
 import { Crown, LayoutTemplate, Layers2, PictureInPicture2, Play, Maximize, Hourglass } from "lucide-react";
+import { Helmet } from "react-helmet";
 
 const Index = () => {
   return (
     <div className="flex h-screen">
+      <Helmet>
+        <link 
+          rel="stylesheet" 
+          href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" 
+        />
+        <link 
+          href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" 
+          rel="stylesheet" 
+        />
+        <link 
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Geist:wght@400;500&display=swap" 
+          rel="stylesheet" 
+        />
+      </Helmet>
       
       {/* Main Content */}
       <div className="flex flex-col flex-1 ml-0">

@@ -9,6 +9,7 @@ import {
   LayoutGrid
 } from "lucide-react";
 import { useState } from "react";
+import { useCanvas } from "./CanvasContext";
 
 interface LayersPanelProps {
   elements: EditorElement[];
@@ -19,6 +20,9 @@ interface LayersPanelProps {
 
 export const LayersPanel = ({ elements, selectedElement, setSelectedElement, removeElement }: LayersPanelProps) => {
   const [collapsedContainers, setCollapsedContainers] = useState<Record<string, boolean>>({});
+  const [draggedElement, setDraggedElement] = useState<EditorElement | null>(null);
+  const [dragTargetId, setDragTargetId] = useState<string | null>(null);
+  const { setElements } = useCanvas();
 
   // Função para alternar o estado de colapso de um container
   const toggleCollapse = (containerId: string) => {
@@ -39,7 +43,7 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
     )
   );
 
-  // Rendeniza ícone baseado no tipo do elemento
+  // Renderiza ícone baseado no tipo do elemento
   const renderElementIcon = (type: string) => {
     switch (type) {
       case 'text':
@@ -55,6 +59,106 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
     }
   };
 
+  // Handle drag start for layer items
+  const handleDragStart = (e: React.DragEvent, element: EditorElement) => {
+    e.stopPropagation();
+    setDraggedElement(element);
+    // Add data to the drag operation
+    e.dataTransfer.setData('text/plain', element.id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  // Handle drag over container/area
+  const handleDragOver = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Show visual indication of where the item will be dropped
+    setDragTargetId(targetId);
+    
+    // Expand the container if collapsed
+    if (collapsedContainers[targetId]) {
+      setCollapsedContainers(prev => ({
+        ...prev,
+        [targetId]: false
+      }));
+    }
+  };
+
+  // Handle drop into container
+  const handleDrop = (e: React.DragEvent, targetContainerId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Reset drag state
+    setDragTargetId(null);
+    
+    // Ensure we have a dragged element
+    if (!draggedElement) return;
+    
+    // Move element from source to target container
+    moveElementToContainer(draggedElement, targetContainerId);
+    
+    setDraggedElement(null);
+  };
+
+  // Move element from one container to another
+  const moveElementToContainer = (element: EditorElement, targetContainerId: string) => {
+    // Create a copy of the elements array to modify
+    const updatedElements = [...elements];
+    
+    // If the element is in a container, remove it from there
+    if (element.inContainer && element.parentId) {
+      const sourceContainerIndex = updatedElements.findIndex(el => el.id === element.parentId);
+      if (sourceContainerIndex !== -1 && updatedElements[sourceContainerIndex].childElements) {
+        updatedElements[sourceContainerIndex] = {
+          ...updatedElements[sourceContainerIndex],
+          childElements: updatedElements[sourceContainerIndex].childElements?.filter(child => child.id !== element.id) || []
+        };
+      }
+    } else {
+      // If it's a standalone element, remove it from main elements array
+      const elementIndex = updatedElements.findIndex(el => el.id === element.id);
+      if (elementIndex !== -1) {
+        updatedElements.splice(elementIndex, 1);
+      }
+    }
+    
+    // Find the target container
+    const targetContainerIndex = updatedElements.findIndex(el => el.id === targetContainerId);
+    if (targetContainerIndex === -1) return;
+    
+    // Add the element to the target container
+    const targetChildren = updatedElements[targetContainerIndex].childElements || [];
+    
+    // Update the element with its new container relationship
+    const updatedElement = {
+      ...element,
+      inContainer: true,
+      parentId: targetContainerId,
+      style: {
+        ...element.style,
+        // Reset position to top-left of container
+        x: 0,
+        y: 0
+      }
+    };
+    
+    // Add to target container
+    updatedElements[targetContainerIndex] = {
+      ...updatedElements[targetContainerIndex],
+      childElements: [...targetChildren, updatedElement]
+    };
+    
+    // Update the elements state
+    setElements(updatedElements);
+    
+    // Update selection if the moved element was selected
+    if (selectedElement?.id === element.id) {
+      setSelectedElement(updatedElement);
+    }
+  };
+
   return (
     <div className="p-4 h-full overflow-y-auto">
       <div className="flex items-center justify-between mb-4">
@@ -64,10 +168,18 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
       <div className="space-y-1">
         {/* Containers (layouts) com seus elementos filhos */}
         {containers.map((container) => (
-          <div key={container.id} className="border rounded-md mb-2 overflow-hidden">
+          <div 
+            key={container.id} 
+            className={`border rounded-md mb-2 overflow-hidden ${dragTargetId === container.id ? 'bg-blue-50 border-blue-300' : ''}`}
+            onDragOver={(e) => handleDragOver(e, container.id)}
+            onDrop={(e) => handleDrop(e, container.id)}
+            onDragLeave={() => setDragTargetId(null)}
+          >
             <div 
               className={`px-3 py-2 flex items-center justify-between cursor-pointer ${selectedElement?.id === container.id ? 'bg-purple-100 text-purple-700' : 'bg-gray-50'}`}
               onClick={() => setSelectedElement(container)}
+              draggable
+              onDragStart={(e) => handleDragStart(e, container)}
             >
               <div className="flex items-center">
                 <button 
@@ -107,8 +219,10 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
                 {container.childElements.map((child) => (
                   <div 
                     key={child.id}
-                    className={`px-3 py-2 text-sm rounded-md flex items-center justify-between cursor-pointer my-1 ${selectedElement?.id === child.id ? 'bg-purple-100 text-purple-700' : 'hover:bg-gray-50'}`}
+                    className={`px-3 py-2 text-sm rounded-md flex items-center justify-between cursor-pointer my-1 ${selectedElement?.id === child.id ? 'bg-purple-100 text-purple-700' : 'hover:bg-gray-50'} ${draggedElement?.id === child.id ? 'opacity-50' : ''}`}
                     onClick={() => setSelectedElement(child)}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, child)}
                   >
                     <div className="flex items-center">
                       {renderElementIcon(child.type)}
@@ -134,37 +248,95 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
           </div>
         ))}
 
-        {/* Elementos soltos (sem container) */}
-        {standaloneElements.length > 0 && (
-          <div className="border rounded-md p-2 bg-gray-50">
-            <div className="text-sm font-medium mb-2 text-gray-500">Elementos sem container</div>
-            {standaloneElements.map((element) => (
-              <div 
-                key={element.id}
-                className={`px-3 py-2 text-sm rounded-md flex items-center justify-between cursor-pointer my-1 ${selectedElement?.id === element.id ? 'bg-purple-100' : 'hover:bg-gray-50'}`}
-                onClick={() => setSelectedElement(element)}
-              >
-                <div className="flex items-center">
-                  {renderElementIcon(element.type)}
-                  <span className="ml-2 truncate">
-                    {element.content || element.type}
-                  </span>
-                </div>
-                <div>
-                  <button 
-                    className="text-gray-400 hover:text-gray-600 p-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeElement(element.id);
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
+        {/* Standalone elements section that can also receive drops */}
+        <div 
+          className={`border rounded-md p-2 bg-gray-50 ${dragTargetId === 'standalone' ? 'bg-blue-50 border-blue-300' : ''}`}
+          onDragOver={(e) => handleDragOver(e, 'standalone')}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Reset drag state
+            setDragTargetId(null);
+            
+            // Ensure we have a dragged element
+            if (!draggedElement) return;
+            
+            // Create a copy of elements
+            const updatedElements = [...elements];
+            
+            // If the element is in a container, remove it from there
+            if (draggedElement.inContainer && draggedElement.parentId) {
+              const sourceContainerIndex = updatedElements.findIndex(el => el.id === draggedElement.parentId);
+              if (sourceContainerIndex !== -1 && updatedElements[sourceContainerIndex].childElements) {
+                updatedElements[sourceContainerIndex] = {
+                  ...updatedElements[sourceContainerIndex],
+                  childElements: updatedElements[sourceContainerIndex].childElements?.filter(child => child.id !== draggedElement.id) || []
+                };
+              }
+              
+              // Add the element to standalone elements
+              const updatedElement = {
+                ...draggedElement,
+                inContainer: false,
+                parentId: undefined,
+                style: {
+                  ...draggedElement.style,
+                  // Position at some default coordinates
+                  x: 100,
+                  y: 100
+                }
+              };
+              
+              updatedElements.push(updatedElement);
+              
+              // Update elements state
+              setElements(updatedElements);
+              
+              // Update selection if needed
+              if (selectedElement?.id === draggedElement.id) {
+                setSelectedElement(updatedElement);
+              }
+            }
+            
+            setDraggedElement(null);
+          }}
+          onDragLeave={() => setDragTargetId(null)}
+        >
+          <div className="text-sm font-medium mb-2 text-gray-500">Elementos sem container</div>
+          {standaloneElements.map((element) => (
+            <div 
+              key={element.id}
+              className={`px-3 py-2 text-sm rounded-md flex items-center justify-between cursor-pointer my-1 ${selectedElement?.id === element.id ? 'bg-purple-100' : 'hover:bg-gray-50'} ${draggedElement?.id === element.id ? 'opacity-50' : ''}`}
+              onClick={() => setSelectedElement(element)}
+              draggable
+              onDragStart={(e) => handleDragStart(e, element)}
+            >
+              <div className="flex items-center">
+                {renderElementIcon(element.type)}
+                <span className="ml-2 truncate">
+                  {element.content || element.type}
+                </span>
               </div>
-            ))}
-          </div>
-        )}
+              <div>
+                <button 
+                  className="text-gray-400 hover:text-gray-600 p-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeElement(element.id);
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          ))}
+          {standaloneElements.length === 0 && (
+            <div className="text-sm text-gray-400 text-center py-2">
+              Arraste elementos para aqui
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
