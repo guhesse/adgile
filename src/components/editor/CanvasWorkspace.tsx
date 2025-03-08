@@ -1,5 +1,4 @@
-
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { ElementRenderer } from "./ElementRenderer";
 import { useCanvas } from "./CanvasContext";
@@ -25,6 +24,8 @@ export const CanvasWorkspace = () => {
   } = useCanvas();
   
   const canvasRef = useRef<HTMLDivElement>(null);
+  const [containerHoverTimer, setContainerHoverTimer] = useState<NodeJS.Timeout | null>(null);
+  const [hoveredContainer, setHoveredContainer] = useState<string | null>(null);
 
   // Auto-organize elements when new ones are added
   useEffect(() => {
@@ -35,6 +36,12 @@ export const CanvasWorkspace = () => {
 
   const handleMouseDown = (e: React.MouseEvent, element: any) => {
     e.stopPropagation();
+    
+    // If already have a selected element and clicking elsewhere, clear the selection
+    if (selectedElement && selectedElement.id !== element.id) {
+      setSelectedElement(null);
+    }
+    
     setIsDragging(true);
     setSelectedElement(element);
     
@@ -57,6 +64,33 @@ export const CanvasWorkspace = () => {
       x: e.clientX,
       y: e.clientY,
     });
+  };
+
+  const handleContainerHover = (e: React.MouseEvent, containerId: string) => {
+    // Only handle container hovering when dragging an element
+    if (!isDragging || !selectedElement || selectedElement.id === containerId) {
+      return;
+    }
+
+    // Clear any existing hover timer
+    if (containerHoverTimer) {
+      clearTimeout(containerHoverTimer);
+    }
+
+    // Set a new timer for hovering
+    const timer = setTimeout(() => {
+      setHoveredContainer(containerId);
+    }, 800); // 800ms hover time to consider moving into container
+
+    setContainerHoverTimer(timer);
+  };
+
+  const handleContainerHoverEnd = () => {
+    if (containerHoverTimer) {
+      clearTimeout(containerHoverTimer);
+      setContainerHoverTimer(null);
+    }
+    setHoveredContainer(null);
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -164,15 +198,81 @@ export const CanvasWorkspace = () => {
 
   const handleMouseUp = () => {
     if (isDragging || isResizing) {
-      // Re-organize elements when drag/resize finishes
-      organizeElements();
+      // If hovering over a container when releasing the element and not a container itself
+      if (hoveredContainer && selectedElement && selectedElement.type !== 'container' && selectedElement.type !== 'layout') {
+        // Move the element into the container
+        moveElementToContainer(selectedElement, hoveredContainer);
+      } else {
+        // Otherwise, just re-organize elements
+        organizeElements();
+      }
     }
     
     setIsDragging(false);
     setIsResizing(false);
+    handleContainerHoverEnd();
+  };
+
+  const moveElementToContainer = (element: any, containerId: string) => {
+    // Find the container
+    const container = elements.find(el => el.id === containerId);
+    if (!container) return;
+    
+    // Update the element to be a child of the container
+    const updatedElements = elements.filter(el => {
+      // If element is a container, ensure we don't remove its children from the elements array
+      if (el.id === element.id && el.childElements) {
+        return false;
+      }
+      
+      // Remove the element from its current parent's childElements array
+      if (el.childElements) {
+        el.childElements = el.childElements.filter(child => child.id !== element.id);
+      }
+      
+      // Keep all other elements
+      return el.id !== element.id;
+    });
+
+    // Update the container with the new child element
+    const updatedContainer = {
+      ...container,
+      childElements: [
+        ...(container.childElements || []),
+        {
+          ...element,
+          inContainer: true,
+          parentId: container.id,
+          style: {
+            ...element.style,
+            // Adjust position relative to container
+            x: element.style.x - container.style.x,
+            y: element.style.y - container.style.y
+          }
+        }
+      ]
+    };
+
+    setElements([
+      ...updatedElements.filter(el => el.id !== container.id),
+      updatedContainer
+    ]);
+    
+    setSelectedElement({
+      ...element,
+      inContainer: true,
+      parentId: container.id,
+      style: {
+        ...element.style,
+        x: element.style.x - container.style.x,
+        y: element.style.y - container.style.y
+      }
+    });
   };
 
   const renderElement = (element: any, isChild = false) => {
+    const isHovered = hoveredContainer === element.id;
+    
     return (
       <div
         key={`${element.id}-${key}`}
@@ -185,11 +285,27 @@ export const CanvasWorkspace = () => {
           animationPlayState: element.style.animationPlayState,
           animationDelay: element.style.animationDelay != null ? `${element.style.animationDelay}s` : undefined,
           animationDuration: element.style.animationDuration != null ? `${element.style.animationDuration}s` : undefined,
-          backgroundColor: element.type === "container" || element.type === "layout" ? "rgba(240, 240, 240, 0.5)" : undefined,
-          border: (element.type === "container" || element.type === "layout") ? "1px dashed #aaa" : undefined,
+          backgroundColor: element.type === "container" || element.type === "layout" 
+            ? isHovered ? "rgba(200, 220, 255, 0.5)" : "rgba(240, 240, 240, 0.5)" 
+            : undefined,
+          border: (element.type === "container" || element.type === "layout") 
+            ? isHovered ? "1px dashed #4080ff" : "1px dashed #aaa" 
+            : undefined,
+          zIndex: isDragging && selectedElement?.id === element.id ? 1000 : 1,
+          transition: "background-color 0.3s, border-color 0.3s",
         }}
         className={`cursor-move ${selectedElement?.id === element.id ? "outline outline-2 outline-blue-500" : ""} ${element.style.animation || ""}`}
         onMouseDown={(e) => handleMouseDown(e, element)}
+        onMouseEnter={(e) => {
+          if (element.type === "container" || element.type === "layout") {
+            handleContainerHover(e, element.id);
+          }
+        }}
+        onMouseLeave={() => {
+          if (element.type === "container" || element.type === "layout") {
+            handleContainerHoverEnd();
+          }
+        }}
       >
         <ElementRenderer element={element} />
         

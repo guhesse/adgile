@@ -1,3 +1,4 @@
+
 import {
   Box,
   Crown,
@@ -24,10 +25,11 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { ElementsPanel } from "./ElementsPanel";
 import { LayersPanel } from "./LayersPanel";
+import { BrandPanel } from "./panels/BrandPanel";
 import { useCanvas } from "./CanvasContext";
 import { EditorElement } from "./types";
 
@@ -79,6 +81,8 @@ export const LeftSidebar = () => {
 
   const renderPanel = () => {
     switch (activePanel) {
+      case "brand":
+        return <BrandPanel />;
       case "layers":
         return (
           <LayersPanel
@@ -155,30 +159,7 @@ export const LeftSidebar = () => {
 
       {/* Secondary sidebar with content based on active panel */}
       <Card className="flex flex-col w-[263px] items-center gap-2 py-2 relative self-stretch mt-[-1px] mb-[-1px] mr-[-1px] bg-[#fdfdfd] border border-solid border-[#d5d7da] rounded-none h-full">
-        <CardContent className="flex flex-col w-full items-start justify-center px-2 py-0">
-          {/* Project header */}
-          <div className="flex items-center gap-2 p-2 relative self-stretch w-full rounded-md overflow-hidden">
-            <div className="inline-flex p-2 flex-[0_0_auto] bg-[#414651] rounded-lg items-center relative">
-              <Shapes className="w-4 h-4 text-white" />
-            </div>
-
-            <div className="flex flex-col items-start gap-0.5 relative flex-1 grow">
-              <div className="relative self-stretch mt-[-1px] text-[#414651] text-sm font-semibold leading-none overflow-hidden text-ellipsis [display:-webkit-box] [-webkit-line-clamp:1] [-webkit-box-orient:vertical]">
-                Nome do cliente
-              </div>
-              <div className="relative self-stretch text-[#414651] text-xs font-normal leading-4 overflow-hidden text-ellipsis [display:-webkit-box] [-webkit-line-clamp:1] [-webkit-box-orient:vertical]">
-                Nome da campanha
-              </div>
-            </div>
-          </div>
-        </CardContent>
-
-        <Separator className="w-full" />
-
-        {/* Render the active panel */}
-        <div className="w-full h-full overflow-hidden">
-          {renderPanel()}
-        </div>
+        {renderPanel()}
       </Card>
     </div>
   );
