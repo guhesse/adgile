@@ -13,6 +13,7 @@ import {
   Plus,
   Shapes,
   Type as TypeIcon,
+  File,
 } from "lucide-react";
 import React, { useState } from "react";
 
@@ -30,6 +31,7 @@ import { Separator } from "@/components/ui/separator";
 import { ElementsPanel } from "./ElementsPanel";
 import { LayersPanel } from "./LayersPanel";
 import { BrandPanel } from "./panels/BrandPanel";
+import { SizesPanel } from "./panels/SizesPanel";
 import { useCanvas } from "./CanvasContext";
 import { EditorElement } from "./types";
 
@@ -40,7 +42,7 @@ const navItems = [
   { icon: <Layers2 className="w-4 h-4" />, label: "Layers", id: "layers" },
   { icon: <PictureInPicture2 className="w-4 h-4" />, label: "Slides", id: "slides" },
   { icon: <Play className="w-4 h-4" />, label: "Animator", id: "animator" },
-  { icon: <Maximize className="w-4 h-4" />, label: "Sizes", id: "sizes" },
+  { icon: <File className="w-4 h-4" />, label: "Sizes", id: "sizes" },
 ];
 
 // Timeline item at the bottom
@@ -92,6 +94,8 @@ export const LeftSidebar = () => {
             removeElement={removeElement}
           />
         );
+      case "sizes":
+        return <SizesPanel />;
       case "elements":
       default:
         return (

@@ -23,6 +23,8 @@ interface CanvasContextType {
   setCurrentTime: React.Dispatch<React.SetStateAction<number>>;
   isPlaying: boolean;
   setIsPlaying: React.Dispatch<React.SetStateAction<boolean>>;
+  zoomLevel: number;
+  setZoomLevel: React.Dispatch<React.SetStateAction<number>>;
   removeElement: (elementId: string) => void;
   updateElementStyle: (property: string, value: any) => void;
   updateElementContent: (content: string) => void;
@@ -48,6 +50,7 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [key, setKey] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
+  const [zoomLevel, setZoomLevel] = useState(1);
 
   const handleAddElement = (type: EditorElement["type"]) => {
     const newElement: EditorElement = {
@@ -319,6 +322,8 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setCurrentTime,
       isPlaying,
       setIsPlaying,
+      zoomLevel,
+      setZoomLevel,
       removeElement,
       updateElementStyle,
       updateElementContent,

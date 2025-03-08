@@ -1,4 +1,3 @@
-
 import { useRef, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { ElementRenderer } from "./ElementRenderer";
@@ -21,7 +20,8 @@ export const CanvasWorkspace = () => {
     setDragStart,
     key,
     setElements,
-    organizeElements
+    organizeElements,
+    zoomLevel
   } = useCanvas();
   
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -110,8 +110,17 @@ export const CanvasWorkspace = () => {
         const parent = elements.find(el => el.id === selectedElement.parentId);
         if (parent) {
           // Get position relative to the container
-          newX = snapToGrid(Math.max(0, Math.min(e.clientX - dragStart.x, parent.style.width - selectedElement.style.width)));
-          newY = snapToGrid(Math.max(0, Math.min(e.clientY - dragStart.y, parent.style.height - selectedElement.style.height)));
+          const rect = e.currentTarget.getBoundingClientRect();
+          const containerX = parent.style.x;
+          const containerY = parent.style.y;
+          
+          // Calculate mouse position relative to the container
+          const mouseX = e.clientX - rect.left - containerX;
+          const mouseY = e.clientY - rect.top - containerY;
+          
+          // Calculate new position inside container
+          newX = snapToGrid(Math.max(0, Math.min(mouseX - (dragStart.x - containerX), parent.style.width - selectedElement.style.width)));
+          newY = snapToGrid(Math.max(0, Math.min(mouseY - (dragStart.y - containerY), parent.style.height - selectedElement.style.height)));
         } else {
           // Fallback
           newX = snapToGrid(Math.max(0, Math.min(e.clientX - dragStart.x, selectedSize.width - selectedElement.style.width)));
@@ -311,8 +320,8 @@ export const CanvasWorkspace = () => {
         key={`${element.id}-${key}`}
         style={{
           position: "absolute",
-          left: element.style.x,
-          top: element.style.y,
+          left: isChild ? element.style.x : element.style.x,
+          top: isChild ? element.style.y : element.style.y,
           width: element.style.width,
           height: element.style.height,
           animationPlayState: element.style.animationPlayState,
@@ -326,6 +335,7 @@ export const CanvasWorkspace = () => {
             : undefined,
           zIndex: isDragging && selectedElement?.id === element.id ? 1000 : 1,
           transition: "background-color 0.3s, border-color 0.3s",
+          overflow: (element.type === "container" || element.type === "layout") ? "hidden" : "visible",
         }}
         className={`cursor-move ${selectedElement?.id === element.id ? "outline outline-2 outline-blue-500" : ""} ${element.style.animation || ""}`}
         onMouseDown={(e) => handleMouseDown(e, element)}
@@ -344,7 +354,7 @@ export const CanvasWorkspace = () => {
         
         {/* Render child elements */}
         {(element.type === "container" || element.type === "layout") && element.childElements && (
-          <div className="relative w-full h-full">
+          <div className="absolute top-0 left-0 w-full h-full">
             {element.childElements.map((child: any) => renderElement(child, true))}
           </div>
         )}
@@ -368,22 +378,27 @@ export const CanvasWorkspace = () => {
 
   return (
     <div className="p-8 flex justify-center min-h-[calc(100vh-14rem)]">
-      <Card
-        ref={canvasRef}
-        className="relative bg-white shadow-lg"
-        style={{
-          width: selectedSize.width,
-          height: selectedSize.height,
-          backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px)",
-          backgroundSize: `${snapToGrid(20)}px ${snapToGrid(20)}px`,
-        }}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-      >
-        {/* Render only top-level elements first */}
-        {elements.filter(el => !el.inContainer).map((element) => renderElement(element))}
-      </Card>
+      <div className="overflow-auto flex items-center justify-center">
+        <Card
+          ref={canvasRef}
+          className="relative bg-white shadow-lg transform"
+          style={{
+            width: selectedSize.width,
+            height: selectedSize.height,
+            backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px)",
+            backgroundSize: `${snapToGrid(20)}px ${snapToGrid(20)}px`,
+            transform: `scale(${zoomLevel})`,
+            transformOrigin: "center center",
+            transition: "transform 0.2s ease-out"
+          }}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
+          {/* Render only top-level elements first */}
+          {elements.filter(el => !el.inContainer).map((element) => renderElement(element))}
+        </Card>
+      </div>
     </div>
   );
 };

@@ -50,12 +50,26 @@ export type EditorElement = {
 };
 
 export const BANNER_SIZES: BannerSize[] = [
+  // Email
   { name: "Email Template", width: 600, height: 800 },
+  
+  // Social Media
   { name: "Facebook Post", width: 1200, height: 630 },
+  { name: "Facebook Cover", width: 820, height: 312 },
   { name: "Instagram Post", width: 1080, height: 1080 },
+  { name: "Instagram Story", width: 1080, height: 1920 },
   { name: "Twitter Post", width: 1024, height: 512 },
+  { name: "Twitter Header", width: 1500, height: 500 },
   { name: "LinkedIn Banner", width: 1584, height: 396 },
+  { name: "LinkedIn Post", width: 1200, height: 627 },
+  
+  // Ads
   { name: "YouTube Thumbnail", width: 1280, height: 720 },
+  { name: "Display Ad - Medium Rectangle", width: 300, height: 250 },
+  { name: "Display Ad - Leaderboard", width: 728, height: 90 },
+  { name: "Display Ad - Large Rectangle", width: 336, height: 280 },
+  { name: "Display Ad - Skyscraper", width: 160, height: 600 },
+  { name: "Display Ad - Half Page", width: 300, height: 600 },
 ];
 
 export const ANIMATION_PRESETS = [
