@@ -1,6 +1,5 @@
 
 import { Canvas } from "@/components/editor/Canvas";
-import { Crown, LayoutTemplate, Layers2, PictureInPicture2, Play, Maximize, Hourglass } from "lucide-react";
 import { Helmet } from "react-helmet";
 
 const Index = () => {

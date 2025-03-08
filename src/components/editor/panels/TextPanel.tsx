@@ -284,80 +284,24 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
         </div>
       </div>
 
-      {/* Color Section */}
+      {/* Color Section - Using the simplified color picker from ButtonPanel */}
       <div className="space-y-2">
         <div className="text-center text-sm text-gray-500">Cor</div>
-
-        <div className="relative rounded-md overflow-hidden">
-          {/* Color gradient placeholder */}
-          <div className="w-full h-[120px] bg-gradient-to-br from-purple-500 via-blue-400 to-white"></div>
-
-          {/* Color preview and sliders */}
-          <div className="flex justify-between items-center mt-2">
-            <div
-              className="w-7 h-7 rounded border"
-              style={{ backgroundColor: colorPickerValue }}
-            ></div>
-
-            <div className="flex-1 ml-4 space-y-2">
-              {/* Color hue slider */}
-              <input
-                type="range"
-                min="0"
-                max="360"
-                className="w-full"
-                value="270"
-                onChange={(e) => {
-                  // In a real implementation, this would convert hue to RGB/HEX
-                  const newColor = `#${Math.floor(Math.random() * 16777215).toString(16)}`;
-                  setColorPickerValue(newColor);
-                  updateElementStyle("color", newColor);
-                }}
-              />
-
-              {/* Opacity slider */}
-              <input
-                type="range"
-                min="0"
-                max="100"
-                className="w-full"
-                value="100"
-                onChange={() => {
-                  // Opacity would be handled here
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Color values */}
-          <div className="flex justify-between mt-4 text-xs">
-            <div className="flex items-center">
-              <span className="mr-1">HEX</span>
-              <input
-                type="text"
-                value={colorPickerValue}
-                onChange={(e) => {
-                  setColorPickerValue(e.target.value);
-                  updateElementStyle("color", e.target.value);
-                }}
-                className="w-20 px-2 py-1 border rounded text-xs"
-              />
-            </div>
-
-            <div className="flex space-x-2">
-              <div className="flex items-center">
-                <span className="text-xs mr-1">R</span>
-                <input type="text" value="151" className="w-12 px-2 py-1 border rounded text-xs" readOnly />
-              </div>
-              <div className="flex items-center">
-                <span className="text-xs mr-1">G</span>
-                <input type="text" value="81" className="w-12 px-2 py-1 border rounded text-xs" readOnly />
-              </div>
-              <div className="flex items-center">
-                <span className="text-xs mr-1">B</span>
-                <input type="text" value="242" className="w-12 px-2 py-1 border rounded text-xs" readOnly />
-              </div>
-            </div>
+        <div>
+          <label className="text-xs text-gray-500">Cor do texto</label>
+          <div className="flex mt-1">
+            <input
+              type="color"
+              value={element.style.color || "#000000"}
+              onChange={(e) => updateElementStyle("color", e.target.value)}
+              className="w-10 h-10 rounded cursor-pointer"
+            />
+            <input
+              type="text"
+              value={element.style.color || "#000000"}
+              onChange={(e) => updateElementStyle("color", e.target.value)}
+              className="flex-1 px-3 py-2 border rounded ml-2"
+            />
           </div>
         </div>
       </div>
