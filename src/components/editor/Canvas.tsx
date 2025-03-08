@@ -2,13 +2,16 @@
 import { useState } from "react";
 import { PropertyPanel } from "./PropertyPanel";
 import { Timeline } from "./Timeline";
-import { CanvasProvider } from "./CanvasContext";
 import { CanvasControls } from "./CanvasControls";
 import { CanvasWorkspace } from "./CanvasWorkspace";
 import { useCanvas } from "./CanvasContext";
 import { LeftSidebar } from "./LeftSidebar";
 
-const CanvasContent = () => {
+interface CanvasProps {
+  editorMode: "email" | "banner";
+}
+
+const CanvasContent = ({ editorMode }: CanvasProps) => {
   const { 
     elements, 
     selectedElement, 
@@ -28,10 +31,10 @@ const CanvasContent = () => {
   return (
     <div className="flex flex-1">
       {/* Left Sidebar with Elements and Layers Panel */}
-      <LeftSidebar />
+      <LeftSidebar editorMode={editorMode} />
 
       {/* Canvas Area */}
-      <div className="flex-1 bg-gray-100 overflow-auto">
+      <div className="flex-1 bg-gray-100 overflow-hidden flex flex-col">
         <CanvasControls />
         <CanvasWorkspace />
       </div>
@@ -72,10 +75,8 @@ const CanvasContent = () => {
   );
 };
 
-export const Canvas = () => {
+export const Canvas = ({ editorMode }: CanvasProps) => {
   return (
-    <CanvasProvider>
-      <CanvasContent />
-    </CanvasProvider>
+    <CanvasContent editorMode={editorMode} />
   );
 };

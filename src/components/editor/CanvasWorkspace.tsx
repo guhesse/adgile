@@ -38,17 +38,13 @@ export const CanvasWorkspace = () => {
   const handleMouseDown = (e: React.MouseEvent, element: any) => {
     e.stopPropagation();
     
-    // If already have a selected element and clicking elsewhere, clear the selection
-    if (selectedElement && selectedElement.id !== element.id) {
-      setSelectedElement(null);
-    }
-    
-    setIsDragging(true);
     setSelectedElement(element);
+    setIsDragging(true);
     
-    // Calculate drag offset based on whether element is in a container
-    const dragOffsetX = e.clientX - element.style.x;
-    const dragOffsetY = e.clientY - element.style.y;
+    // Calculate drag offset relative to the element position
+    const rect = e.currentTarget.getBoundingClientRect();
+    const dragOffsetX = e.clientX - rect.left;
+    const dragOffsetY = e.clientY - rect.top;
     
     setDragStart({
       x: dragOffsetX,
@@ -81,7 +77,7 @@ export const CanvasWorkspace = () => {
     // Set a new timer for hovering
     const timer = setTimeout(() => {
       setHoveredContainer(containerId);
-    }, 800); // 800ms hover time to consider moving into container
+    }, 500); // 500ms hover time to consider moving into container
 
     setContainerHoverTimer(timer);
   };
@@ -101,51 +97,50 @@ export const CanvasWorkspace = () => {
     if (!bounds || !selectedElement) return;
 
     if (isDragging) {
-      // Calculate new position with grid snapping
-      let newX: number;
-      let newY: number;
+      // Get the canvas position
+      const canvasRect = canvasRef.current.getBoundingClientRect();
+      const parentElement = selectedElement.inContainer ? 
+        elements.find(el => el.id === selectedElement.parentId) : null;
       
-      // If element is in a container, calculate position relative to container
-      if (selectedElement.inContainer && selectedElement.parentId) {
-        const parent = elements.find(el => el.id === selectedElement.parentId);
-        if (parent) {
-          // Get position relative to the container
-          const rect = e.currentTarget.getBoundingClientRect();
-          const containerX = parent.style.x;
-          const containerY = parent.style.y;
-          
-          // Calculate mouse position relative to the container
-          const mouseX = e.clientX - rect.left - containerX;
-          const mouseY = e.clientY - rect.top - containerY;
-          
-          // Calculate new position inside container
-          newX = snapToGrid(Math.max(0, Math.min(mouseX - (dragStart.x - containerX), parent.style.width - selectedElement.style.width)));
-          newY = snapToGrid(Math.max(0, Math.min(mouseY - (dragStart.y - containerY), parent.style.height - selectedElement.style.height)));
-        } else {
-          // Fallback
-          newX = snapToGrid(Math.max(0, Math.min(e.clientX - dragStart.x, selectedSize.width - selectedElement.style.width)));
-          newY = snapToGrid(Math.max(0, Math.min(e.clientY - dragStart.y, selectedSize.height - selectedElement.style.height)));
-        }
+      // Calculate mouse position relative to the canvas
+      const mouseX = e.clientX - canvasRect.left;
+      const mouseY = e.clientY - canvasRect.top;
+      
+      // Calculate element position considering the drag start offset
+      let newX = mouseX - dragStart.x;
+      let newY = mouseY - dragStart.y;
+      
+      // Apply constraints if the element is in a container
+      if (parentElement) {
+        // Convert to container's coordinate system
+        const relativeX = newX - parentElement.style.x;
+        const relativeY = newY - parentElement.style.y;
+        
+        // Constrain element within container bounds
+        newX = Math.max(parentElement.style.x, Math.min(newX, parentElement.style.x + parentElement.style.width - selectedElement.style.width));
+        newY = Math.max(parentElement.style.y, Math.min(newY, parentElement.style.y + parentElement.style.height - selectedElement.style.height));
       } else {
-        // Standard positioning
-        newX = snapToGrid(Math.max(0, Math.min(e.clientX - dragStart.x, selectedSize.width - selectedElement.style.width)));
-        newY = snapToGrid(Math.max(0, Math.min(e.clientY - dragStart.y, selectedSize.height - selectedElement.style.height)));
+        // If not in a container, constrain within canvas
+        newX = Math.max(0, Math.min(newX, selectedSize.width - selectedElement.style.width));
+        newY = Math.max(0, Math.min(newY, selectedSize.height - selectedElement.style.height));
       }
+      
+      // Apply grid snapping
+      newX = snapToGrid(newX);
+      newY = snapToGrid(newY);
 
       // Update elements array
       const updatedElements = elements.map(el => {
-        // If this is a child element being dragged
-        if (el.id === selectedElement.id && !selectedElement.inContainer) {
+        if (el.id === selectedElement.id) {
           return { ...el, style: { ...el.style, x: newX, y: newY } };
         }
         
-        // If this is the parent container of the element being dragged
-        if (selectedElement.inContainer && el.id === selectedElement.parentId && el.childElements) {
+        if (el.childElements && selectedElement.parentId === el.id) {
           return {
             ...el,
             childElements: el.childElements.map(child => 
               child.id === selectedElement.id
-                ? { ...child, style: { ...child.style, x: newX, y: newY } }
+                ? { ...child, style: { ...child.style, x: newX - el.style.x, y: newY - el.style.y } }
                 : child
             )
           };
@@ -162,6 +157,7 @@ export const CanvasWorkspace = () => {
         style: { ...selectedElement.style, x: newX, y: newY }
       });
     } else if (isResizing) {
+      // Handle resizing similarly, with container constraints
       const deltaX = e.clientX - dragStart.x;
       const deltaY = e.clientY - dragStart.y;
       
@@ -188,23 +184,49 @@ export const CanvasWorkspace = () => {
         newHeight = possibleHeight;
       }
       
-      // Update element dimensions based on container status
+      // Apply parent container constraints if needed
+      if (selectedElement.inContainer && selectedElement.parentId) {
+        const parentElement = elements.find(el => el.id === selectedElement.parentId);
+        if (parentElement) {
+          // Ensure the element stays within the container bounds
+          if (newX < parentElement.style.x) {
+            newX = parentElement.style.x;
+            newWidth = selectedElement.style.width;
+          }
+          if (newY < parentElement.style.y) {
+            newY = parentElement.style.y;
+            newHeight = selectedElement.style.height;
+          }
+          if (newX + newWidth > parentElement.style.x + parentElement.style.width) {
+            newWidth = parentElement.style.x + parentElement.style.width - newX;
+          }
+          if (newY + newHeight > parentElement.style.y + parentElement.style.height) {
+            newHeight = parentElement.style.y + parentElement.style.height - newY;
+          }
+        }
+      }
+      
+      // Update elements array
       const updatedElements = elements.map(el => {
-        // If this element is being resized directly
-        if (el.id === selectedElement.id && !selectedElement.inContainer) {
-          return { 
-            ...el, 
-            style: { ...el.style, x: newX, y: newY, width: newWidth, height: newHeight }
-          };
+        if (el.id === selectedElement.id) {
+          return { ...el, style: { ...el.style, x: newX, y: newY, width: newWidth, height: newHeight } };
         }
         
-        // If this is the parent container of the element being resized
-        if (selectedElement.inContainer && el.id === selectedElement.parentId && el.childElements) {
+        if (el.childElements && selectedElement.parentId === el.id) {
           return {
             ...el,
             childElements: el.childElements.map(child => 
               child.id === selectedElement.id
-                ? { ...child, style: { ...child.style, x: newX, y: newY, width: newWidth, height: newHeight } }
+                ? { 
+                    ...child, 
+                    style: { 
+                      ...child.style, 
+                      x: newX - el.style.x, 
+                      y: newY - el.style.y, 
+                      width: newWidth, 
+                      height: newHeight 
+                    } 
+                  }
                 : child
             )
           };
@@ -212,7 +234,7 @@ export const CanvasWorkspace = () => {
         
         return el;
       });
-
+      
       setElements(updatedElements);
       
       // Update selected element reference
@@ -274,6 +296,14 @@ export const CanvasWorkspace = () => {
     const containerIndex = updatedElements.findIndex(el => el.id === containerId);
     if (containerIndex === -1) return;
     
+    // Calculate position relative to the container
+    const relativeX = Math.max(0, element.style.x - container.style.x);
+    const relativeY = Math.max(0, element.style.y - container.style.y);
+
+    // Ensure the element is within container bounds
+    const adjustedX = Math.min(relativeX, container.style.width - element.style.width);
+    const adjustedY = Math.max(0, Math.min(relativeY, container.style.height - element.style.height));
+    
     // Add the element to the container
     const childElements = updatedElements[containerIndex].childElements || [];
     
@@ -288,9 +318,9 @@ export const CanvasWorkspace = () => {
           parentId: containerId,
           style: {
             ...element.style,
-            // Reset position relative to the container
-            x: 0,
-            y: 0
+            // Set position relative to the container
+            x: adjustedX,
+            y: adjustedY
           }
         }
       ]
@@ -306,46 +336,65 @@ export const CanvasWorkspace = () => {
       parentId: containerId,
       style: {
         ...element.style,
-        x: 0,
-        y: 0
+        x: element.style.x,
+        y: element.style.y
       }
     });
   };
 
   const renderElement = (element: any, isChild = false) => {
     const isHovered = hoveredContainer === element.id;
+    const isContainer = element.type === "container" || element.type === "layout";
     
+    let positionStyle: React.CSSProperties = {};
+    
+    if (isChild) {
+      // Child elements are positioned relative to their container
+      positionStyle = {
+        position: "absolute",
+        left: element.style.x,
+        top: element.style.y
+      };
+    } else {
+      // Top-level elements are positioned absolutely within the canvas
+      positionStyle = {
+        position: "absolute",
+        left: element.style.x,
+        top: element.style.y
+      };
+    }
+
     return (
       <div
         key={`${element.id}-${key}`}
         style={{
-          position: "absolute",
-          left: isChild ? element.style.x : element.style.x,
-          top: isChild ? element.style.y : element.style.y,
+          ...positionStyle,
           width: element.style.width,
           height: element.style.height,
           animationPlayState: element.style.animationPlayState,
           animationDelay: element.style.animationDelay != null ? `${element.style.animationDelay}s` : undefined,
           animationDuration: element.style.animationDuration != null ? `${element.style.animationDuration}s` : undefined,
-          backgroundColor: element.type === "container" || element.type === "layout" 
+          backgroundColor: isContainer 
             ? isHovered ? "rgba(200, 220, 255, 0.5)" : "rgba(240, 240, 240, 0.5)" 
             : undefined,
-          border: (element.type === "container" || element.type === "layout") 
+          border: isContainer 
             ? isHovered ? "1px dashed #4080ff" : "1px dashed #aaa" 
             : undefined,
           zIndex: isDragging && selectedElement?.id === element.id ? 1000 : 1,
           transition: "background-color 0.3s, border-color 0.3s",
-          overflow: (element.type === "container" || element.type === "layout") ? "hidden" : "visible",
+          overflow: isContainer ? "hidden" : "visible",
+          cursor: "move",
+          userSelect: "none",
         }}
-        className={`cursor-move ${selectedElement?.id === element.id ? "outline outline-2 outline-blue-500" : ""} ${element.style.animation || ""}`}
+        className={`${selectedElement?.id === element.id ? "outline outline-2 outline-blue-500" : ""} ${element.style.animation || ""}`}
         onMouseDown={(e) => handleMouseDown(e, element)}
         onMouseEnter={(e) => {
-          if (element.type === "container" || element.type === "layout") {
+          if (isContainer) {
             handleContainerHover(e, element.id);
           }
         }}
         onMouseLeave={() => {
-          if (element.type === "container" || element.type === "layout") {
+          if (isContainer) {
             handleContainerHoverEnd();
           }
         }}
@@ -353,7 +402,7 @@ export const CanvasWorkspace = () => {
         <ElementRenderer element={element} />
         
         {/* Render child elements */}
-        {(element.type === "container" || element.type === "layout") && element.childElements && (
+        {isContainer && element.childElements && (
           <div className="absolute top-0 left-0 w-full h-full">
             {element.childElements.map((child: any) => renderElement(child, true))}
           </div>
@@ -377,28 +426,26 @@ export const CanvasWorkspace = () => {
   };
 
   return (
-    <div className="p-8 flex justify-center min-h-[calc(100vh-14rem)]">
-      <div className="overflow-auto flex items-center justify-center">
-        <Card
-          ref={canvasRef}
-          className="relative bg-white shadow-lg transform"
-          style={{
-            width: selectedSize.width,
-            height: selectedSize.height,
-            backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px)",
-            backgroundSize: `${snapToGrid(20)}px ${snapToGrid(20)}px`,
-            transform: `scale(${zoomLevel})`,
-            transformOrigin: "center center",
-            transition: "transform 0.2s ease-out"
-          }}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-        >
-          {/* Render only top-level elements first */}
-          {elements.filter(el => !el.inContainer).map((element) => renderElement(element))}
-        </Card>
-      </div>
+    <div className="flex-1 p-8 flex justify-center items-center overflow-auto">
+      <Card
+        ref={canvasRef}
+        className="relative bg-white shadow-lg transform"
+        style={{
+          width: selectedSize.width,
+          height: selectedSize.height,
+          backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px)",
+          backgroundSize: `${snapToGrid(20)}px ${snapToGrid(20)}px`,
+          transform: `scale(${zoomLevel})`,
+          transformOrigin: "center center",
+          transition: "transform 0.2s ease-out"
+        }}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        {/* Render only top-level elements first */}
+        {elements.filter(el => !el.inContainer).map((element) => renderElement(element))}
+      </Card>
     </div>
   );
 };

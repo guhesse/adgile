@@ -1,4 +1,5 @@
-import { createContext, useContext, useState } from "react";
+
+import { createContext, useContext, useState, useEffect } from "react";
 import { EditorElement, BannerSize, BANNER_SIZES } from "./types";
 import { organizeElementsInContainers, snapToGrid } from "./utils/gridUtils";
 
@@ -51,6 +52,13 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [zoomLevel, setZoomLevel] = useState(1);
+
+  // Update element positions when size changes
+  useEffect(() => {
+    if (elements.length > 0) {
+      organizeElements();
+    }
+  }, [selectedSize]);
 
   const handleAddElement = (type: EditorElement["type"]) => {
     const newElement: EditorElement = {

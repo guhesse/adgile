@@ -15,7 +15,7 @@ import {
   Type as TypeIcon,
   File,
 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 import {
   Accordion,
@@ -34,6 +34,10 @@ import { BrandPanel } from "./panels/BrandPanel";
 import { SizesPanel } from "./panels/SizesPanel";
 import { useCanvas } from "./CanvasContext";
 import { EditorElement } from "./types";
+
+interface LeftSidebarProps {
+  editorMode: "email" | "banner";
+}
 
 // Navigation menu items data
 const navItems = [
@@ -60,7 +64,7 @@ const componentIcons = {
   Button: <MousePointer className="w-4 h-4" />,
 };
 
-export const LeftSidebar = () => {
+export const LeftSidebar = ({ editorMode }: LeftSidebarProps) => {
   const [activePanel, setActivePanel] = useState<string>("elements"); // Default to elements panel
   const { 
     elements,
@@ -68,8 +72,16 @@ export const LeftSidebar = () => {
     setSelectedElement,
     removeElement, 
     handleAddElement,
-    handleAddLayout
+    handleAddLayout,
+    updateElementStyle
   } = useCanvas();
+
+  // Show sizes panel automatically when in banner mode
+  useEffect(() => {
+    if (editorMode === "banner" && activePanel !== "sizes") {
+      setActivePanel("sizes");
+    }
+  }, [editorMode]);
 
   // Group elements by size for the layers view
   const groupedElements = elements.reduce((acc, element) => {
@@ -84,7 +96,7 @@ export const LeftSidebar = () => {
   const renderPanel = () => {
     switch (activePanel) {
       case "brand":
-        return <BrandPanel />;
+        return <BrandPanel selectedElement={selectedElement} updateElementStyle={updateElementStyle} />;
       case "layers":
         return (
           <LayersPanel
@@ -95,7 +107,7 @@ export const LeftSidebar = () => {
           />
         );
       case "sizes":
-        return <SizesPanel />;
+        return editorMode === "banner" ? <SizesPanel /> : <ElementsPanel addElement={handleAddElement} addLayout={handleAddLayout} />;
       case "elements":
       default:
         return (
@@ -106,6 +118,14 @@ export const LeftSidebar = () => {
         );
     }
   };
+
+  // Filter navigation items based on editor mode
+  const filteredNavItems = navItems.filter(item => {
+    if (editorMode === "email" && item.id === "sizes") {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <div className="inline-flex items-center relative">
@@ -125,7 +145,7 @@ export const LeftSidebar = () => {
           </div>
 
           {/* Navigation menu items */}
-          {navItems.map((item, index) => (
+          {filteredNavItems.map((item, index) => (
             <div
               key={index}
               className="flex flex-col w-24 h-20 items-center justify-center gap-1.5 relative"

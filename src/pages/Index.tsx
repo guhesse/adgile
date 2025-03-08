@@ -1,8 +1,12 @@
 
 import { Canvas } from "@/components/editor/Canvas";
 import { Helmet } from "react-helmet";
+import { useState } from "react";
+import { CanvasProvider } from "@/components/editor/CanvasContext";
 
 const Index = () => {
+  const [activeTab, setActiveTab] = useState("email");
+
   return (
     <div className="flex h-screen">
       <Helmet>
@@ -24,10 +28,22 @@ const Index = () => {
       <div className="flex flex-col flex-1 ml-0">
         {/* Top Navigation */}
         <div className="flex items-center border-b h-12 px-4">
-          <div className="font-bold  -xl mr-6">AdSile</div>
+          <div className="font-bold mr-6">AdSile</div>
           <nav className="flex space-x-4">
-            <a href="#" className="px-3 py-2 text-sm font-medium rounded-md bg-purple-100 text-purple-600">Email</a>
-            <a href="#" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">Banner</a>
+            <a 
+              href="#" 
+              className={`px-3 py-2 text-sm font-medium rounded-md ${activeTab === "email" ? "bg-purple-100 text-purple-600" : "text-gray-600 hover:text-gray-900"}`}
+              onClick={() => setActiveTab("email")}
+            >
+              Email
+            </a>
+            <a 
+              href="#" 
+              className={`px-3 py-2 text-sm font-medium rounded-md ${activeTab === "banner" ? "bg-purple-100 text-purple-600" : "text-gray-600 hover:text-gray-900"}`}
+              onClick={() => setActiveTab("banner")}
+            >
+              Banner
+            </a>
             <a href="#" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">Social</a>
             <a href="#" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">Impressos</a>
             <a href="#" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">Briefing</a>
@@ -155,7 +171,9 @@ const Index = () => {
           `}
         </style>
         
-        <Canvas />
+        <CanvasProvider>
+          <Canvas editorMode={activeTab} />
+        </CanvasProvider>
       </div>
     </div>
   );
