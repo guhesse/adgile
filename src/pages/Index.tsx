@@ -5,7 +5,7 @@ import { useState } from "react";
 import { CanvasProvider } from "@/components/editor/CanvasContext";
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState("email");
+  const [activeTab, setActiveTab] = useState<"email" | "banner">("email");
 
   return (
     <div className="flex h-screen">
