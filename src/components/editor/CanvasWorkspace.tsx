@@ -1,3 +1,4 @@
+
 import { useRef, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { ElementRenderer } from "./ElementRenderer";
@@ -21,12 +22,19 @@ export const CanvasWorkspace = () => {
     key,
     setElements,
     organizeElements,
-    zoomLevel
+    zoomLevel,
+    setZoomLevel,
+    canvasNavMode,
+    setCanvasNavMode
   } = useCanvas();
   
   const canvasRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [containerHoverTimer, setContainerHoverTimer] = useState<NodeJS.Timeout | null>(null);
   const [hoveredContainer, setHoveredContainer] = useState<string | null>(null);
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
   // Auto-organize elements when new ones are added
   useEffect(() => {
@@ -35,21 +43,99 @@ export const CanvasWorkspace = () => {
     }
   }, []);
 
+  // Event handlers for spacebar + canvas panning
+  useEffect(() => {
+    const handleSpacebarDown = () => {
+      if (canvasNavMode !== 'pan') {
+        setCanvasNavMode('pan');
+      }
+    };
+
+    const handleSpacebarUp = () => {
+      if (canvasNavMode === 'pan') {
+        setCanvasNavMode('edit');
+      }
+    };
+
+    document.addEventListener('canvas-spacebar-down', handleSpacebarDown);
+    document.addEventListener('canvas-spacebar-up', handleSpacebarUp);
+
+    return () => {
+      document.removeEventListener('canvas-spacebar-down', handleSpacebarDown);
+      document.removeEventListener('canvas-spacebar-up', handleSpacebarUp);
+    };
+  }, [canvasNavMode, setCanvasNavMode]);
+
+  // Handle wheel events for zooming and panning
+  useEffect(() => {
+    const containerElement = containerRef.current;
+    if (!containerElement) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+
+      // Ctrl + wheel for zoom
+      if (e.ctrlKey) {
+        const delta = e.deltaY > 0 ? -0.05 : 0.05;
+        setZoomLevel(prev => Math.min(Math.max(0.5, prev + delta), 2));
+        return;
+      }
+
+      // Shift + wheel for horizontal scroll
+      if (e.shiftKey) {
+        setPanPosition(prev => ({
+          x: prev.x - e.deltaY,
+          y: prev.y
+        }));
+        return;
+      }
+
+      // Regular wheel for vertical scroll
+      setPanPosition(prev => ({
+        x: prev.x,
+        y: prev.y - e.deltaY
+      }));
+    };
+
+    containerElement.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      containerElement.removeEventListener('wheel', handleWheel);
+    };
+  }, [setZoomLevel]);
+
   const handleMouseDown = (e: React.MouseEvent, element: any) => {
+    if (canvasNavMode === 'pan') {
+      // Handle panning mode
+      setIsPanning(true);
+      setPanStart({
+        x: e.clientX - panPosition.x,
+        y: e.clientY - panPosition.y
+      });
+      return;
+    }
+
     e.stopPropagation();
     
     setSelectedElement(element);
     setIsDragging(true);
     
-    // Calculate drag offset relative to the element position
+    // Store the mouse position relative to the element top-left corner
     const rect = e.currentTarget.getBoundingClientRect();
-    const dragOffsetX = e.clientX - rect.left;
-    const dragOffsetY = e.clientY - rect.top;
-    
     setDragStart({
-      x: dragOffsetX,
-      y: dragOffsetY,
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
     });
+  };
+
+  // Canvas panning when in pan mode
+  const handleCanvasMouseDown = (e: React.MouseEvent) => {
+    if (canvasNavMode === 'pan') {
+      setIsPanning(true);
+      setPanStart({
+        x: e.clientX - panPosition.x,
+        y: e.clientY - panPosition.y
+      });
+    }
   };
 
   const handleResizeStart = (e: React.MouseEvent, direction: string, element: any) => {
@@ -91,31 +177,38 @@ export const CanvasWorkspace = () => {
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    // Handle panning
+    if (isPanning) {
+      setPanPosition({
+        x: e.clientX - panStart.x,
+        y: e.clientY - panStart.y
+      });
+      return;
+    }
+
     if (!isDragging && !isResizing) return;
     
     const bounds = canvasRef.current?.getBoundingClientRect();
     if (!bounds || !selectedElement) return;
 
     if (isDragging) {
-      // Get the canvas position
+      // Calculate the new position based on mouse and canvas coordinates
+      const mouseX = e.clientX;
+      const mouseY = e.clientY;
+      
       const canvasRect = canvasRef.current.getBoundingClientRect();
       const parentElement = selectedElement.inContainer ? 
         elements.find(el => el.id === selectedElement.parentId) : null;
       
-      // Calculate mouse position relative to the canvas
-      const mouseX = e.clientX - canvasRect.left;
-      const mouseY = e.clientY - canvasRect.top;
+      // Calculate new position by subtracting the drag start offset
+      const canvasX = (mouseX - canvasRect.left) / zoomLevel;
+      const canvasY = (mouseY - canvasRect.top) / zoomLevel;
       
-      // Calculate element position considering the drag start offset
-      let newX = mouseX - dragStart.x;
-      let newY = mouseY - dragStart.y;
+      let newX = canvasX - dragStart.x / zoomLevel;
+      let newY = canvasY - dragStart.y / zoomLevel;
       
       // Apply constraints if the element is in a container
       if (parentElement) {
-        // Convert to container's coordinate system
-        const relativeX = newX - parentElement.style.x;
-        const relativeY = newY - parentElement.style.y;
-        
         // Constrain element within container bounds
         newX = Math.max(parentElement.style.x, Math.min(newX, parentElement.style.x + parentElement.style.width - selectedElement.style.width));
         newY = Math.max(parentElement.style.y, Math.min(newY, parentElement.style.y + parentElement.style.height - selectedElement.style.height));
@@ -157,7 +250,7 @@ export const CanvasWorkspace = () => {
         style: { ...selectedElement.style, x: newX, y: newY }
       });
     } else if (isResizing) {
-      // Handle resizing similarly, with container constraints
+      // Handle resizing with similar improvements
       const deltaX = e.clientX - dragStart.x;
       const deltaY = e.clientY - dragStart.y;
       
@@ -166,20 +259,24 @@ export const CanvasWorkspace = () => {
       let newX = selectedElement.style.x;
       let newY = selectedElement.style.y;
       
+      // Apply different scaling factor based on zoom level
+      const scaledDeltaX = deltaX / zoomLevel;
+      const scaledDeltaY = deltaY / zoomLevel;
+      
       // Handle different resize directions with grid snapping
       if (resizeDirection.includes('e')) {
-        newWidth = snapToGrid(Math.max(50, selectedElement.style.width + deltaX));
+        newWidth = snapToGrid(Math.max(50, selectedElement.style.width + scaledDeltaX));
       }
       if (resizeDirection.includes('w')) {
-        const possibleWidth = snapToGrid(Math.max(50, selectedElement.style.width - deltaX));
+        const possibleWidth = snapToGrid(Math.max(50, selectedElement.style.width - scaledDeltaX));
         newX = snapToGrid(selectedElement.style.x + (selectedElement.style.width - possibleWidth));
         newWidth = possibleWidth;
       }
       if (resizeDirection.includes('s')) {
-        newHeight = snapToGrid(Math.max(20, selectedElement.style.height + deltaY));
+        newHeight = snapToGrid(Math.max(20, selectedElement.style.height + scaledDeltaY));
       }
       if (resizeDirection.includes('n')) {
-        const possibleHeight = snapToGrid(Math.max(20, selectedElement.style.height - deltaY));
+        const possibleHeight = snapToGrid(Math.max(20, selectedElement.style.height - scaledDeltaY));
         newY = snapToGrid(selectedElement.style.y + (selectedElement.style.height - possibleHeight));
         newHeight = possibleHeight;
       }
@@ -251,6 +348,11 @@ export const CanvasWorkspace = () => {
   };
 
   const handleMouseUp = () => {
+    if (isPanning) {
+      setIsPanning(false);
+      return;
+    }
+    
     if (isDragging || isResizing) {
       // If hovering over a container when releasing the element and not a container itself
       if (hoveredContainer && selectedElement && selectedElement.type !== 'container' && selectedElement.type !== 'layout') {
@@ -383,7 +485,7 @@ export const CanvasWorkspace = () => {
           zIndex: isDragging && selectedElement?.id === element.id ? 1000 : 1,
           transition: "background-color 0.3s, border-color 0.3s",
           overflow: isContainer ? "hidden" : "visible",
-          cursor: "move",
+          cursor: canvasNavMode === 'pan' ? 'grab' : 'move',
           userSelect: "none",
         }}
         className={`${selectedElement?.id === element.id ? "outline outline-2 outline-blue-500" : ""} ${element.style.animation || ""}`}
@@ -408,8 +510,8 @@ export const CanvasWorkspace = () => {
           </div>
         )}
         
-        {/* Resize Handles - only show for selected elements */}
-        {selectedElement?.id === element.id && (
+        {/* Resize Handles - only show for selected elements and not in pan mode */}
+        {selectedElement?.id === element.id && canvasNavMode !== 'pan' && (
           <>
             <div className="resize-handle resize-handle-n" onMouseDown={(e) => handleResizeStart(e, 'n', element)}></div>
             <div className="resize-handle resize-handle-e" onMouseDown={(e) => handleResizeStart(e, 'e', element)}></div>
@@ -426,26 +528,40 @@ export const CanvasWorkspace = () => {
   };
 
   return (
-    <div className="flex-1 p-8 flex justify-center items-center overflow-auto">
-      <Card
-        ref={canvasRef}
-        className="relative bg-white shadow-lg transform"
+    <div 
+      ref={containerRef}
+      className={`flex-1 p-8 flex justify-center items-center overflow-hidden ${canvasNavMode === 'pan' ? 'canvas-pan-mode' : ''}`}
+      style={{
+        cursor: isPanning ? 'grabbing' : canvasNavMode === 'pan' ? 'grab' : 'default',
+      }}
+    >
+      <div
         style={{
-          width: selectedSize.width,
-          height: selectedSize.height,
-          backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px)",
-          backgroundSize: `${snapToGrid(20)}px ${snapToGrid(20)}px`,
-          transform: `scale(${zoomLevel})`,
-          transformOrigin: "center center",
-          transition: "transform 0.2s ease-out"
+          transform: `translate(${panPosition.x}px, ${panPosition.y}px)`,
+          transition: isPanning ? 'none' : 'transform 0.1s ease-out',
         }}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
       >
-        {/* Render only top-level elements first */}
-        {elements.filter(el => !el.inContainer).map((element) => renderElement(element))}
-      </Card>
+        <Card
+          ref={canvasRef}
+          className="relative bg-white shadow-lg transform"
+          style={{
+            width: selectedSize.width,
+            height: selectedSize.height,
+            backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px)",
+            backgroundSize: `${snapToGrid(20)}px ${snapToGrid(20)}px`,
+            transform: `scale(${zoomLevel})`,
+            transformOrigin: "center center",
+            transition: "transform 0.2s ease-out"
+          }}
+          onMouseDown={handleCanvasMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
+          {/* Render only top-level elements first */}
+          {elements.filter(el => !el.inContainer).map((element) => renderElement(element))}
+        </Card>
+      </div>
     </div>
   );
 };

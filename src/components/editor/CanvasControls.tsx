@@ -80,16 +80,19 @@ export const CanvasControls = () => {
             title="Press and hold spacebar to temporarily activate pan mode"
           >
             <Hand size={16} className={canvasNavMode === 'pan' ? "text-white" : ""} />
+            <span className="ml-1 text-xs">
+              {canvasNavMode === 'pan' ? 'Panning' : 'Hand Tool'}
+            </span>
           </Button>
         
-          <Button variant="outline" size="sm" onClick={handleZoomOut} className="px-2 mr-1">
+          <Button variant="outline" size="sm" onClick={handleZoomOut} className="px-2 mr-1" title="Zoom Out (Ctrl + Mouse Wheel Down)">
             <ZoomOut size={16} />
           </Button>
           <span className="mx-2 text-sm">{Math.round(zoomLevel * 100)}%</span>
-          <Button variant="outline" size="sm" onClick={handleZoomIn} className="px-2 ml-1">
+          <Button variant="outline" size="sm" onClick={handleZoomIn} className="px-2 ml-1" title="Zoom In (Ctrl + Mouse Wheel Up)">
             <ZoomIn size={16} />
           </Button>
-          <Button variant="outline" size="sm" onClick={handleResetZoom} className="px-2 ml-1">
+          <Button variant="outline" size="sm" onClick={handleResetZoom} className="px-2 ml-1" title="Reset Zoom">
             <Maximize size={16} />
           </Button>
         </div>

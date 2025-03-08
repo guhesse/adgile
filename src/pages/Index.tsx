@@ -1,3 +1,4 @@
+
 import { Canvas } from "@/components/editor/Canvas";
 import { Helmet } from "react-helmet";
 import { useState, useEffect } from "react";
@@ -7,9 +8,12 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<"email" | "banner">("email");
   
   useEffect(() => {
+    // Handle spacebar for temporary pan mode
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space' && !e.repeat) {
         document.dispatchEvent(new CustomEvent('canvas-spacebar-down'));
+        // Prevent page scroll when spacebar is pressed
+        e.preventDefault();
       }
     };
     
@@ -19,12 +23,21 @@ const Index = () => {
       }
     };
     
+    // Prevent the default browser behavior for Ctrl+wheel to avoid browser zoom
+    const preventBrowserZoom = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+      }
+    };
+    
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('wheel', preventBrowserZoom, { passive: false });
     
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('wheel', preventBrowserZoom);
     };
   }, []);
 
