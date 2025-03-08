@@ -8,7 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Box, Layout2, Image } from "lucide-react";
+import { Box, Layout, Image } from "lucide-react";
 
 export const BrandPanel = () => {
   return (
@@ -52,7 +52,7 @@ export const BrandPanel = () => {
                   <AccordionItem value="primary" className="border-0">
                     <AccordionTrigger className="py-1 px-3 hover:no-underline hover:bg-gray-100 rounded-md">
                       <div className="flex items-center gap-2">
-                        <Layout2 className="h-4 w-4" />
+                        <Layout className="h-4 w-4" />
                         <span className="text-sm">Primary</span>
                       </div>
                     </AccordionTrigger>
@@ -71,7 +71,7 @@ export const BrandPanel = () => {
                   <AccordionItem value="secondary" className="border-0">
                     <AccordionTrigger className="py-1 px-3 hover:no-underline hover:bg-gray-100 rounded-md">
                       <div className="flex items-center gap-2">
-                        <Layout2 className="h-4 w-4" />
+                        <Layout className="h-4 w-4" />
                         <span className="text-sm">Secondary</span>
                       </div>
                     </AccordionTrigger>
@@ -102,7 +102,7 @@ export const BrandPanel = () => {
                   <AccordionItem value="primary-logos" className="border-0">
                     <AccordionTrigger className="py-1 px-3 hover:no-underline hover:bg-gray-100 rounded-md">
                       <div className="flex items-center gap-2">
-                        <Layout2 className="h-4 w-4" />
+                        <Layout className="h-4 w-4" />
                         <span className="text-sm">Primary</span>
                       </div>
                     </AccordionTrigger>

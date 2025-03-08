@@ -25,7 +25,8 @@ const Index = () => {
         </div>
         
         {/* CSS for resize handles and dragging */}
-        <style jsx global>{`
+        <style>
+          {`
           .resize-handle {
             position: absolute;
             width: 8px;
@@ -137,7 +138,8 @@ const Index = () => {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
           }
-        `}</style>
+          `}
+        </style>
         
         <Canvas />
       </div>
