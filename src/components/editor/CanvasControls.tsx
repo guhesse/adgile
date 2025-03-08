@@ -1,3 +1,4 @@
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { BANNER_SIZES } from "./types";
@@ -58,7 +59,7 @@ export const CanvasControls = () => {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="All">All Sizes</SelectItem>
-          <SelectItem disabled className="text-xs text-gray-400 py-1 opacity-70">
+          <SelectItem value="divider" disabled className="text-xs text-gray-400 py-1 opacity-70">
             ─────── Active Sizes ───────
           </SelectItem>
           {activeSizes.map((size) => (

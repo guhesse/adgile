@@ -1,6 +1,6 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
-import { EditorElement, BannerSize, BANNER_SIZES } from "./types";
+import { EditorElement, BannerSize, BANNER_SIZES, CanvasNavigationMode } from "./types";
 import { organizeElementsInContainers, snapToGrid } from "./utils/gridUtils";
 
 interface CanvasContextType {
@@ -26,6 +26,10 @@ interface CanvasContextType {
   setIsPlaying: React.Dispatch<React.SetStateAction<boolean>>;
   zoomLevel: number;
   setZoomLevel: React.Dispatch<React.SetStateAction<number>>;
+  activeSizes: BannerSize[];
+  setActiveSizes: React.Dispatch<React.SetStateAction<BannerSize[]>>;
+  canvasNavMode: CanvasNavigationMode;
+  setCanvasNavMode: React.Dispatch<React.SetStateAction<CanvasNavigationMode>>;
   removeElement: (elementId: string) => void;
   updateElementStyle: (property: string, value: any) => void;
   updateElementContent: (content: string) => void;
@@ -44,6 +48,7 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [elements, setElements] = useState<EditorElement[]>([]);
   const [selectedElement, setSelectedElement] = useState<EditorElement | null>(null);
   const [selectedSize, setSelectedSize] = useState<BannerSize>(BANNER_SIZES[0]);
+  const [activeSizes, setActiveSizes] = useState<BannerSize[]>([BANNER_SIZES[0]]);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [resizeDirection, setResizeDirection] = useState("");
@@ -52,6 +57,7 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [canvasNavMode, setCanvasNavMode] = useState<CanvasNavigationMode>('edit');
 
   // Update element positions when size changes
   useEffect(() => {
@@ -332,6 +338,10 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setIsPlaying,
       zoomLevel,
       setZoomLevel,
+      activeSizes,
+      setActiveSizes,
+      canvasNavMode,
+      setCanvasNavMode,
       removeElement,
       updateElementStyle,
       updateElementContent,
