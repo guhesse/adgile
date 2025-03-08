@@ -13,7 +13,7 @@ import {
   AlignStartVertical,
   AlignVerticalDistributeCenter,
   AlignEndVertical,
-  MoveVertical ,
+  MoveVertical,
   MoveHorizontal,
   Plus,
   Minus,
@@ -204,7 +204,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
         {/* Line Height */}
         <div className="flex flex-col items-center space-y-1">
           <span className="text-xs text-gray-700">
-            <MoveVertical  size={14} />
+            <MoveVertical size={14} />
           </span>
           <div className="flex items-center bg-gray-100 rounded-md px-2 py-1">
             <button onClick={decreaseLineHeight} className="p-1">
@@ -367,24 +367,6 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
   // Render the appropriate panel based on active tab
   return (
     <div>
-      {/* Tab selector at the top */}
-      <div className="mx-4 mb-4 mt-2">
-        <div className="flex h-[39px] p-1 justify-center items-center gap-0 rounded bg-[#E9EAEB]">
-          <div
-            className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm font-['Geist',sans-serif] text-xs cursor-pointer ${activeTab === "content" ? "bg-white text-[#414651]" : "text-[#717680]"}`}
-            onClick={() => updateElementStyle("_activeTab", "content")}
-          >
-            Conteúdo
-          </div>
-          <div
-            className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm font-['Geist',sans-serif] text-xs cursor-pointer ${activeTab === "styles" ? "bg-white text-[#414651]" : "text-[#717680]"}`}
-            onClick={() => updateElementStyle("_activeTab", "styles")}
-          >
-            Estilo
-          </div>
-        </div>
-      </div>
-
       {activeTab === "content" ? <ContentPanel /> : <StylePanel />}
     </div>
   );

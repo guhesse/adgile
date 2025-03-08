@@ -41,28 +41,28 @@ export const PropertyPanel = ({ selectedElement, updateElementStyle, updateEleme
   const renderElementPanel = () => {
     if (selectedElement.type === 'text') {
       return (
-        <TextPanel 
-          element={selectedElement} 
-          updateElementStyle={updateElementStyle} 
-          updateElementContent={updateElementContent} 
+        <TextPanel
+          element={selectedElement}
+          updateElementStyle={updateElementStyle}
+          updateElementContent={updateElementContent}
           activeTab={activeTab}
         />
       );
     } else if (selectedElement.type === 'image') {
       return (
-        <ImagePanel 
-          element={selectedElement} 
-          updateElementStyle={updateElementStyle} 
-          updateElementContent={updateElementContent} 
+        <ImagePanel
+          element={selectedElement}
+          updateElementStyle={updateElementStyle}
+          updateElementContent={updateElementContent}
           activeTab={activeTab}
         />
       );
     } else if (selectedElement.type === 'button') {
       return (
-        <ButtonPanel 
-          element={selectedElement} 
-          updateElementStyle={updateElementStyle} 
-          updateElementContent={updateElementContent} 
+        <ButtonPanel
+          element={selectedElement}
+          updateElementStyle={updateElementStyle}
+          updateElementContent={updateElementContent}
           activeTab={activeTab}
         />
       );
@@ -71,7 +71,7 @@ export const PropertyPanel = ({ selectedElement, updateElementStyle, updateEleme
         <AnimationPanel element={selectedElement} updateElementStyle={updateElementStyle} />
       );
     }
-    
+
     return null;
   };
 
@@ -81,19 +81,19 @@ export const PropertyPanel = ({ selectedElement, updateElementStyle, updateEleme
       <div className="text-center py-4 text-lg font-medium">
         {getElementTitle()}
       </div>
-      
+
       {/* Tab Selector at the top for non-Animation panels */}
       {selectedElement.type !== 'layout' && (
         <div className="mx-4 mb-4">
           <div className="flex h-[39px] p-1 justify-center items-center gap-0 rounded bg-[#E9EAEB]">
-            <div 
-              className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm font-['Geist',sans-serif] text-xs cursor-pointer ${activeTab === "content" ? "bg-white text-[#414651]" : "text-[#717680]"}`}
+            <div
+              className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm font-['Geist',sans-serif] text-xs cursor-pointer ${activeTab === "content" ? "bg-[#53389E]  text-[#f5f5f5]" : "text-[#717680]"}`}
               onClick={() => handleTabChange("content")}
             >
               Conteúdo
             </div>
-            <div 
-              className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm font-['Geist',sans-serif] text-xs cursor-pointer ${activeTab === "styles" ? "bg-white text-[#414651]" : "text-[#717680]"}`}
+            <div
+              className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm font-['Geist',sans-serif] text-xs cursor-pointer ${activeTab === "styles" ? "bg-[#53389E] text-[#f5f5f5]" : "text-[#717680]"}`}
               onClick={() => handleTabChange("styles")}
             >
               Estilo
@@ -101,7 +101,7 @@ export const PropertyPanel = ({ selectedElement, updateElementStyle, updateEleme
           </div>
         </div>
       )}
-      
+
       {/* Panel Content */}
       <div className="flex-1 overflow-y-auto">
         {renderElementPanel()}
