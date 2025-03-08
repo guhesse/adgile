@@ -3,18 +3,18 @@ import { useState } from "react";
 import { EditorElement } from "../types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { 
-  Italic, 
-  Underline, 
-  Strikethrough, 
-  AlignLeft, 
-  AlignCenter, 
-  AlignRight, 
+import {
+  Italic,
+  Underline,
+  Strikethrough,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
   AlignStartVertical,
   AlignVerticalDistributeCenter,
   AlignEndVertical,
-  ArrowsVertical,
-  ArrowsHorizontal,
+  MoveVertical ,
+  MoveHorizontal,
   Plus,
   Minus,
   Check
@@ -32,40 +32,40 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
   const [linkUrl, setLinkUrl] = useState("");
   const [newTab, setNewTab] = useState(true);
   const [colorPickerValue, setColorPickerValue] = useState(element.style.color || "#414651");
-  
+
   // Font size controls
   const increaseFontSize = () => {
     const currentSize = element.style.fontSize || 16;
     updateElementStyle("fontSize", currentSize + 1);
   };
-  
+
   const decreaseFontSize = () => {
     const currentSize = element.style.fontSize || 16;
     updateElementStyle("fontSize", Math.max(8, currentSize - 1));
   };
-  
+
   // Line height controls
   const increaseLineHeight = () => {
     const currentLineHeight = element.style.lineHeight || 1.5;
     updateElementStyle("lineHeight", Math.min(3, parseFloat((currentLineHeight + 0.1).toFixed(1))));
   };
-  
+
   const decreaseLineHeight = () => {
     const currentLineHeight = element.style.lineHeight || 1.5;
     updateElementStyle("lineHeight", Math.max(1, parseFloat((currentLineHeight - 0.1).toFixed(1))));
   };
-  
+
   // Letter spacing controls
   const increaseLetterSpacing = () => {
     const currentSpacing = element.style.letterSpacing || 0;
     updateElementStyle("letterSpacing", parseFloat((currentSpacing + 0.1).toFixed(1)));
   };
-  
+
   const decreaseLetterSpacing = () => {
     const currentSpacing = element.style.letterSpacing || 0;
     updateElementStyle("letterSpacing", Math.max(-0.5, parseFloat((currentSpacing - 0.1).toFixed(1))));
   };
-  
+
   // Text style controls
   const toggleFontStyle = (style: string) => {
     if (style === 'italic') {
@@ -79,12 +79,12 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
       }
     }
   };
-  
+
   // Content Panel - for editing the content and link
   const ContentPanel = () => (
     <div className="space-y-6 p-4">
       <div className="text-center text-sm text-gray-500 mb-4">Conteúdo</div>
-      
+
       <div className="border rounded-lg p-3 relative">
         <textarea
           value={element.content}
@@ -94,10 +94,10 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
         />
         <div className="w-2 h-2 bg-gray-600 opacity-60 absolute bottom-3 right-3"></div>
       </div>
-      
+
       <div className="space-y-2">
         <div className="text-center text-sm text-gray-500">Vincular a</div>
-        
+
         <Select value={linkType} onValueChange={setLinkType}>
           <SelectTrigger className="w-full mb-2">
             <SelectValue placeholder="Página da Web" />
@@ -108,7 +108,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
             <SelectItem value="phone">Telefone</SelectItem>
           </SelectContent>
         </Select>
-        
+
         <input
           type="text"
           value={linkUrl}
@@ -116,12 +116,12 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
           placeholder="Link"
           className="w-full px-3 py-2 border rounded-md bg-white"
         />
-        
+
         <div className="flex items-center space-x-2 mt-4">
-          <Checkbox 
-            id="newTab" 
-            checked={newTab} 
-            onCheckedChange={(checked) => setNewTab(checked as boolean)} 
+          <Checkbox
+            id="newTab"
+            checked={newTab}
+            onCheckedChange={(checked) => setNewTab(checked as boolean)}
           />
           <label htmlFor="newTab" className="text-sm text-gray-700">
             Abrir link em nova guia
@@ -130,12 +130,12 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
       </div>
     </div>
   );
-  
+
   // Style Panel - for typography, alignment, and colors
   const StylePanel = () => (
     <div className="space-y-4 p-4">
       <div className="text-center text-sm text-gray-500 mb-4">Estilo</div>
-      
+
       {/* Typography Section */}
       <div className="space-y-2">
         <div className="text-center text-sm text-gray-500">Tipografia</div>
@@ -144,11 +144,11 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
             {element.style.fontFamily || "Arial"}
           </span>
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
       </div>
-      
+
       {/* Font Style Section */}
       <div className="space-y-2">
         <div className="text-center text-sm text-gray-500">Estilo de fonte</div>
@@ -158,24 +158,24 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
               {element.style.fontWeight === 'bold' ? "Bold" : "Medium"}
             </span>
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          
+
           <div className="flex space-x-2">
-            <button 
+            <button
               onClick={() => toggleFontStyle("italic")}
               className={`p-2 rounded-md ${element.style.fontStyle === "italic" ? "bg-gray-200" : "bg-white border"}`}
             >
               <Italic size={16} />
             </button>
-            <button 
+            <button
               onClick={() => toggleFontStyle("underline")}
               className={`p-2 rounded-md ${element.style.textDecoration?.includes("underline") ? "bg-gray-200" : "bg-white border"}`}
             >
               <Underline size={16} />
             </button>
-            <button 
+            <button
               onClick={() => toggleFontStyle("line-through")}
               className={`p-2 rounded-md ${element.style.textDecoration?.includes("line-through") ? "bg-gray-200" : "bg-white border"}`}
             >
@@ -184,7 +184,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
           </div>
         </div>
       </div>
-      
+
       {/* Font Size, Line Height, Letter Spacing Controls */}
       <div className="flex justify-center space-x-4">
         {/* Font Size */}
@@ -200,11 +200,11 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
             </button>
           </div>
         </div>
-        
+
         {/* Line Height */}
         <div className="flex flex-col items-center space-y-1">
           <span className="text-xs text-gray-700">
-            <ArrowsVertical size={14} />
+            <MoveVertical  size={14} />
           </span>
           <div className="flex items-center bg-gray-100 rounded-md px-2 py-1">
             <button onClick={decreaseLineHeight} className="p-1">
@@ -216,11 +216,11 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
             </button>
           </div>
         </div>
-        
+
         {/* Letter Spacing */}
         <div className="flex flex-col items-center space-y-1">
           <span className="text-xs text-gray-700">
-            <ArrowsHorizontal size={14} />
+            <MoveHorizontal size={14} />
           </span>
           <div className="flex items-center bg-gray-100 rounded-md px-2 py-1">
             <button onClick={decreaseLetterSpacing} className="p-1">
@@ -233,24 +233,24 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
           </div>
         </div>
       </div>
-      
+
       {/* Text Alignment */}
       <div className="space-y-2">
         <div className="text-center text-sm text-gray-500">Parágrafo</div>
         <div className="flex justify-center space-x-2">
-          <button 
+          <button
             onClick={() => updateElementStyle("textAlign", "left")}
             className={`p-2 rounded-md ${element.style.textAlign === "left" ? "bg-gray-200" : "bg-white border"}`}
           >
             <AlignLeft size={16} />
           </button>
-          <button 
+          <button
             onClick={() => updateElementStyle("textAlign", "center")}
             className={`p-2 rounded-md ${element.style.textAlign === "center" ? "bg-gray-200" : "bg-white border"}`}
           >
             <AlignCenter size={16} />
           </button>
-          <button 
+          <button
             onClick={() => updateElementStyle("textAlign", "right")}
             className={`p-2 rounded-md ${element.style.textAlign === "right" ? "bg-gray-200" : "bg-white border"}`}
           >
@@ -258,24 +258,24 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
           </button>
         </div>
       </div>
-      
+
       {/* Vertical Alignment */}
       <div className="space-y-2">
         <div className="text-center text-sm text-gray-500">Alinhamento</div>
         <div className="flex justify-center space-x-2">
-          <button 
+          <button
             onClick={() => updateElementStyle("verticalAlign", "top")}
             className={`p-2 rounded-md ${element.style.verticalAlign === "top" ? "bg-gray-200" : "bg-white border"}`}
           >
             <AlignStartVertical size={16} />
           </button>
-          <button 
+          <button
             onClick={() => updateElementStyle("verticalAlign", "middle")}
             className={`p-2 rounded-md ${element.style.verticalAlign === "middle" ? "bg-gray-200" : "bg-white border"}`}
           >
             <AlignVerticalDistributeCenter size={16} />
           </button>
-          <button 
+          <button
             onClick={() => updateElementStyle("verticalAlign", "bottom")}
             className={`p-2 rounded-md ${element.style.verticalAlign === "bottom" ? "bg-gray-200" : "bg-white border"}`}
           >
@@ -283,22 +283,22 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
           </button>
         </div>
       </div>
-      
+
       {/* Color Section */}
       <div className="space-y-2">
         <div className="text-center text-sm text-gray-500">Cor</div>
-        
+
         <div className="relative rounded-md overflow-hidden">
           {/* Color gradient placeholder */}
           <div className="w-full h-[120px] bg-gradient-to-br from-purple-500 via-blue-400 to-white"></div>
-          
+
           {/* Color preview and sliders */}
           <div className="flex justify-between items-center mt-2">
-            <div 
-              className="w-7 h-7 rounded border" 
+            <div
+              className="w-7 h-7 rounded border"
               style={{ backgroundColor: colorPickerValue }}
             ></div>
-            
+
             <div className="flex-1 ml-4 space-y-2">
               {/* Color hue slider */}
               <input
@@ -309,12 +309,12 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
                 value="270"
                 onChange={(e) => {
                   // In a real implementation, this would convert hue to RGB/HEX
-                  const newColor = `#${Math.floor(Math.random()*16777215).toString(16)}`;
+                  const newColor = `#${Math.floor(Math.random() * 16777215).toString(16)}`;
                   setColorPickerValue(newColor);
                   updateElementStyle("color", newColor);
                 }}
               />
-              
+
               {/* Opacity slider */}
               <input
                 type="range"
@@ -328,7 +328,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
               />
             </div>
           </div>
-          
+
           {/* Color values */}
           <div className="flex justify-between mt-4 text-xs">
             <div className="flex items-center">
@@ -343,7 +343,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
                 className="w-20 px-2 py-1 border rounded text-xs"
               />
             </div>
-            
+
             <div className="flex space-x-2">
               <div className="flex items-center">
                 <span className="text-xs mr-1">R</span>
@@ -370,13 +370,13 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
       {/* Tab selector at the top */}
       <div className="mx-4 mb-4 mt-2">
         <div className="flex h-[39px] p-1 justify-center items-center gap-0 rounded bg-[#E9EAEB]">
-          <div 
+          <div
             className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm font-['Geist',sans-serif] text-xs cursor-pointer ${activeTab === "content" ? "bg-white text-[#414651]" : "text-[#717680]"}`}
             onClick={() => updateElementStyle("_activeTab", "content")}
           >
             Conteúdo
           </div>
-          <div 
+          <div
             className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm font-['Geist',sans-serif] text-xs cursor-pointer ${activeTab === "styles" ? "bg-white text-[#414651]" : "text-[#717680]"}`}
             onClick={() => updateElementStyle("_activeTab", "styles")}
           >
@@ -384,7 +384,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
           </div>
         </div>
       </div>
-      
+
       {activeTab === "content" ? <ContentPanel /> : <StylePanel />}
     </div>
   );
