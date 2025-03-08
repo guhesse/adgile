@@ -2,7 +2,7 @@
 import { EditorElement } from "../types";
 
 // Grid cell size in pixels
-export const GRID_CELL_SIZE = 10;
+export const GRID_CELL_SIZE = 1;
 
 // Snap value to grid
 export const snapToGrid = (value: number): number => {
