@@ -1,279 +1,317 @@
 
-import React, { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { HexColorPicker } from "react-colorful";
-import { useCanvas } from "../CanvasContext";
-import { FontSelector } from "./components/FontSelector";
-import { ButtonGroup } from "./components/ButtonGroup";
-import { 
-  Bold, Italic, Underline, AlignLeft, AlignCenter, 
-  AlignRight, AlignJustify, ChevronUp, ChevronDown
-} from "lucide-react";
+import { useState } from "react";
+import { EditorElement } from "../types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Italic,
+  Underline,
+  Strikethrough,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignStartVertical,
+  AlignVerticalDistributeCenter,
+  AlignEndVertical,
+  MoveVertical,
+  MoveHorizontal,
+  Plus,
+  Minus,
+  Check
+} from "lucide-react";
 
-export const TextPanel = () => {
-  const { 
-    selectedElement, 
-    updateElementContent, 
-    updateElementStyle 
-  } = useCanvas();
-  
-  const [textContent, setTextContent] = useState<string>(selectedElement?.content || "");
-  const [fontSize, setFontSize] = useState<number>(selectedElement?.style.fontSize || 16);
-  const [lineHeight, setLineHeight] = useState<number>(selectedElement?.style.lineHeight || 1.5);
-  const [letterSpacing, setLetterSpacing] = useState<number>(selectedElement?.style.letterSpacing || 0);
-  const [textColor, setTextColor] = useState<string>(selectedElement?.style.color || "#000000");
-  
-  // Update text content state when selected element changes
-  React.useEffect(() => {
-    if (selectedElement) {
-      setTextContent(selectedElement.content || "");
-      setFontSize(selectedElement.style.fontSize || 16);
-      setLineHeight(selectedElement.style.lineHeight || 1.5);
-      setLetterSpacing(selectedElement.style.letterSpacing || 0);
-      setTextColor(selectedElement.style.color || "#000000");
-    }
-  }, [selectedElement]);
+interface TextPanelProps {
+  element: EditorElement;
+  updateElementStyle: (property: string, value: any) => void;
+  updateElementContent: (content: string) => void;
+  activeTab: string;
+}
 
-  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    setTextContent(value);
-    
-    if (selectedElement) {
-      updateElementContent(value);
+export const TextPanel = ({ element, updateElementStyle, updateElementContent, activeTab }: TextPanelProps) => {
+  const [linkType, setLinkType] = useState("webpage");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [newTab, setNewTab] = useState(true);
+  const [colorPickerValue, setColorPickerValue] = useState(element.style.color || "#414651");
+
+  // Font size controls
+  const increaseFontSize = () => {
+    const currentSize = element.style.fontSize || 16;
+    updateElementStyle("fontSize", currentSize + 1);
+  };
+
+  const decreaseFontSize = () => {
+    const currentSize = element.style.fontSize || 16;
+    updateElementStyle("fontSize", Math.max(8, currentSize - 1));
+  };
+
+  // Line height controls
+  const increaseLineHeight = () => {
+    const currentLineHeight = element.style.lineHeight || 1.5;
+    updateElementStyle("lineHeight", Math.min(3, parseFloat((currentLineHeight + 0.1).toFixed(1))));
+  };
+
+  const decreaseLineHeight = () => {
+    const currentLineHeight = element.style.lineHeight || 1.5;
+    updateElementStyle("lineHeight", Math.max(1, parseFloat((currentLineHeight - 0.1).toFixed(1))));
+  };
+
+  // Letter spacing controls
+  const increaseLetterSpacing = () => {
+    const currentSpacing = element.style.letterSpacing || 0;
+    updateElementStyle("letterSpacing", parseFloat((currentSpacing + 0.1).toFixed(1)));
+  };
+
+  const decreaseLetterSpacing = () => {
+    const currentSpacing = element.style.letterSpacing || 0;
+    updateElementStyle("letterSpacing", Math.max(-0.5, parseFloat((currentSpacing - 0.1).toFixed(1))));
+  };
+
+  // Text style controls
+  const toggleFontStyle = (style: string) => {
+    if (style === 'italic') {
+      updateElementStyle("fontStyle", element.style.fontStyle === "italic" ? "normal" : "italic");
+    } else if (style === 'underline' || style === 'line-through') {
+      const currentDecoration = element.style.textDecoration || "none";
+      if (currentDecoration.includes(style)) {
+        updateElementStyle("textDecoration", currentDecoration.replace(style, "").trim() || "none");
+      } else {
+        updateElementStyle("textDecoration", currentDecoration === "none" ? style : `${currentDecoration} ${style}`);
+      }
     }
   };
 
-  const handleFontSizeChange = (newValue: number) => {
-    setFontSize(newValue);
-    if (selectedElement) {
-      updateElementStyle("fontSize", newValue);
-    }
-  };
+  // Content Panel - for editing the content and link
+  const ContentPanel = () => (
+    <div className="space-y-6 p-4">
+      <div className="text-center text-sm text-gray-500 mb-4">Conteúdo</div>
 
-  const handleLineHeightChange = (newValue: number) => {
-    setLineHeight(newValue);
-    if (selectedElement) {
-      updateElementStyle("lineHeight", newValue);
-    }
-  };
+      <div className="border rounded-lg p-3 relative">
+        <textarea
+          value={element.content}
+          onChange={(e) => updateElementContent(e.target.value)}
+          className="w-full resize-none border-0 focus:outline-none min-h-[80px]"
+          placeholder="Text Element"
+        />
+        <div className="w-2 h-2 bg-gray-600 opacity-60 absolute bottom-3 right-3"></div>
+      </div>
 
-  const handleLetterSpacingChange = (newValue: number) => {
-    setLetterSpacing(newValue);
-    if (selectedElement) {
-      updateElementStyle("letterSpacing", newValue);
-    }
-  };
+      <div className="space-y-2">
+        <div className="text-center text-sm text-gray-500">Vincular a</div>
 
-  const handleTextAlignChange = (value: "left" | "center" | "right" | "justify") => {
-    if (selectedElement) {
-      updateElementStyle("textAlign", value);
-    }
-  };
+        <Select value={linkType} onValueChange={setLinkType}>
+          <SelectTrigger className="w-full mb-2">
+            <SelectValue placeholder="Página da Web" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="webpage">Página da Web</SelectItem>
+            <SelectItem value="email">Email</SelectItem>
+            <SelectItem value="phone">Telefone</SelectItem>
+          </SelectContent>
+        </Select>
 
-  const handleColorChange = (color: string) => {
-    setTextColor(color);
-    if (selectedElement) {
-      updateElementStyle("color", color);
-    }
-  };
+        <input
+          type="text"
+          value={linkUrl}
+          onChange={(e) => setLinkUrl(e.target.value)}
+          placeholder="Link"
+          className="w-full px-3 py-2 border rounded-md bg-white"
+        />
 
-  const handleFontStyleChange = (style: string) => {
-    if (!selectedElement) return;
-
-    switch (style) {
-      case "bold":
-        updateElementStyle("fontWeight", selectedElement.style.fontWeight === "bold" ? "normal" : "bold");
-        break;
-      case "italic":
-        updateElementStyle("fontStyle", selectedElement.style.fontStyle === "italic" ? "normal" : "italic");
-        break;
-      case "underline":
-        updateElementStyle("textDecoration", selectedElement.style.textDecoration === "underline" ? "none" : "underline");
-        break;
-    }
-  };
-
-  const renderSizeControl = (
-    label: string, 
-    value: number, 
-    onChange: (value: number) => void, 
-    min = 1, 
-    max = 100, 
-    step = 1
-  ) => (
-    <div className="flex flex-col items-center gap-1">
-      <span className="text-xs text-gray-600">{label}</span>
-      <div className="flex items-center gap-1 bg-gray-100 rounded px-2 py-1">
-        <button 
-          type="button" 
-          className="text-gray-600 hover:text-gray-900" 
-          onClick={() => onChange(Math.max(min, value - step))}
-        >
-          <ChevronDown size={14} />
-        </button>
-        <span className="text-xs min-w-[20px] text-center">{value}</span>
-        <button 
-          type="button" 
-          className="text-gray-600 hover:text-gray-900" 
-          onClick={() => onChange(Math.min(max, value + step))}
-        >
-          <ChevronUp size={14} />
-        </button>
+        <div className="flex items-center space-x-2 mt-4">
+          <Checkbox
+            id="newTab"
+            checked={newTab}
+            onCheckedChange={(checked) => setNewTab(checked as boolean)}
+          />
+          <label htmlFor="newTab" className="text-sm text-gray-700">
+            Abrir link em nova guia
+          </label>
+        </div>
       </div>
     </div>
   );
 
+  // Style Panel - for typography, alignment, and colors
+  const StylePanel = () => (
+    <div className="space-y-4 p-4">
+      <div className="text-center text-sm text-gray-500 mb-4">Estilo</div>
+
+      {/* Typography Section */}
+      <div className="space-y-2">
+        <div className="text-center text-sm text-gray-500">Tipografia</div>
+        <div className="flex items-center p-2 px-3 border rounded-md bg-white">
+          <span className="flex-1 text-xs">
+            {element.style.fontFamily || "Arial"}
+          </span>
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      </div>
+
+      {/* Font Style Section */}
+      <div className="space-y-2">
+        <div className="text-center text-sm text-gray-500">Estilo de fonte</div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center p-2 px-3 border rounded-md bg-white w-1/2 mr-2">
+            <span className="flex-1 text-xs">
+              {element.style.fontWeight === 'bold' ? "Bold" : "Medium"}
+            </span>
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+
+          <div className="flex space-x-2">
+            <button
+              onClick={() => toggleFontStyle("italic")}
+              className={`p-2 rounded-md ${element.style.fontStyle === "italic" ? "bg-gray-200" : "bg-white border"}`}
+            >
+              <Italic size={16} />
+            </button>
+            <button
+              onClick={() => toggleFontStyle("underline")}
+              className={`p-2 rounded-md ${element.style.textDecoration?.includes("underline") ? "bg-gray-200" : "bg-white border"}`}
+            >
+              <Underline size={16} />
+            </button>
+            <button
+              onClick={() => toggleFontStyle("line-through")}
+              className={`p-2 rounded-md ${element.style.textDecoration?.includes("line-through") ? "bg-gray-200" : "bg-white border"}`}
+            >
+              <Strikethrough size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Font Size, Line Height, Letter Spacing Controls */}
+      <div className="flex justify-center space-x-4">
+        {/* Font Size */}
+        <div className="flex flex-col items-center space-y-1">
+          <span className="text-xs text-gray-700">Aa</span>
+          <div className="flex items-center bg-gray-100 rounded-md px-2 py-1">
+            <button onClick={decreaseFontSize} className="p-1">
+              <Minus size={14} />
+            </button>
+            <span className="mx-2 text-xs">{element.style.fontSize || 16}</span>
+            <button onClick={increaseFontSize} className="p-1">
+              <Plus size={14} />
+            </button>
+          </div>
+        </div>
+
+        {/* Line Height */}
+        <div className="flex flex-col items-center space-y-1">
+          <span className="text-xs text-gray-700">
+            <MoveVertical size={14} />
+          </span>
+          <div className="flex items-center bg-gray-100 rounded-md px-2 py-1">
+            <button onClick={decreaseLineHeight} className="p-1">
+              <Minus size={14} />
+            </button>
+            <span className="mx-2 text-xs">{element.style.lineHeight || 1.5}</span>
+            <button onClick={increaseLineHeight} className="p-1">
+              <Plus size={14} />
+            </button>
+          </div>
+        </div>
+
+        {/* Letter Spacing */}
+        <div className="flex flex-col items-center space-y-1">
+          <span className="text-xs text-gray-700">
+            <MoveHorizontal size={14} />
+          </span>
+          <div className="flex items-center bg-gray-100 rounded-md px-2 py-1">
+            <button onClick={decreaseLetterSpacing} className="p-1">
+              <Minus size={14} />
+            </button>
+            <span className="mx-2 text-xs">{element.style.letterSpacing || 0}</span>
+            <button onClick={increaseLetterSpacing} className="p-1">
+              <Plus size={14} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Text Alignment */}
+      <div className="space-y-2">
+        <div className="text-center text-sm text-gray-500">Parágrafo</div>
+        <div className="flex justify-center space-x-2">
+          <button
+            onClick={() => updateElementStyle("textAlign", "left")}
+            className={`p-2 rounded-md ${element.style.textAlign === "left" ? "bg-gray-200" : "bg-white border"}`}
+          >
+            <AlignLeft size={16} />
+          </button>
+          <button
+            onClick={() => updateElementStyle("textAlign", "center")}
+            className={`p-2 rounded-md ${element.style.textAlign === "center" ? "bg-gray-200" : "bg-white border"}`}
+          >
+            <AlignCenter size={16} />
+          </button>
+          <button
+            onClick={() => updateElementStyle("textAlign", "right")}
+            className={`p-2 rounded-md ${element.style.textAlign === "right" ? "bg-gray-200" : "bg-white border"}`}
+          >
+            <AlignRight size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Vertical Alignment */}
+      <div className="space-y-2">
+        <div className="text-center text-sm text-gray-500">Alinhamento</div>
+        <div className="flex justify-center space-x-2">
+          <button
+            onClick={() => updateElementStyle("verticalAlign", "top")}
+            className={`p-2 rounded-md ${element.style.verticalAlign === "top" ? "bg-gray-200" : "bg-white border"}`}
+          >
+            <AlignStartVertical size={16} />
+          </button>
+          <button
+            onClick={() => updateElementStyle("verticalAlign", "middle")}
+            className={`p-2 rounded-md ${element.style.verticalAlign === "middle" ? "bg-gray-200" : "bg-white border"}`}
+          >
+            <AlignVerticalDistributeCenter size={16} />
+          </button>
+          <button
+            onClick={() => updateElementStyle("verticalAlign", "bottom")}
+            className={`p-2 rounded-md ${element.style.verticalAlign === "bottom" ? "bg-gray-200" : "bg-white border"}`}
+          >
+            <AlignEndVertical size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Color Section - Using the simplified color picker from ButtonPanel */}
+      <div className="space-y-2">
+        <div className="text-center text-sm text-gray-500">Cor</div>
+        <div>
+          <label className="text-xs text-gray-500">Cor do texto</label>
+          <div className="flex mt-1">
+            <input
+              type="color"
+              value={element.style.color || "#000000"}
+              onChange={(e) => updateElementStyle("color", e.target.value)}
+              className="w-10 h-10 rounded cursor-pointer"
+            />
+            <input
+              type="text"
+              value={element.style.color || "#000000"}
+              onChange={(e) => updateElementStyle("color", e.target.value)}
+              className="flex-1 px-3 py-2 border rounded ml-2"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Render the appropriate panel based on active tab
   return (
-    <div className="p-4 space-y-4">
-      <Tabs defaultValue="content">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="content">Conteúdo</TabsTrigger>
-          <TabsTrigger value="style">Estilo</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="content" className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm text-center w-full block text-gray-600">Conteúdo</label>
-            <textarea
-              className="w-full h-24 p-2 border rounded resize-none focus:outline-none focus:ring-2 focus:ring-purple-500"
-              value={textContent}
-              onChange={handleTextChange}
-              placeholder="Digite seu texto aqui..."
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <label className="text-sm text-center w-full block text-gray-600">Vincular a</label>
-            <div className="border rounded p-2 flex justify-between items-center">
-              <span className="text-sm">Página da Web</span>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4 6L8 10L12 6" stroke="#414651" strokeLinecap="round" strokeLinejoin="round"></path>
-              </svg>
-            </div>
-            <Input 
-              className="text-sm placeholder:text-gray-400" 
-              placeholder="Link" 
-            />
-            <div className="flex items-center gap-2">
-              <input type="checkbox" id="new-tab" className="rounded" />
-              <label htmlFor="new-tab" className="text-xs text-gray-600">Abrir link em nova guia</label>
-            </div>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="style" className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm text-center w-full block text-gray-600">Tipografia</label>
-            <FontSelector 
-              value={selectedElement?.style.fontFamily || "Inter"} 
-              onChange={(font) => updateElementStyle("fontFamily", font)} 
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <label className="text-sm text-center w-full block text-gray-600">Estilo de fonte</label>
-            <div className="flex justify-between items-center">
-              <select 
-                className="flex-1 p-2 border rounded text-sm" 
-                value={selectedElement?.style.fontWeight || "normal"}
-                onChange={(e) => updateElementStyle("fontWeight", e.target.value)}
-              >
-                <option value="normal">Regular</option>
-                <option value="medium">Medium</option>
-                <option value="bold">Bold</option>
-              </select>
-              
-              <ButtonGroup 
-                buttons={[
-                  { 
-                    icon: <Bold size={16} />, 
-                    active: selectedElement?.style.fontWeight === "bold", 
-                    onClick: () => handleFontStyleChange("bold")
-                  },
-                  { 
-                    icon: <Italic size={16} />, 
-                    active: selectedElement?.style.fontStyle === "italic", 
-                    onClick: () => handleFontStyleChange("italic")
-                  },
-                  { 
-                    icon: <Underline size={16} />, 
-                    active: selectedElement?.style.textDecoration === "underline", 
-                    onClick: () => handleFontStyleChange("underline")
-                  },
-                ]} 
-              />
-            </div>
-          </div>
-          
-          <div className="flex justify-center items-center gap-4">
-            {renderSizeControl("Aa", fontSize, handleFontSizeChange, 8, 72)}
-            {renderSizeControl("↕", lineHeight, handleLineHeightChange, 0.5, 3, 0.1)}
-            {renderSizeControl("↔", letterSpacing, handleLetterSpacingChange, -2, 10, 0.1)}
-          </div>
-          
-          <div className="space-y-2">
-            <label className="text-sm text-center w-full block text-gray-600">Parágrafo</label>
-            <ButtonGroup 
-              buttons={[
-                { 
-                  icon: <AlignLeft size={16} />, 
-                  active: selectedElement?.style.textAlign === "left", 
-                  onClick: () => handleTextAlignChange("left")
-                },
-                { 
-                  icon: <AlignCenter size={16} />, 
-                  active: selectedElement?.style.textAlign === "center", 
-                  onClick: () => handleTextAlignChange("center")
-                },
-                { 
-                  icon: <AlignRight size={16} />, 
-                  active: selectedElement?.style.textAlign === "right", 
-                  onClick: () => handleTextAlignChange("right")
-                },
-                { 
-                  icon: <AlignJustify size={16} />, 
-                  active: selectedElement?.style.textAlign === "justify", 
-                  onClick: () => handleTextAlignChange("justify")
-                },
-              ]} 
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <label className="text-sm text-center w-full block text-gray-600">Cor</label>
-            <div className="flex items-center gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <div 
-                    className="w-8 h-8 rounded cursor-pointer border"
-                    style={{ backgroundColor: textColor }}
-                  ></div>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-3">
-                  <HexColorPicker color={textColor} onChange={handleColorChange} />
-                  <div className="flex mt-2">
-                    <Input 
-                      value={textColor} 
-                      onChange={(e) => handleColorChange(e.target.value)}
-                      className="text-xs" 
-                    />
-                  </div>
-                </PopoverContent>
-              </Popover>
-              <span className="text-sm flex-1">
-                {textColor.toUpperCase()}
-              </span>
-            </div>
-          </div>
-          
-        </TabsContent>
-      </Tabs>
+    <div>
+      {activeTab === "content" ? <ContentPanel /> : <StylePanel />}
     </div>
   );
 };
