@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -23,8 +23,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { HexColorPicker } from "react-colorful";
 import { 
   Box,
   Image,
@@ -34,43 +36,70 @@ import {
   Trash2, 
   Edit,
   Upload,
-  Palette
+  Palette,
+  FolderPlus,
+  Folder,
+  MoveHorizontal
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 // Type definitions
-type BrandColor = {
+type BrandItemBase = {
   id: string;
+  name: string;
+};
+
+type BrandColor = BrandItemBase & {
+  type: "color";
   color: string;
 };
 
-type BrandLogo = {
-  id: string;
+type BrandLogo = BrandItemBase & {
+  type: "logo";
   url: string;
-  name: string;
 };
+
+type BrandTextStyle = BrandItemBase & {
+  type: "textStyle";
+  style: {
+    fontFamily: string;
+    fontSize: number;
+    fontWeight: string;
+    color: string;
+    lineHeight: number;
+  };
+};
+
+type BrandItem = BrandColor | BrandLogo | BrandTextStyle;
 
 type BrandFolder = {
   id: string;
   name: string;
-  items: (BrandColor | BrandLogo)[];
-  type: "colors" | "logos";
+  type: "colors" | "logos" | "textStyles";
+  parentId?: string;
+  items: BrandItem[];
+  subfolders?: string[];
 };
 
-// Initial state with dummy data
-const initialFolders: Record<string, BrandFolder[]> = {
-  colors: [
+export const BrandPanel = () => {
+  // State for all folders and ungrouped items
+  const [folders, setFolders] = useState<BrandFolder[]>([
     {
       id: "primary-colors",
       name: "Primary",
       type: "colors",
       items: [
-        { id: "color-1", color: "#2C1C5F" },
-        { id: "color-2", color: "#42307D" },
-        { id: "color-3", color: "#53389E" },
-        { id: "color-4", color: "#7F56D9" },
-        { id: "color-5", color: "#B692F6" },
-        { id: "color-6", color: "#E9D7FE" },
+        { id: "color-1", name: "Primary 900", type: "color", color: "#2C1C5F" },
+        { id: "color-2", name: "Primary 800", type: "color", color: "#42307D" },
+        { id: "color-3", name: "Primary 700", type: "color", color: "#53389E" },
+        { id: "color-4", name: "Primary 600", type: "color", color: "#7F56D9" },
+        { id: "color-5", name: "Primary 500", type: "color", color: "#B692F6" },
+        { id: "color-6", name: "Primary 400", type: "color", color: "#E9D7FE" },
       ],
     },
     {
@@ -78,129 +107,713 @@ const initialFolders: Record<string, BrandFolder[]> = {
       name: "Secondary",
       type: "colors",
       items: [
-        { id: "color-7", color: "#B54708" },
-        { id: "color-8", color: "#FDB022" },
-        { id: "color-9", color: "#252B37" },
+        { id: "color-7", name: "Secondary 700", type: "color", color: "#B54708" },
+        { id: "color-8", name: "Secondary 500", type: "color", color: "#FDB022" },
+        { id: "color-9", name: "Secondary 900", type: "color", color: "#252B37" },
       ],
     },
-  ],
-  logos: [
     {
       id: "primary-logos",
       name: "Primary",
       type: "logos",
       items: [
-        { id: "logo-1", url: "", name: "Logo 1" },
-        { id: "logo-2", url: "", name: "Logo 2" },
-        { id: "logo-3", url: "", name: "Logo 3" },
-        { id: "logo-4", url: "", name: "Logo 4" },
+        { id: "logo-1", name: "Logo 1", type: "logo", url: "" },
+        { id: "logo-2", name: "Logo 2", type: "logo", url: "" },
+        { id: "logo-3", name: "Logo 3", type: "logo", url: "" },
+        { id: "logo-4", name: "Logo 4", type: "logo", url: "" },
       ],
     },
-  ],
-};
-
-export const BrandPanel = () => {
-  const [folders, setFolders] = useState<Record<string, BrandFolder[]>>(initialFolders);
+  ]);
+  
+  const [ungroupedItems, setUngroupedItems] = useState<BrandItem[]>([]);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; item: any } | null>(null);
-  const [isAddingColor, setIsAddingColor] = useState(false);
-  const [isAddingLogo, setIsAddingLogo] = useState(false);
   const [isAddingFolder, setIsAddingFolder] = useState(false);
-  const [newColor, setNewColor] = useState("#7F56D9");
   const [newFolderName, setNewFolderName] = useState("");
-  const [newFolderType, setNewFolderType] = useState<"colors" | "logos">("colors");
+  const [newFolderType, setNewFolderType] = useState<"colors" | "logos" | "textStyles">("colors");
+  const [newFolderParentId, setNewFolderParentId] = useState<string | undefined>(undefined);
+  const [newColor, setNewColor] = useState("#7F56D9");
+  const [newColorName, setNewColorName] = useState("");
+  const [newLogoName, setNewLogoName] = useState("");
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
-
-  // Add new color
-  const handleAddColor = (folderId: string) => {
-    const category = "colors";
-    setFolders((prev) => {
-      const newFolders = { ...prev };
-      const folderIndex = newFolders[category].findIndex((f) => f.id === folderId);
-      
-      if (folderIndex !== -1) {
-        const newItem = { id: `color-${Date.now()}`, color: newColor };
-        newFolders[category][folderIndex].items.push(newItem);
-      }
-      
-      return newFolders;
-    });
-    setIsAddingColor(false);
-  };
-
-  // Add new logo (placeholder functionality)
-  const handleAddLogo = (folderId: string) => {
-    const category = "logos";
-    setFolders((prev) => {
-      const newFolders = { ...prev };
-      const folderIndex = newFolders[category].findIndex((f) => f.id === folderId);
-      
-      if (folderIndex !== -1) {
-        const newItem = { id: `logo-${Date.now()}`, url: "", name: `Logo ${Date.now()}` };
-        newFolders[category][folderIndex].items.push(newItem);
-      }
-      
-      return newFolders;
-    });
-    setIsAddingLogo(false);
-  };
-
+  const [draggedItem, setDraggedItem] = useState<{ id: string; type: string } | null>(null);
+  const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
+  const [dragOverItem, setDragOverItem] = useState<string | null>(null);
+  const [dragHoldTimer, setDragHoldTimer] = useState<NodeJS.Timeout | null>(null);
+  
   // Add new folder
   const handleAddFolder = () => {
     if (!newFolderName.trim()) return;
     
-    setFolders((prev) => {
-      const newFolders = { ...prev };
-      const newFolder: BrandFolder = {
-        id: `${newFolderType}-${Date.now()}`,
-        name: newFolderName,
-        type: newFolderType,
-        items: [],
-      };
-      
-      newFolders[newFolderType] = [...newFolders[newFolderType], newFolder];
-      return newFolders;
-    });
+    const newFolder: BrandFolder = {
+      id: `${newFolderType}-${Date.now()}`,
+      name: newFolderName,
+      type: newFolderType,
+      parentId: newFolderParentId,
+      items: [],
+    };
+    
+    setFolders(prev => [...prev, newFolder]);
+    
+    // If this is a subfolder, update parent folder reference
+    if (newFolderParentId) {
+      setFolders(prev => 
+        prev.map(folder => 
+          folder.id === newFolderParentId
+            ? { 
+                ...folder, 
+                subfolders: [...(folder.subfolders || []), newFolder.id] 
+              }
+            : folder
+        )
+      );
+    }
     
     setNewFolderName("");
+    setNewFolderParentId(undefined);
     setIsAddingFolder(false);
   };
 
-  // Delete item
-  const handleDeleteItem = (category: "colors" | "logos", folderId: string, itemId: string) => {
-    setFolders((prev) => {
-      const newFolders = { ...prev };
-      const folderIndex = newFolders[category].findIndex((f) => f.id === folderId);
-      
-      if (folderIndex !== -1) {
-        newFolders[category][folderIndex].items = newFolders[category][folderIndex].items.filter(
-          (item) => item.id !== itemId
-        );
-      }
-      
-      return newFolders;
-    });
-    setContextMenu(null);
+  // Add new color to folder
+  const handleAddColor = () => {
+    if (!selectedFolder || !newColorName.trim()) return;
+    
+    const newItem: BrandColor = { 
+      id: `color-${Date.now()}`,
+      name: newColorName,
+      type: "color", 
+      color: newColor 
+    };
+    
+    setFolders(prev => 
+      prev.map(folder => 
+        folder.id === selectedFolder
+          ? { ...folder, items: [...folder.items, newItem] }
+          : folder
+      )
+    );
+    
+    setNewColor("#7F56D9");
+    setNewColorName("");
+  };
+
+  // Add new logo
+  const handleAddLogo = () => {
+    if (!selectedFolder || !newLogoName.trim()) return;
+    
+    const newItem: BrandLogo = { 
+      id: `logo-${Date.now()}`, 
+      name: newLogoName,
+      type: "logo", 
+      url: "" 
+    };
+    
+    setFolders(prev => 
+      prev.map(folder => 
+        folder.id === selectedFolder
+          ? { ...folder, items: [...folder.items, newItem] }
+          : folder
+      )
+    );
+    
+    setNewLogoName("");
+  };
+
+  // Delete folder
+  const handleDeleteFolder = (folderId: string) => {
+    // Check if folder has a parent
+    const folder = folders.find(f => f.id === folderId);
+    if (folder?.parentId) {
+      // Remove folder from parent's subfolders
+      setFolders(prev => 
+        prev.map(f => 
+          f.id === folder.parentId
+            ? { 
+                ...f, 
+                subfolders: f.subfolders?.filter(id => id !== folderId) 
+              }
+            : f
+        )
+      );
+    }
+    
+    // Remove folder and add its items to ungrouped
+    const folderToDelete = folders.find(f => f.id === folderId);
+    if (folderToDelete) {
+      setUngroupedItems(prev => [...prev, ...folderToDelete.items]);
+    }
+    
+    setFolders(prev => prev.filter(folder => folder.id !== folderId));
+  };
+
+  // Delete item from folder or ungrouped
+  const handleDeleteItem = (itemId: string, folderId?: string) => {
+    if (folderId) {
+      setFolders(prev => 
+        prev.map(folder => 
+          folder.id === folderId
+            ? { ...folder, items: folder.items.filter(item => item.id !== itemId) }
+            : folder
+        )
+      );
+    } else {
+      setUngroupedItems(prev => prev.filter(item => item.id !== itemId));
+    }
   };
 
   // Edit color
-  const handleEditColor = (folderId: string, itemId: string, newColor: string) => {
-    setFolders((prev) => {
-      const newFolders = { ...prev };
-      const folderIndex = newFolders.colors.findIndex((f) => f.id === folderId);
-      
-      if (folderIndex !== -1) {
-        const itemIndex = newFolders.colors[folderIndex].items.findIndex((item) => item.id === itemId);
-        if (itemIndex !== -1) {
-          (newFolders.colors[folderIndex].items[itemIndex] as BrandColor).color = newColor;
-        }
-      }
-      
-      return newFolders;
-    });
-    setContextMenu(null);
+  const handleEditColor = (itemId: string, newColor: string, newName: string, folderId?: string) => {
+    if (folderId) {
+      setFolders(prev => 
+        prev.map(folder => 
+          folder.id === folderId
+            ? { 
+                ...folder, 
+                items: folder.items.map(item => 
+                  item.id === itemId && item.type === "color"
+                    ? { ...item, color: newColor, name: newName }
+                    : item
+                ) 
+              }
+            : folder
+        )
+      );
+    } else {
+      setUngroupedItems(prev => 
+        prev.map(item => 
+          item.id === itemId && item.type === "color"
+            ? { ...item, color: newColor, name: newName }
+            : item
+        )
+      );
+    }
   };
 
-  // Render Brand Panel
+  // Handle drag start
+  const handleDragStart = (e: React.DragEvent, id: string, type: string) => {
+    e.dataTransfer.setData("id", id);
+    e.dataTransfer.setData("type", type);
+    setDraggedItem({ id, type });
+  };
+
+  // Handle drag over
+  const handleDragOver = (e: React.DragEvent, targetId: string, isFolder: boolean) => {
+    e.preventDefault();
+    
+    if (isFolder) {
+      setDragOverFolder(targetId);
+      setDragOverItem(null);
+    } else {
+      setDragOverItem(targetId);
+      
+      // If dragging over another item for a set period, prepare to create a folder
+      if (draggedItem && draggedItem.id !== targetId) {
+        if (dragHoldTimer) clearTimeout(dragHoldTimer);
+        
+        const timer = setTimeout(() => {
+          // Prepare to create a folder from these two items
+          console.log("Ready to create folder from", draggedItem.id, "and", targetId);
+        }, 800); // 800ms hold to create a folder
+        
+        setDragHoldTimer(timer);
+      }
+    }
+  };
+
+  // Handle drag leave
+  const handleDragLeave = () => {
+    setDragOverFolder(null);
+    setDragOverItem(null);
+    
+    if (dragHoldTimer) {
+      clearTimeout(dragHoldTimer);
+      setDragHoldTimer(null);
+    }
+  };
+
+  // Handle drop on folder
+  const handleDropOnFolder = (e: React.DragEvent, targetFolderId: string) => {
+    e.preventDefault();
+    
+    const itemId = e.dataTransfer.getData("id");
+    const itemType = e.dataTransfer.getData("type");
+    
+    if (!itemId) return;
+    
+    // If dropping a folder into another folder (make it a subfolder)
+    if (itemType === "folder") {
+      // Can't drop folder into itself
+      if (itemId === targetFolderId) return;
+      
+      // Update the folder's parentId
+      setFolders(prev => 
+        prev.map(folder => 
+          folder.id === itemId
+            ? { ...folder, parentId: targetFolderId }
+            : folder
+        )
+      );
+      
+      // Add as subfolder to target
+      setFolders(prev => 
+        prev.map(folder => 
+          folder.id === targetFolderId
+            ? { 
+                ...folder, 
+                subfolders: [...(folder.subfolders || []), itemId] 
+              }
+            : folder
+        )
+      );
+      
+      setDraggedItem(null);
+      setDragOverFolder(null);
+      return;
+    }
+    
+    // If dropping an item, find it and move it to the folder
+    let foundItem: BrandItem | undefined;
+    let sourceFolder: string | undefined;
+    
+    // Check if item is in a folder
+    folders.forEach(folder => {
+      const item = folder.items.find(item => item.id === itemId);
+      if (item) {
+        foundItem = item;
+        sourceFolder = folder.id;
+      }
+    });
+    
+    // If not in a folder, check ungrouped items
+    if (!foundItem) {
+      foundItem = ungroupedItems.find(item => item.id === itemId);
+    }
+    
+    if (!foundItem) return;
+    
+    // Remove item from source
+    if (sourceFolder) {
+      setFolders(prev => 
+        prev.map(folder => 
+          folder.id === sourceFolder
+            ? { ...folder, items: folder.items.filter(item => item.id !== itemId) }
+            : folder
+        )
+      );
+    } else {
+      setUngroupedItems(prev => prev.filter(item => item.id !== itemId));
+    }
+    
+    // Add item to target folder
+    setFolders(prev => 
+      prev.map(folder => 
+        folder.id === targetFolderId
+          ? { ...folder, items: [...folder.items, foundItem!] }
+          : folder
+      )
+    );
+    
+    setDraggedItem(null);
+    setDragOverFolder(null);
+  };
+
+  // Handle drop on item (potentially create a new folder)
+  const handleDropOnItem = (e: React.DragEvent, targetItemId: string, targetFolderId?: string) => {
+    e.preventDefault();
+    
+    const itemId = e.dataTransfer.getData("id");
+    
+    if (!itemId || itemId === targetItemId) return;
+    
+    // Only create a folder if the drag hold was long enough
+    if (dragHoldTimer) {
+      // Create a new folder with both items
+      const sourceItem = findItem(itemId);
+      const targetItem = findItem(targetItemId);
+      
+      if (sourceItem && targetItem) {
+        // Remove both items from their current locations
+        removeItemFromSource(itemId);
+        removeItemFromSource(targetItemId);
+        
+        // Create a new folder
+        const newFolder: BrandFolder = {
+          id: `folder-${Date.now()}`,
+          name: "New Group",
+          type: sourceItem.type === "color" || targetItem.type === "color" ? "colors" : 
+                sourceItem.type === "logo" || targetItem.type === "logo" ? "logos" : "textStyles",
+          items: [sourceItem, targetItem]
+        };
+        
+        setFolders(prev => [...prev, newFolder]);
+      }
+    } else {
+      // Normal drop - if dragging to an item in a folder, add to that folder
+      if (targetFolderId) {
+        // Find and move the dragged item
+        const draggedItem = findItem(itemId);
+        if (draggedItem) {
+          removeItemFromSource(itemId);
+          
+          // Add to target folder
+          setFolders(prev => 
+            prev.map(folder => 
+              folder.id === targetFolderId
+                ? { ...folder, items: [...folder.items, draggedItem] }
+                : folder
+            )
+          );
+        }
+      }
+    }
+    
+    setDraggedItem(null);
+    setDragOverItem(null);
+    
+    if (dragHoldTimer) {
+      clearTimeout(dragHoldTimer);
+      setDragHoldTimer(null);
+    }
+  };
+
+  // Handle drop on ungrouped area
+  const handleDropOnUngrouped = (e: React.DragEvent) => {
+    e.preventDefault();
+    
+    const itemId = e.dataTransfer.getData("id");
+    const itemType = e.dataTransfer.getData("type");
+    
+    if (!itemId) return;
+    
+    // If dropping a folder, move its items to ungrouped and delete folder
+    if (itemType === "folder") {
+      const folder = folders.find(f => f.id === itemId);
+      if (folder) {
+        setUngroupedItems(prev => [...prev, ...folder.items]);
+        
+        // Remove folder and update parent if needed
+        if (folder.parentId) {
+          setFolders(prev => 
+            prev.map(f => 
+              f.id === folder.parentId
+                ? { 
+                    ...f, 
+                    subfolders: f.subfolders?.filter(id => id !== itemId) 
+                  }
+                : f
+            )
+          );
+        }
+        
+        setFolders(prev => prev.filter(f => f.id !== itemId));
+      }
+    } else {
+      // If dropping an item, move it to ungrouped
+      const item = findItem(itemId);
+      if (item) {
+        removeItemFromSource(itemId);
+        setUngroupedItems(prev => [...prev, item]);
+      }
+    }
+    
+    setDraggedItem(null);
+  };
+
+  // Helper functions to find and remove items
+  const findItem = (itemId: string): BrandItem | undefined => {
+    let foundItem: BrandItem | undefined;
+    
+    // Check in folders
+    folders.forEach(folder => {
+      const item = folder.items.find(item => item.id === itemId);
+      if (item) foundItem = item;
+    });
+    
+    // Check in ungrouped
+    if (!foundItem) {
+      foundItem = ungroupedItems.find(item => item.id === itemId);
+    }
+    
+    return foundItem;
+  };
+  
+  const removeItemFromSource = (itemId: string) => {
+    // Remove from folders
+    setFolders(prev => 
+      prev.map(folder => ({
+        ...folder,
+        items: folder.items.filter(item => item.id !== itemId)
+      }))
+    );
+    
+    // Remove from ungrouped
+    setUngroupedItems(prev => prev.filter(item => item.id !== itemId));
+  };
+
+  // Render color item
+  const renderColorItem = (item: BrandColor, folderId?: string) => (
+    <ContextMenu>
+      <ContextMenuTrigger>
+        <div
+          key={item.id}
+          className={`h-12 rounded-md relative group cursor-pointer ${
+            dragOverItem === item.id ? "ring-2 ring-blue-400" : ""
+          }`}
+          style={{ backgroundColor: item.color }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setContextMenu({ 
+              x: e.clientX, 
+              y: e.clientY, 
+              item: { ...item, folderId } 
+            });
+          }}
+          draggable
+          onDragStart={(e) => handleDragStart(e, item.id, "item")}
+          onDragOver={(e) => handleDragOver(e, item.id, false)}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDropOnItem(e, item.id, folderId)}
+        >
+          <div className="absolute bottom-1 left-1 text-xs bg-white/80 px-1 rounded">
+            {item.name}
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-1 right-1 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 bg-white/70 hover:bg-white"
+              >
+                <MoreVertical size={14} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                onClick={() => {
+                  const newName = prompt("Enter new name:", item.name);
+                  const newColorValue = prompt("Enter new color hex code:", item.color);
+                  if (newName && newColorValue) {
+                    handleEditColor(item.id, newColorValue, newName, folderId);
+                  }
+                }}
+              >
+                <Edit className="mr-2 h-4 w-4" />
+                <span>Editar</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleDeleteItem(item.id, folderId)}
+                className="text-red-600"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                <span>Excluir</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem
+          onClick={() => {
+            const newName = prompt("Enter new name:", item.name);
+            const newColorValue = prompt("Enter new color hex code:", item.color);
+            if (newName && newColorValue) {
+              handleEditColor(item.id, newColorValue, newName, folderId);
+            }
+          }}
+        >
+          <Edit className="mr-2 h-4 w-4" />
+          <span>Editar</span>
+        </ContextMenuItem>
+        <ContextMenuItem
+          onClick={() => handleDeleteItem(item.id, folderId)}
+          className="text-red-600"
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          <span>Excluir</span>
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+
+  // Render logo item
+  const renderLogoItem = (item: BrandLogo, folderId?: string) => (
+    <ContextMenu>
+      <ContextMenuTrigger>
+        <div
+          key={item.id}
+          className={`h-12 rounded-md bg-gray-200 flex items-center justify-center relative group cursor-pointer ${
+            dragOverItem === item.id ? "ring-2 ring-blue-400" : ""
+          }`}
+          draggable
+          onDragStart={(e) => handleDragStart(e, item.id, "item")}
+          onDragOver={(e) => handleDragOver(e, item.id, false)}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDropOnItem(e, item.id, folderId)}
+        >
+          <Image className="h-6 w-6 text-gray-400" />
+          <div className="absolute bottom-1 left-1 text-xs bg-white/80 px-1 rounded">
+            {item.name}
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-1 right-1 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 bg-white/70 hover:bg-white"
+              >
+                <MoreVertical size={14} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem>
+                <Edit className="mr-2 h-4 w-4" />
+                <span>Editar</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleDeleteItem(item.id, folderId)}
+                className="text-red-600"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                <span>Excluir</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem>
+          <Edit className="mr-2 h-4 w-4" />
+          <span>Editar</span>
+        </ContextMenuItem>
+        <ContextMenuItem
+          onClick={() => handleDeleteItem(item.id, folderId)}
+          className="text-red-600"
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          <span>Excluir</span>
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+
+  // Render folder
+  const renderFolder = (folder: BrandFolder) => {
+    const isExpanded = true; // Replace with state if you want collapsible folders
+    
+    return (
+      <div 
+        key={folder.id}
+        className={`border rounded-md mb-2 overflow-hidden ${
+          dragOverFolder === folder.id ? "bg-blue-50 border-blue-300" : ""
+        }`}
+        draggable
+        onDragStart={(e) => handleDragStart(e, folder.id, "folder")}
+        onDragOver={(e) => handleDragOver(e, folder.id, true)}
+        onDragLeave={handleDragLeave}
+        onDrop={(e) => handleDropOnFolder(e, folder.id)}
+      >
+        <div className="flex items-center justify-between p-2 bg-gray-50">
+          <div className="flex items-center">
+            <Folder className="h-4 w-4 mr-2 text-gray-500" />
+            <span className="text-sm font-medium">{folder.name}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6"
+                  onClick={() => {
+                    setSelectedFolder(folder.id);
+                    setNewFolderParentId(folder.id);
+                    setIsAddingFolder(true);
+                  }}
+                >
+                  <FolderPlus size={14} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Add Subfolder</TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6"
+                  onClick={() => {
+                    setSelectedFolder(folder.id);
+                    if (folder.type === "colors") {
+                      setNewColorName("");
+                      setNewColor("#7F56D9");
+                    } else if (folder.type === "logos") {
+                      setNewLogoName("");
+                    }
+                  }}
+                >
+                  <Plus size={14} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Add Item</TooltipContent>
+            </Tooltip>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-6 w-6">
+                  <MoreVertical size={14} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem>
+                  <Edit className="mr-2 h-4 w-4" />
+                  <span>Rename</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => handleDeleteFolder(folder.id)}
+                  className="text-red-600"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  <span>Delete</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+        
+        {isExpanded && (
+          <div className="p-2">
+            {/* Render subfolders if any */}
+            {folder.subfolders && folder.subfolders.length > 0 && (
+              <div className="pl-4 border-l border-gray-200 mb-2">
+                {folder.subfolders.map(subfolderId => {
+                  const subfolder = folders.find(f => f.id === subfolderId);
+                  return subfolder ? renderFolder(subfolder) : null;
+                })}
+              </div>
+            )}
+            
+            {/* Render items */}
+            <div className="grid grid-cols-2 gap-2">
+              {folder.items.map((item) => (
+                item.type === "color" 
+                  ? renderColorItem(item, folder.id)
+                  : item.type === "logo"
+                    ? renderLogoItem(item, folder.id)
+                    : null
+              ))}
+              
+              {folder.items.length === 0 && (
+                <div className="col-span-2 text-sm text-gray-400 text-center py-2">
+                  No items in this folder
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="h-full w-full overflow-hidden">
       <div className="p-4">
@@ -307,7 +920,7 @@ export const BrandPanel = () => {
           </Dialog>
 
           {/* Add Color Dialog */}
-          <Dialog open={isAddingColor} onOpenChange={setIsAddingColor}>
+          <Dialog open={Boolean(selectedFolder) && folders.find(f => f.id === selectedFolder)?.type === "colors"}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>Adicionar Nova Cor</DialogTitle>
@@ -316,28 +929,38 @@ export const BrandPanel = () => {
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="flex gap-4 items-center">
-                  <input
-                    type="color"
-                    value={newColor}
-                    onChange={(e) => setNewColor(e.target.value)}
-                    className="w-16 h-16 rounded cursor-pointer"
-                  />
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="colorName" className="text-sm font-medium">
+                    Nome da Cor
+                  </label>
                   <Input
-                    value={newColor}
-                    onChange={(e) => setNewColor(e.target.value)}
-                    placeholder="#000000"
-                    className="flex-1"
+                    id="colorName"
+                    value={newColorName}
+                    onChange={(e) => setNewColorName(e.target.value)}
+                    placeholder="Primary 500"
+                    className="col-span-3"
                   />
+                </div>
+                <div className="flex gap-4 items-center">
+                  <div className="w-16 h-16 rounded" style={{ backgroundColor: newColor }}></div>
+                  <div className="flex-1">
+                    <HexColorPicker color={newColor} onChange={setNewColor} />
+                    <Input
+                      value={newColor}
+                      onChange={(e) => setNewColor(e.target.value)}
+                      placeholder="#000000"
+                      className="mt-2"
+                    />
+                  </div>
                 </div>
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsAddingColor(false)}>
+                <Button type="button" variant="outline" onClick={() => setSelectedFolder(null)}>
                   Cancelar
                 </Button>
                 <Button 
                   type="button" 
-                  onClick={() => selectedFolder && handleAddColor(selectedFolder)}
+                  onClick={handleAddColor}
                 >
                   Adicionar
                 </Button>
@@ -346,7 +969,7 @@ export const BrandPanel = () => {
           </Dialog>
 
           {/* Add Logo Dialog */}
-          <Dialog open={isAddingLogo} onOpenChange={setIsAddingLogo}>
+          <Dialog open={Boolean(selectedFolder) && folders.find(f => f.id === selectedFolder)?.type === "logos"}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>Adicionar Novo Logo</DialogTitle>
@@ -355,6 +978,18 @@ export const BrandPanel = () => {
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="logoName" className="text-sm font-medium">
+                    Nome do Logo
+                  </label>
+                  <Input
+                    id="logoName"
+                    value={newLogoName}
+                    onChange={(e) => setNewLogoName(e.target.value)}
+                    placeholder="Logo Principal"
+                    className="col-span-3"
+                  />
+                </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-medium">
                     Imagem
@@ -368,12 +1003,12 @@ export const BrandPanel = () => {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsAddingLogo(false)}>
+                <Button type="button" variant="outline" onClick={() => setSelectedFolder(null)}>
                   Cancelar
                 </Button>
                 <Button 
                   type="button" 
-                  onClick={() => selectedFolder && handleAddLogo(selectedFolder)}
+                  onClick={handleAddLogo}
                 >
                   Adicionar
                 </Button>
@@ -381,207 +1016,47 @@ export const BrandPanel = () => {
             </DialogContent>
           </Dialog>
 
-          {/* Colors Section */}
-          <Accordion type="single" collapsible defaultValue="colors" className="w-full">
-            <AccordionItem value="colors" className="border-0">
-              <AccordionTrigger className="py-2 px-3 hover:no-underline hover:bg-gray-100 rounded-md">
-                <div className="flex items-center gap-2">
-                  <Box className="h-4 w-4" />
-                  <span className="text-sm">Colors</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <Accordion type="single" collapsible className="ml-4 border-l pl-2">
-                  {folders.colors.map((folder) => (
-                    <AccordionItem key={folder.id} value={folder.id} className="border-0">
-                      <AccordionTrigger className="py-1 px-3 hover:no-underline hover:bg-gray-100 rounded-md">
-                        <div className="flex items-center gap-2 w-full">
-                          <Layout className="h-4 w-4" />
-                          <span className="text-sm flex-1">{folder.name}</span>
-                          
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 rounded-full opacity-70 hover:opacity-100 hover:bg-gray-200"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedFolder(folder.id);
-                                    setIsAddingColor(true);
-                                  }}
-                                >
-                                  <Plus size={12} />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Adicionar nova cor</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="grid grid-cols-2 gap-2 p-2">
-                          {folder.items.map((item) => (
-                            <div
-                              key={(item as BrandColor).id}
-                              className="h-12 rounded-md relative group"
-                              style={{ backgroundColor: (item as BrandColor).color }}
-                              onContextMenu={(e) => {
-                                e.preventDefault();
-                                setContextMenu({ 
-                                  x: e.clientX, 
-                                  y: e.clientY, 
-                                  item: { ...item, folderId: folder.id } 
-                                });
-                              }}
-                            >
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute top-1 right-1 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 bg-white/70 hover:bg-white"
-                                  >
-                                    <MoreVertical size={14} />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent>
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      // Open color picker dialog for editing
-                                      setNewColor((item as BrandColor).color);
-                                      setContextMenu(null);
-                                      
-                                      // This would ideally open an edit dialog
-                                      const newColor = prompt("Enter new color hex code:", (item as BrandColor).color);
-                                      if (newColor) {
-                                        handleEditColor(folder.id, (item as BrandColor).id, newColor);
-                                      }
-                                    }}
-                                  >
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    <span>Editar</span>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleDeleteItem("colors", folder.id, (item as BrandColor).id)}
-                                    className="text-red-600"
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    <span>Excluir</span>
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+          {/* Folders Section */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium text-gray-700">Brand Assets</h3>
+            
+            {/* Render folders */}
+            {folders.filter(folder => !folder.parentId).map(renderFolder)}
 
-          {/* Logos Section */}
-          <Accordion type="single" collapsible defaultValue="logos" className="w-full">
-            <AccordionItem value="logos" className="border-0">
-              <AccordionTrigger className="py-2 px-3 hover:no-underline hover:bg-gray-100 rounded-md">
-                <div className="flex items-center gap-2">
-                  <Box className="h-4 w-4" />
-                  <span className="text-sm">Logos</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <Accordion type="single" collapsible className="ml-4 border-l pl-2">
-                  {folders.logos.map((folder) => (
-                    <AccordionItem key={folder.id} value={folder.id} className="border-0">
-                      <AccordionTrigger className="py-1 px-3 hover:no-underline hover:bg-gray-100 rounded-md">
-                        <div className="flex items-center gap-2 w-full">
-                          <Layout className="h-4 w-4" />
-                          <span className="text-sm flex-1">{folder.name}</span>
-                          
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 rounded-full opacity-70 hover:opacity-100 hover:bg-gray-200"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedFolder(folder.id);
-                                    setIsAddingLogo(true);
-                                  }}
-                                >
-                                  <Plus size={12} />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Adicionar novo logo</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="grid grid-cols-2 gap-2 p-2">
-                          {folder.items.map((item) => (
-                            <div
-                              key={(item as BrandLogo).id}
-                              className="h-12 rounded-md bg-gray-200 flex items-center justify-center relative group"
-                              onContextMenu={(e) => {
-                                e.preventDefault();
-                                setContextMenu({ 
-                                  x: e.clientX, 
-                                  y: e.clientY, 
-                                  item: { ...item, folderId: folder.id } 
-                                });
-                              }}
-                            >
-                              <Image className="h-6 w-6 text-gray-400" />
-                              
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute top-1 right-1 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 bg-white/70 hover:bg-white"
-                                  >
-                                    <MoreVertical size={14} />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent>
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      // This would ideally open an edit dialog
-                                      setContextMenu(null);
-                                    }}
-                                  >
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    <span>Editar</span>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleDeleteItem("logos", folder.id, (item as BrandLogo).id)}
-                                    className="text-red-600"
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    <span>Excluir</span>
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+            {/* Ungrouped items section */}
+            <div 
+              className={`border rounded-md p-3 ${dragOverFolder === "ungrouped" ? "bg-blue-50 border-blue-300" : "bg-gray-50"}`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOverFolder("ungrouped");
+              }}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDropOnUngrouped}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-medium text-gray-600">Items not in folders</h4>
+                <Button variant="ghost" size="sm" className="h-7 px-2">
+                  <Plus size={14} className="mr-1" /> Add Item
+                </Button>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2">
+                {ungroupedItems.map((item) => (
+                  item.type === "color" 
+                    ? renderColorItem(item)
+                    : item.type === "logo"
+                      ? renderLogoItem(item)
+                      : null
+                ))}
+                
+                {ungroupedItems.length === 0 && (
+                  <div className="col-span-2 text-sm text-gray-400 text-center py-2">
+                    Drag items here to ungroup them
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </ScrollArea>
     </div>

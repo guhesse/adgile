@@ -110,15 +110,29 @@ export const CanvasWorkspace = () => {
         const parent = elements.find(el => el.id === selectedElement.parentId);
         if (parent) {
           // Get position relative to the container
-          newX = snapToGrid(Math.max(0, Math.min(e.clientX - dragStart.x, parent.style.width - selectedElement.style.width)));
-          newY = snapToGrid(Math.max(0, Math.min(e.clientY - dragStart.y, parent.style.height - selectedElement.style.height)));
+          const containerRect = document.getElementById(parent.id)?.getBoundingClientRect();
+          const canvasRect = canvasRef.current.getBoundingClientRect();
+          
+          if (containerRect) {
+            // Calculate position relative to container
+            const relativeX = e.clientX - containerRect.left;
+            const relativeY = e.clientY - containerRect.top;
+            
+            // Apply snapping and boundary limits
+            newX = snapToGrid(Math.max(0, Math.min(relativeX - dragStart.x, parent.style.width - selectedElement.style.width)));
+            newY = snapToGrid(Math.max(0, Math.min(relativeY - dragStart.y, parent.style.height - selectedElement.style.height)));
+          } else {
+            // Fallback
+            newX = snapToGrid(Math.max(0, Math.min(e.clientX - dragStart.x, parent.style.width - selectedElement.style.width)));
+            newY = snapToGrid(Math.max(0, Math.min(e.clientY - dragStart.y, parent.style.height - selectedElement.style.height)));
+          }
         } else {
           // Fallback
           newX = snapToGrid(Math.max(0, Math.min(e.clientX - dragStart.x, selectedSize.width - selectedElement.style.width)));
           newY = snapToGrid(Math.max(0, Math.min(e.clientY - dragStart.y, selectedSize.height - selectedElement.style.height)));
         }
       } else {
-        // Standard positioning
+        // Standard positioning for elements not in a container
         newX = snapToGrid(Math.max(0, Math.min(e.clientX - dragStart.x, selectedSize.width - selectedElement.style.width)));
         newY = snapToGrid(Math.max(0, Math.min(e.clientY - dragStart.y, selectedSize.height - selectedElement.style.height)));
       }
@@ -225,8 +239,35 @@ export const CanvasWorkspace = () => {
       if (hoveredContainer && selectedElement && selectedElement.type !== 'container' && selectedElement.type !== 'layout') {
         // Move the element into the container
         moveElementToContainer(selectedElement, hoveredContainer);
-      } else {
-        // Otherwise, just re-organize elements
+      } else if (isDragging && selectedElement) {
+        // If we're outside any container and the element was previously in a container
+        // Check if we've dragged outside of its parent container
+        if (selectedElement.inContainer && selectedElement.parentId) {
+          const parent = elements.find(el => el.id === selectedElement.parentId);
+          
+          if (parent) {
+            const parentRect = document.getElementById(parent.id)?.getBoundingClientRect();
+            const elementRect = document.getElementById(selectedElement.id)?.getBoundingClientRect();
+            
+            if (parentRect && elementRect) {
+              // Check if element is mostly outside the container
+              const elementCenterX = elementRect.left + elementRect.width / 2;
+              const elementCenterY = elementRect.top + elementRect.height / 2;
+              
+              if (
+                elementCenterX < parentRect.left || 
+                elementCenterX > parentRect.right || 
+                elementCenterY < parentRect.top || 
+                elementCenterY > parentRect.bottom
+              ) {
+                // Remove from container and make it standalone
+                removeElementFromContainer(selectedElement);
+              }
+            }
+          }
+        }
+        
+        // Organize elements to ensure proper layout
         organizeElements();
       }
     }
@@ -268,6 +309,27 @@ export const CanvasWorkspace = () => {
     // Add the element to the container
     const childElements = updatedElements[containerIndex].childElements || [];
     
+    // Get the container's DOM position for reference
+    const containerDom = document.getElementById(containerId);
+    const canvasDom = canvasRef.current;
+    
+    // Calculate the relative position within the container
+    let relativeX = 0;
+    let relativeY = 0;
+    
+    if (containerDom && canvasDom) {
+      const containerRect = containerDom.getBoundingClientRect();
+      const canvasRect = canvasDom.getBoundingClientRect();
+      
+      // Calculate relative position from element's current position to container's position
+      relativeX = snapToGrid(element.style.x - container.style.x);
+      relativeY = snapToGrid(element.style.y - container.style.y);
+      
+      // Ensure the element is within container bounds
+      relativeX = Math.max(0, Math.min(relativeX, container.style.width - element.style.width));
+      relativeY = Math.max(0, Math.min(relativeY, container.style.height - element.style.height));
+    }
+    
     // Update container with the new child
     updatedElements[containerIndex] = {
       ...updatedElements[containerIndex],
@@ -279,9 +341,9 @@ export const CanvasWorkspace = () => {
           parentId: containerId,
           style: {
             ...element.style,
-            // Reset position relative to the container
-            x: 0,
-            y: 0
+            // Set position relative to the container
+            x: relativeX,
+            y: relativeY
           }
         }
       ]
@@ -297,8 +359,61 @@ export const CanvasWorkspace = () => {
       parentId: containerId,
       style: {
         ...element.style,
-        x: 0,
-        y: 0
+        x: relativeX,
+        y: relativeY
+      }
+    });
+  };
+
+  const removeElementFromContainer = (element: any) => {
+    if (!element.inContainer || !element.parentId) return;
+    
+    // Find the parent container
+    const parent = elements.find(el => el.id === element.parentId);
+    if (!parent) return;
+    
+    // Create a copy of the elements array
+    const updatedElements = [...elements];
+    
+    // Calculate new absolute position
+    let newX = parent.style.x + element.style.x;
+    let newY = parent.style.y + element.style.y;
+    
+    // Remove from parent container
+    const parentIndex = updatedElements.findIndex(el => el.id === parent.id);
+    if (parentIndex !== -1) {
+      updatedElements[parentIndex] = {
+        ...updatedElements[parentIndex],
+        childElements: updatedElements[parentIndex].childElements?.filter(child => 
+          child.id !== element.id
+        ) || []
+      };
+    }
+    
+    // Add as standalone element
+    updatedElements.push({
+      ...element,
+      inContainer: false,
+      parentId: undefined,
+      style: {
+        ...element.style,
+        x: newX,
+        y: newY
+      }
+    });
+    
+    // Update elements state
+    setElements(updatedElements);
+    
+    // Update selected element
+    setSelectedElement({
+      ...element,
+      inContainer: false,
+      parentId: undefined,
+      style: {
+        ...element.style,
+        x: newX,
+        y: newY
       }
     });
   };
@@ -308,6 +423,7 @@ export const CanvasWorkspace = () => {
     
     return (
       <div
+        id={element.id}
         key={`${element.id}-${key}`}
         style={{
           position: "absolute",
