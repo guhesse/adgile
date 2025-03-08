@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useCanvas } from "../CanvasContext";
 import { BANNER_SIZES, BannerSize } from "../types";
@@ -13,10 +12,7 @@ import {
 } from "@/components/ui/accordion";
 
 export const SizesPanel = () => {
-  const { selectedSize, setSelectedSize } = useCanvas();
-  const [selectedSizes, setSelectedSizes] = useState<Record<string, boolean>>({
-    [selectedSize.name]: true
-  });
+  const { selectedSize, setSelectedSize, setActiveSizes, activeSizes } = useCanvas();
   
   // Group banner sizes by category
   const groupedSizes = {
@@ -37,64 +33,75 @@ export const SizesPanel = () => {
   };
 
   const handleToggleSize = (size: BannerSize) => {
-    setSelectedSizes({
-      ...selectedSizes,
-      [size.name]: !selectedSizes[size.name]
-    });
+    const isCurrentlyActive = activeSizes.some(s => s.name === size.name);
     
-    // If we're enabling this size and no sizes are currently selected, make it the primary size
-    if (!selectedSizes[size.name] && Object.values(selectedSizes).filter(v => v).length === 0) {
-      setSelectedSize(size);
-    }
-    // If we're disabling the current primary size, choose a new primary size
-    else if (selectedSizes[size.name] && size.name === selectedSize.name) {
-      const nextSelectedSize = Object.entries(selectedSizes).find(([name, isSelected]) => 
-        name !== size.name && isSelected
-      );
-      
-      if (nextSelectedSize) {
-        const newSize = BANNER_SIZES.find(s => s.name === nextSelectedSize[0]);
-        if (newSize) {
-          setSelectedSize(newSize);
+    if (isCurrentlyActive) {
+      // Remove from active sizes if it's not the selected size
+      if (size.name === selectedSize.name && activeSizes.length > 1) {
+        // If removing selected size, choose another one to be selected
+        const nextSize = activeSizes.find(s => s.name !== size.name);
+        if (nextSize) {
+          setSelectedSize(nextSize);
         }
       }
+      
+      // Only remove if not the last active size
+      if (activeSizes.length > 1) {
+        setActiveSizes(activeSizes.filter(s => s.name !== size.name));
+      }
+    } else {
+      // Add to active sizes
+      setActiveSizes([...activeSizes, size]);
     }
   };
 
   const handlePrimarySize = (size: BannerSize) => {
     setSelectedSize(size);
-    // Ensure this size is also selected
-    if (!selectedSizes[size.name]) {
-      setSelectedSizes({
-        ...selectedSizes,
-        [size.name]: true
-      });
+    
+    // If the size is not already active, add it
+    if (!activeSizes.some(s => s.name === size.name)) {
+      setActiveSizes([...activeSizes, size]);
     }
   };
 
   const selectAllInCategory = (category: string) => {
-    const newSelectedSizes = { ...selectedSizes };
+    // Add all sizes in category to active sizes without duplicates
+    const newSizes = [...activeSizes];
     groupedSizes[category].forEach(size => {
-      newSelectedSizes[size.name] = true;
+      if (!newSizes.some(s => s.name === size.name)) {
+        newSizes.push(size);
+      }
     });
-    setSelectedSizes(newSelectedSizes);
+    setActiveSizes(newSizes);
   };
 
   const deselectAllInCategory = (category: string) => {
-    const newSelectedSizes = { ...selectedSizes };
-    groupedSizes[category].forEach(size => {
-      newSelectedSizes[size.name] = false;
-    });
-    setSelectedSizes(newSelectedSizes);
+    // Make sure we're not removing all active sizes
+    const sizesToRemove = new Set(groupedSizes[category].map(size => size.name));
+    const remainingSizes = activeSizes.filter(s => !sizesToRemove.has(s.name));
+    
+    // Keep at least one size active
+    if (remainingSizes.length > 0) {
+      setActiveSizes(remainingSizes);
+      
+      // If the selected size is being removed, change it
+      if (sizesToRemove.has(selectedSize.name)) {
+        setSelectedSize(remainingSizes[0]);
+      }
+    }
   };
 
   const isCategoryPartiallySelected = (category: string) => {
-    const categorySelectedCount = groupedSizes[category].filter(size => selectedSizes[size.name]).length;
+    const categorySelectedCount = groupedSizes[category].filter(
+      size => activeSizes.some(s => s.name === size.name)
+    ).length;
     return categorySelectedCount > 0 && categorySelectedCount < groupedSizes[category].length;
   };
 
   const isCategoryFullySelected = (category: string) => {
-    return groupedSizes[category].every(size => selectedSizes[size.name]);
+    return groupedSizes[category].every(
+      size => activeSizes.some(s => s.name === size.name)
+    );
   };
 
   const handleToggleCategory = (category: string) => {
@@ -148,7 +155,7 @@ export const SizesPanel = () => {
                     >
                       <Checkbox 
                         id={`size-${size.name}`}
-                        checked={selectedSizes[size.name] || false}
+                        checked={activeSizes.some(s => s.name === size.name)}
                         onCheckedChange={() => handleToggleSize(size)}
                       />
                       <div 

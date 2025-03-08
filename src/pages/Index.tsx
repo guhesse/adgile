@@ -1,11 +1,32 @@
-
 import { Canvas } from "@/components/editor/Canvas";
 import { Helmet } from "react-helmet";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CanvasProvider } from "@/components/editor/CanvasContext";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<"email" | "banner">("email");
+  
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !e.repeat) {
+        document.dispatchEvent(new CustomEvent('canvas-spacebar-down'));
+      }
+    };
+    
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        document.dispatchEvent(new CustomEvent('canvas-spacebar-up'));
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
 
   return (
     <div className="flex h-screen">
@@ -46,11 +67,45 @@ const Index = () => {
           href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap" 
           rel="stylesheet" 
         />
+        <link 
+          href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" 
+          rel="stylesheet" 
+        />
+        <link 
+          href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap" 
+          rel="stylesheet" 
+        />
+        <link 
+          href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap" 
+          rel="stylesheet" 
+        />
+        <link 
+          href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&display=swap" 
+          rel="stylesheet" 
+        />
+        <link 
+          href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap" 
+          rel="stylesheet" 
+        />
+        <link 
+          href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" 
+          rel="stylesheet" 
+        />
+        <link 
+          href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap" 
+          rel="stylesheet" 
+        />
+        <link 
+          href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&display=swap" 
+          rel="stylesheet" 
+        />
+        <link 
+          href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&display=swap" 
+          rel="stylesheet" 
+        />
       </Helmet>
       
-      {/* Main Content */}
       <div className="flex flex-col flex-1 ml-0">
-        {/* Top Navigation */}
         <div className="flex items-center border-b h-12 px-4">
           <div className="font-bold mr-6">AdSile</div>
           <nav className="flex space-x-4">
@@ -78,7 +133,6 @@ const Index = () => {
           </div>
         </div>
         
-        {/* CSS for resize handles and dragging */}
         <style>
           {`
           .resize-handle {
@@ -134,7 +188,13 @@ const Index = () => {
             cursor: sw-resize;
           }
           
-          /* Animations */
+          .canvas-pan-mode {
+            cursor: grab !important;
+          }
+          .canvas-pan-mode:active {
+            cursor: grabbing !important;
+          }
+          
           .animate-fade-in {
             animation: fadeIn 0.3s ease-in-out;
           }

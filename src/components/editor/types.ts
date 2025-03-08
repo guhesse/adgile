@@ -47,7 +47,10 @@ export type EditorElement = {
   alt?: string;
   parentId?: string; // Reference to parent container/layout
   inContainer: boolean; // Whether element is inside a container
+  sizeId?: string; // The banner size this element belongs to
 };
+
+export type CanvasNavigationMode = 'edit' | 'pan';
 
 export const BANNER_SIZES: BannerSize[] = [
   // Email

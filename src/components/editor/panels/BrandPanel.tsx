@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Plus, Trash2, Edit, Check, X, FolderPlus, ChevronDown, ChevronRight, MoreHorizontal } from 'lucide-react';
+import { Plus, Trash2, Edit, FolderPlus, ChevronDown, ChevronRight, MoreHorizontal, Move, Folder, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCanvas } from '../CanvasContext';
 import { EditorElement } from '../types';
@@ -18,7 +18,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface BrandPanelProps {
   selectedElement: EditorElement | null;
@@ -30,12 +36,14 @@ interface ColorGroup {
   name: string;
   colors: ColorItem[];
   isOpen?: boolean;
+  icon?: string;
 }
 
 interface ColorItem {
   id: number;
   name: string;
   color: string;
+  textStyle?: TextStyle;
 }
 
 interface TextStyleGroup {
@@ -43,6 +51,7 @@ interface TextStyleGroup {
   name: string;
   styles: TextStyle[];
   isOpen?: boolean;
+  icon?: string;
 }
 
 interface TextStyle {
@@ -58,6 +67,15 @@ interface TextStyle {
   };
 }
 
+// Folder icons options
+const folderIcons = [
+  { name: "Default Folder", icon: <Folder className="h-4 w-4" /> },
+  { name: "Open Folder", icon: <FolderOpen className="h-4 w-4" /> },
+  { name: "Colors", icon: <Folder className="h-4 w-4 text-purple-500" /> },
+  { name: "Typography", icon: <Folder className="h-4 w-4 text-blue-500" /> },
+  { name: "Branding", icon: <Folder className="h-4 w-4 text-green-500" /> },
+];
+
 export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelProps) => {
   // Color groups
   const [colorGroups, setColorGroups] = useState<ColorGroup[]>([
@@ -65,6 +83,7 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
       id: 1, 
       name: 'Brand Colors', 
       isOpen: true,
+      icon: 'default',
       colors: [
         { id: 1, name: 'Primary', color: '#9b87f5' },
         { id: 2, name: 'Secondary', color: '#7E69AB' },
@@ -75,6 +94,7 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
       id: 2, 
       name: 'UI Colors', 
       isOpen: true,
+      icon: 'default',
       colors: [
         { id: 4, name: 'Dark', color: '#1A1F2C' },
         { id: 5, name: 'Light', color: '#D6BCFA' },
@@ -82,8 +102,51 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
     },
     { 
       id: 3, 
+      name: 'Typography Styles', 
+      isOpen: true,
+      icon: 'typography',
+      colors: [
+        { 
+          id: 6, 
+          name: 'Heading 1', 
+          color: '#1A1F2C',
+          textStyle: {
+            id: 1,
+            name: 'Heading 1',
+            style: {
+              fontSize: 24,
+              fontWeight: 'bold',
+              color: '#1A1F2C',
+              fontFamily: 'Inter',
+              lineHeight: 1.2,
+              letterSpacing: 0
+            }
+          }
+        },
+        { 
+          id: 7, 
+          name: 'Body Text', 
+          color: '#222222',
+          textStyle: {
+            id: 2,
+            name: 'Body Text',
+            style: {
+              fontSize: 16,
+              fontWeight: 'normal',
+              color: '#222222',
+              fontFamily: 'Roboto',
+              lineHeight: 1.5,
+              letterSpacing: 0
+            }
+          }
+        },
+      ] 
+    },
+    { 
+      id: 4, 
       name: 'Empty Group', 
       isOpen: true,
+      icon: 'default',
       colors: [] 
     },
   ]);
@@ -94,6 +157,7 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
       id: 1,
       name: 'Headings',
       isOpen: true,
+      icon: 'default',
       styles: [
         { id: 1, name: 'Heading 1', style: { fontSize: 24, fontWeight: 'bold', color: '#1A1F2C', fontFamily: 'Inter', lineHeight: 1.2 } },
         { id: 2, name: 'Heading 2', style: { fontSize: 20, fontWeight: 'bold', color: '#1A1F2C', fontFamily: 'Inter', lineHeight: 1.3 } },
@@ -103,6 +167,7 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
       id: 2,
       name: 'Body Text',
       isOpen: true,
+      icon: 'default',
       styles: [
         { id: 3, name: 'Body', style: { fontSize: 16, fontWeight: 'normal', color: '#1A1F2C', fontFamily: 'Inter', lineHeight: 1.5 } },
         { id: 4, name: 'Caption', style: { fontSize: 12, fontWeight: 'normal', color: '#7E69AB', fontFamily: 'Inter', lineHeight: 1.4 } },
@@ -112,6 +177,7 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
       id: 3,
       name: 'Empty Group',
       isOpen: true,
+      icon: 'default',
       styles: []
     }
   ]);
@@ -140,8 +206,16 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
   const [isColorGroupDialogOpen, setIsColorGroupDialogOpen] = useState(false);
   const [isTextStyleGroupDialogOpen, setIsTextStyleGroupDialogOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupIcon, setNewGroupIcon] = useState('default');
   const [editingColorGroup, setEditingColorGroup] = useState<ColorGroup | null>(null);
   const [editingTextStyleGroup, setEditingTextStyleGroup] = useState<TextStyleGroup | null>(null);
+
+  // Move item dialog state
+  const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
+  const [movingItemType, setMovingItemType] = useState<'color' | 'textStyle'>('color');
+  const [movingItem, setMovingItem] = useState<ColorItem | TextStyle | null>(null);
+  const [sourceGroupId, setSourceGroupId] = useState<number | null>(null);
+  const [targetGroupId, setTargetGroupId] = useState<number | null>(null);
 
   const availableFonts = [
     { value: 'Inter', label: 'Inter' },
@@ -158,7 +232,16 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
     { value: 'Montserrat', label: 'Montserrat' },
     { value: 'Poppins', label: 'Poppins' },
     { value: 'Lato', label: 'Lato' },
-    { value: 'Playfair Display', label: 'Playfair Display' }
+    { value: 'Playfair Display', label: 'Playfair Display' },
+    { value: 'Oswald', label: 'Oswald' },
+    { value: 'Source Sans Pro', label: 'Source Sans Pro' },
+    { value: 'Merriweather', label: 'Merriweather' },
+    { value: 'Raleway', label: 'Raleway' },
+    { value: 'PT Sans', label: 'PT Sans' },
+    { value: 'Quicksand', label: 'Quicksand' },
+    { value: 'Nunito', label: 'Nunito' },
+    { value: 'Work Sans', label: 'Work Sans' },
+    { value: 'Fira Sans', label: 'Fira Sans' },
   ];
 
   // Apply color to selected element
@@ -315,12 +398,14 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
   const handleAddColorGroup = () => {
     setEditingColorGroup(null);
     setNewGroupName('');
+    setNewGroupIcon('default');
     setIsColorGroupDialogOpen(true);
   };
 
   const handleEditColorGroup = (group: ColorGroup) => {
     setEditingColorGroup(group);
     setNewGroupName(group.name);
+    setNewGroupIcon(group.icon || 'default');
     setIsColorGroupDialogOpen(true);
   };
 
@@ -333,13 +418,13 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
       // Update existing group
       setColorGroups(colorGroups.map(g => 
         g.id === editingColorGroup.id 
-          ? { ...g, name: newGroupName } 
+          ? { ...g, name: newGroupName, icon: newGroupIcon } 
           : g
       ));
     } else {
       // Add new group
       const newId = Math.max(0, ...colorGroups.map(g => g.id), 0) + 1;
-      setColorGroups([...colorGroups, { id: newId, name: newGroupName, colors: [], isOpen: true }]);
+      setColorGroups([...colorGroups, { id: newId, name: newGroupName, colors: [], isOpen: true, icon: newGroupIcon }]);
     }
     setIsColorGroupDialogOpen(false);
   };
@@ -347,12 +432,14 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
   const handleAddTextStyleGroup = () => {
     setEditingTextStyleGroup(null);
     setNewGroupName('');
+    setNewGroupIcon('default');
     setIsTextStyleGroupDialogOpen(true);
   };
 
   const handleEditTextStyleGroup = (group: TextStyleGroup) => {
     setEditingTextStyleGroup(group);
     setNewGroupName(group.name);
+    setNewGroupIcon(group.icon || 'default');
     setIsTextStyleGroupDialogOpen(true);
   };
 
@@ -365,13 +452,13 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
       // Update existing group
       setTextStyleGroups(textStyleGroups.map(g => 
         g.id === editingTextStyleGroup.id 
-          ? { ...g, name: newGroupName } 
+          ? { ...g, name: newGroupName, icon: newGroupIcon } 
           : g
       ));
     } else {
       // Add new group
       const newId = Math.max(0, ...textStyleGroups.map(g => g.id), 0) + 1;
-      setTextStyleGroups([...textStyleGroups, { id: newId, name: newGroupName, styles: [], isOpen: true }]);
+      setTextStyleGroups([...textStyleGroups, { id: newId, name: newGroupName, styles: [], isOpen: true, icon: newGroupIcon }]);
     }
     setIsTextStyleGroupDialogOpen(false);
   };
@@ -389,8 +476,95 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
     ));
   };
 
+  // Move item functions
+  const handleMoveItem = (type: 'color' | 'textStyle', item: ColorItem | TextStyle, sourceId: number) => {
+    setMovingItemType(type);
+    setMovingItem(item);
+    setSourceGroupId(sourceId);
+    setTargetGroupId(null);
+    setIsMoveDialogOpen(true);
+  };
+
+  const executeMoveItem = () => {
+    if (!movingItem || sourceGroupId === null || targetGroupId === null) return;
+
+    if (movingItemType === 'color') {
+      // Move color item
+      const colorItem = movingItem as ColorItem;
+      
+      // First remove from source group
+      const updatedGroups = colorGroups.map(group => {
+        if (group.id === sourceGroupId) {
+          return {
+            ...group,
+            colors: group.colors.filter(c => c.id !== colorItem.id)
+          };
+        }
+        return group;
+      });
+      
+      // Then add to target group
+      const finalGroups = updatedGroups.map(group => {
+        if (group.id === targetGroupId) {
+          return {
+            ...group,
+            colors: [...group.colors, colorItem]
+          };
+        }
+        return group;
+      });
+      
+      setColorGroups(finalGroups);
+    } else {
+      // Move text style item
+      const styleItem = movingItem as TextStyle;
+      
+      // First remove from source group
+      const updatedGroups = textStyleGroups.map(group => {
+        if (group.id === sourceGroupId) {
+          return {
+            ...group,
+            styles: group.styles.filter(s => s.id !== styleItem.id)
+          };
+        }
+        return group;
+      });
+      
+      // Then add to target group
+      const finalGroups = updatedGroups.map(group => {
+        if (group.id === targetGroupId) {
+          return {
+            ...group,
+            styles: [...group.styles, styleItem]
+          };
+        }
+        return group;
+      });
+      
+      setTextStyleGroups(finalGroups);
+    }
+    
+    setIsMoveDialogOpen(false);
+  };
+
+  // Render folder icon based on the icon type
+  const renderFolderIcon = (iconType: string = 'default') => {
+    switch(iconType) {
+      case 'typography':
+        return <Folder className="h-4 w-4 text-blue-500" />;
+      case 'colors':
+        return <Folder className="h-4 w-4 text-purple-500" />;
+      case 'branding':
+        return <Folder className="h-4 w-4 text-green-500" />;
+      case 'open':
+        return <FolderOpen className="h-4 w-4" />;
+      default:
+        return <Folder className="h-4 w-4" />;
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Panel header */}
       <div className="p-4 border-b">
         <div className="text-sm font-bold text-[#414651]">Brand</div>
@@ -398,11 +572,11 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
 
       {/* Brand content */}
       <div className="flex-1 overflow-y-auto">
-        <Accordion type="multiple" className="w-full">
+        <Accordion type="multiple" className="w-full" defaultValue={["colors", "textStyles"]}>
           {/* Colors section */}
           <AccordionItem value="colors" className="border-b">
             <AccordionTrigger className="px-4 py-2 text-sm font-medium">
-              Colors
+              Colors & Styles
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-2">
               <div className="flex justify-end mb-2">
@@ -423,7 +597,10 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
                         <ChevronDown className="h-4 w-4 mr-1" /> : 
                         <ChevronRight className="h-4 w-4 mr-1" />
                       }
-                      <span className="text-sm font-medium">{group.name}</span>
+                      <div className="flex items-center">
+                        {renderFolderIcon(group.icon)}
+                        <span className="text-sm font-medium ml-1">{group.name}</span>
+                      </div>
                     </div>
                     <div className="hidden group-hover:flex items-center">
                       <Button
@@ -480,6 +657,15 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
                                   <button 
                                     onClick={(e) => {
                                       e.stopPropagation();
+                                      handleMoveItem('color', color, group.id);
+                                    }}
+                                    className="bg-white p-1 rounded-full shadow hover:bg-gray-100"
+                                  >
+                                    <Move className="h-3 w-3 text-gray-600" />
+                                  </button>
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       handleDeleteColor(group.id, color.id);
                                     }}
                                     className="bg-white p-1 rounded-full shadow hover:bg-gray-100"
@@ -489,6 +675,20 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
                                 </div>
                               </div>
                               <span className="text-xs text-gray-600">{color.name}</span>
+                              {color.textStyle && (
+                                <div 
+                                  className="text-xs truncate w-full text-center"
+                                  style={{
+                                    fontFamily: color.textStyle.style.fontFamily,
+                                    fontWeight: color.textStyle.style.fontWeight,
+                                    fontSize: '10px',
+                                    color: color.textStyle.style.color,
+                                  }}
+                                  onClick={() => applyTextStyleToSelectedElement(color.textStyle?.style)}
+                                >
+                                  Aa
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -550,7 +750,10 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
                         <ChevronDown className="h-4 w-4 mr-1" /> : 
                         <ChevronRight className="h-4 w-4 mr-1" />
                       }
-                      <span className="text-sm font-medium">{group.name}</span>
+                      <div className="flex items-center">
+                        {renderFolderIcon(group.icon)}
+                        <span className="text-sm font-medium ml-1">{group.name}</span>
+                      </div>
                     </div>
                     <div className="hidden group-hover:flex items-center">
                       <Button
@@ -615,6 +818,17 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
                                   }}
                                 >
                                   <Edit className="h-4 w-4 text-gray-400" />
+                                </Button>
+                                <Button
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-8 w-8 p-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleMoveItem('textStyle', style, group.id);
+                                  }}
+                                >
+                                  <Move className="h-4 w-4 text-gray-400" />
                                 </Button>
                                 <Button
                                   variant="ghost" 
@@ -688,6 +902,19 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
                   className="flex-1"
                   placeholder="#RRGGBB"
                 />
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">
+                Include Text Style
+              </Label>
+              <div className="col-span-3">
+                <input 
+                  type="checkbox" 
+                  className="mr-2"
+                  // This would be connected to state in a full implementation
+                />
+                <span className="text-sm">Add text style to this color</span>
               </div>
             </div>
           </div>
@@ -912,6 +1139,71 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
                 placeholder="e.g. Brand Colors, UI Colors, etc."
               />
             </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="groupIcon" className="text-right">
+                Icon
+              </Label>
+              <div className="col-span-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start">
+                      {renderFolderIcon(newGroupIcon)}
+                      <span className="ml-2">
+                        {newGroupIcon === 'default' ? 'Default Folder' : 
+                         newGroupIcon === 'typography' ? 'Typography' : 
+                         newGroupIcon === 'colors' ? 'Colors' : 
+                         newGroupIcon === 'branding' ? 'Branding' : 
+                         newGroupIcon === 'open' ? 'Open Folder' : 'Select Icon'}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-2">
+                    <div className="grid gap-2">
+                      <Button 
+                        variant="ghost" 
+                        className="justify-start"
+                        onClick={() => setNewGroupIcon('default')}
+                      >
+                        <Folder className="h-4 w-4 mr-2" />
+                        Default Folder
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        className="justify-start"
+                        onClick={() => setNewGroupIcon('open')}
+                      >
+                        <FolderOpen className="h-4 w-4 mr-2" />
+                        Open Folder
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        className="justify-start"
+                        onClick={() => setNewGroupIcon('colors')}
+                      >
+                        <Folder className="h-4 w-4 mr-2 text-purple-500" />
+                        Colors
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        className="justify-start"
+                        onClick={() => setNewGroupIcon('typography')}
+                      >
+                        <Folder className="h-4 w-4 mr-2 text-blue-500" />
+                        Typography
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        className="justify-start"
+                        onClick={() => setNewGroupIcon('branding')}
+                      >
+                        <Folder className="h-4 w-4 mr-2 text-green-500" />
+                        Branding
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsColorGroupDialogOpen(false)}>
@@ -943,6 +1235,71 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
                 placeholder="e.g. Headings, Body Text, etc."
               />
             </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="groupIcon" className="text-right">
+                Icon
+              </Label>
+              <div className="col-span-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start">
+                      {renderFolderIcon(newGroupIcon)}
+                      <span className="ml-2">
+                        {newGroupIcon === 'default' ? 'Default Folder' : 
+                         newGroupIcon === 'typography' ? 'Typography' : 
+                         newGroupIcon === 'colors' ? 'Colors' : 
+                         newGroupIcon === 'branding' ? 'Branding' : 
+                         newGroupIcon === 'open' ? 'Open Folder' : 'Select Icon'}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-2">
+                    <div className="grid gap-2">
+                      <Button 
+                        variant="ghost" 
+                        className="justify-start"
+                        onClick={() => setNewGroupIcon('default')}
+                      >
+                        <Folder className="h-4 w-4 mr-2" />
+                        Default Folder
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        className="justify-start"
+                        onClick={() => setNewGroupIcon('open')}
+                      >
+                        <FolderOpen className="h-4 w-4 mr-2" />
+                        Open Folder
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        className="justify-start"
+                        onClick={() => setNewGroupIcon('colors')}
+                      >
+                        <Folder className="h-4 w-4 mr-2 text-purple-500" />
+                        Colors
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        className="justify-start"
+                        onClick={() => setNewGroupIcon('typography')}
+                      >
+                        <Folder className="h-4 w-4 mr-2 text-blue-500" />
+                        Typography
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        className="justify-start"
+                        onClick={() => setNewGroupIcon('branding')}
+                      >
+                        <Folder className="h-4 w-4 mr-2 text-green-500" />
+                        Branding
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsTextStyleGroupDialogOpen(false)}>
@@ -950,6 +1307,64 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
             </Button>
             <Button onClick={handleSaveTextStyleGroup} disabled={!newGroupName.trim()}>
               {editingTextStyleGroup ? 'Update' : 'Add'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Move Item Dialog */}
+      <Dialog open={isMoveDialogOpen} onOpenChange={setIsMoveDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Move {movingItemType === 'color' ? 'Color' : 'Text Style'}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="mb-4">
+              <Label className="text-sm font-medium block mb-2">
+                Select destination group:
+              </Label>
+              <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-2">
+                {movingItemType === 'color' ? (
+                  colorGroups.map(group => (
+                    <div 
+                      key={group.id}
+                      className={`p-2 rounded-md cursor-pointer hover:bg-gray-100 flex items-center ${targetGroupId === group.id ? 'bg-purple-100' : ''}`}
+                      onClick={() => setTargetGroupId(group.id)}
+                    >
+                      {renderFolderIcon(group.icon)}
+                      <span className="ml-2">{group.name}</span>
+                      {sourceGroupId === group.id && (
+                        <span className="ml-2 text-xs text-gray-500">(Current)</span>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  textStyleGroups.map(group => (
+                    <div 
+                      key={group.id}
+                      className={`p-2 rounded-md cursor-pointer hover:bg-gray-100 flex items-center ${targetGroupId === group.id ? 'bg-purple-100' : ''}`}
+                      onClick={() => setTargetGroupId(group.id)}
+                    >
+                      {renderFolderIcon(group.icon)}
+                      <span className="ml-2">{group.name}</span>
+                      {sourceGroupId === group.id && (
+                        <span className="ml-2 text-xs text-gray-500">(Current)</span>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsMoveDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={executeMoveItem} 
+              disabled={!targetGroupId || targetGroupId === sourceGroupId}
+            >
+              Move
             </Button>
           </DialogFooter>
         </DialogContent>

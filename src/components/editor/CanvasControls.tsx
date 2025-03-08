@@ -1,10 +1,9 @@
-
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { BANNER_SIZES } from "./types";
 import { useCanvas } from "./CanvasContext";
 import { exportEmailHTML, downloadEmailTemplate } from "./utils/emailExporter";
-import { Grid3X3, ZoomIn, ZoomOut, Maximize } from "lucide-react";
+import { Grid3X3, ZoomIn, ZoomOut, Maximize, Hand } from "lucide-react";
 
 export const CanvasControls = () => {
   const { 
@@ -14,7 +13,10 @@ export const CanvasControls = () => {
     elements,
     organizeElements,
     zoomLevel,
-    setZoomLevel
+    setZoomLevel,
+    activeSizes,
+    setCanvasNavMode,
+    canvasNavMode
   } = useCanvas();
 
   const exportEmail = () => {
@@ -34,22 +36,34 @@ export const CanvasControls = () => {
     setZoomLevel(1);
   };
 
+  const handleToggleNavMode = () => {
+    setCanvasNavMode(canvasNavMode === 'pan' ? 'edit' : 'pan');
+  };
+
   return (
     <div className="flex justify-between items-center p-4">
       <Select
-        value={selectedSize.name}
+        value={selectedSize.name === 'All' ? 'All' : selectedSize.name}
         onValueChange={(value) => {
-          const size = BANNER_SIZES.find(s => s.name === value);
-          if (size) setSelectedSize(size);
+          if (value === 'All') {
+            // All view - keeps current selected size but shows all active sizes
+          } else {
+            const size = BANNER_SIZES.find(s => s.name === value);
+            if (size) setSelectedSize(size);
+          }
         }}
       >
         <SelectTrigger className="w-[200px]">
           <SelectValue placeholder="Select size" />
         </SelectTrigger>
         <SelectContent>
-          {BANNER_SIZES.map((size) => (
+          <SelectItem value="All">All Sizes</SelectItem>
+          <SelectItem disabled className="text-xs text-gray-400 py-1 opacity-70">
+            ─────── Active Sizes ───────
+          </SelectItem>
+          {activeSizes.map((size) => (
             <SelectItem key={size.name} value={size.name}>
-              {size.name} ({size.width}x{size.height})
+              {size.name} ({size.width}×{size.height})
             </SelectItem>
           ))}
         </SelectContent>
@@ -57,6 +71,16 @@ export const CanvasControls = () => {
       
       <div className="flex gap-2">
         <div className="flex items-center mr-4">
+          <Button 
+            variant={canvasNavMode === 'pan' ? "default" : "outline"} 
+            size="sm" 
+            onClick={handleToggleNavMode} 
+            className="px-2 mr-2"
+            title="Press and hold spacebar to temporarily activate pan mode"
+          >
+            <Hand size={16} className={canvasNavMode === 'pan' ? "text-white" : ""} />
+          </Button>
+        
           <Button variant="outline" size="sm" onClick={handleZoomOut} className="px-2 mr-1">
             <ZoomOut size={16} />
           </Button>
