@@ -1,3 +1,4 @@
+
 export type BannerSize = {
   name: string;
   width: number;
@@ -40,6 +41,11 @@ export type EditorElement = {
     gridArea?: string;
     gridColumn?: string;
     gridRow?: string;
+    // Percentage-based positioning for responsive handling
+    xPercent?: number;
+    yPercent?: number;
+    widthPercent?: number;
+    heightPercent?: number;
   };
   columns?: number;
   childElements?: EditorElement[];
@@ -47,9 +53,12 @@ export type EditorElement = {
   parentId?: string; // Reference to parent container/layout
   inContainer: boolean; // Whether element is inside a container
   sizeId?: string; // The banner size this element belongs to
+  linkedElementId?: string; // ID of the linked element in other sizes
+  isIndividuallyPositioned?: boolean; // Whether this element has been individually positioned
 };
 
 export type CanvasNavigationMode = 'edit' | 'pan';
+export type EditingMode = 'global' | 'individual';
 
 export const BANNER_SIZES: BannerSize[] = [
   // Email

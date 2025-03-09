@@ -3,7 +3,8 @@ import { useRef, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { ElementRenderer } from "./ElementRenderer";
 import { useCanvas } from "./CanvasContext";
-import { snapToGrid } from "./utils/gridUtils";
+import { snapToGrid, findOptimalPosition } from "./utils/gridUtils";
+import { toast } from "sonner";
 
 export const CanvasWorkspace = () => {
   const {
@@ -26,16 +27,21 @@ export const CanvasWorkspace = () => {
     setZoomLevel,
     canvasNavMode,
     setCanvasNavMode,
-    activeSizes
+    activeSizes,
+    editingMode,
+    setEditingMode,
+    updateAllLinkedElements
   } = useCanvas();
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerHoverTimer, setContainerHoverTimer] = useState<NodeJS.Timeout | null>(null);
+  const [containerExitTimer, setContainerExitTimer] = useState<NodeJS.Timeout | null>(null);
   const [hoveredContainer, setHoveredContainer] = useState<string | null>(null);
   const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [isElementOutsideContainer, setIsElementOutsideContainer] = useState(false);
 
   // Auto-organize elements when new ones are added
   useEffect(() => {
@@ -78,7 +84,7 @@ export const CanvasWorkspace = () => {
       // Ctrl + wheel for zoom
       if (e.ctrlKey) {
         const delta = e.deltaY > 0 ? -0.1 : 0.1;
-        setZoomLevel(prev => Math.min(Math.max(0.2, prev + delta), 3)); // Extended zoom range from 0.2 to 3
+        setZoomLevel(prev => Math.min(Math.max(0.1, prev + delta), 5)); // Extended zoom range from 0.1 to 5
         return;
       }
 
@@ -164,7 +170,7 @@ export const CanvasWorkspace = () => {
     // Set a new timer for hovering
     const timer = setTimeout(() => {
       setHoveredContainer(containerId);
-    }, 500); // 500ms hover time to consider moving into container
+    }, 300); // 300ms hover time to consider moving into container
 
     setContainerHoverTimer(timer);
   };
@@ -175,6 +181,72 @@ export const CanvasWorkspace = () => {
       setContainerHoverTimer(null);
     }
     setHoveredContainer(null);
+  };
+
+  const handleElementExitContainer = (element: any, isOutside: boolean) => {
+    if (!element.inContainer) return;
+
+    // If already tracking and no longer outside, cancel the exit
+    if (containerExitTimer && !isOutside) {
+      clearTimeout(containerExitTimer);
+      setContainerExitTimer(null);
+      setIsElementOutsideContainer(false);
+      return;
+    }
+
+    // If newly outside, start the timer
+    if (isOutside && !containerExitTimer) {
+      setIsElementOutsideContainer(true);
+      const timer = setTimeout(() => {
+        moveElementOutOfContainer(element);
+        setContainerExitTimer(null);
+        setIsElementOutsideContainer(false);
+      }, 500); // 500ms to exit container
+
+      setContainerExitTimer(timer);
+    }
+  };
+
+  const moveElementOutOfContainer = (element: any) => {
+    if (!element.inContainer || !element.parentId) return;
+
+    // Find the parent container
+    const parentContainer = elements.find(el => el.id === element.parentId);
+    if (!parentContainer) return;
+
+    // Calculate absolute position in the canvas
+    const absoluteX = parentContainer.style.x + element.style.x;
+    const absoluteY = parentContainer.style.y + element.style.y;
+
+    // Create a new standalone element
+    const newElements = [...elements];
+    
+    // Remove element from its parent's childElements
+    const parentIndex = newElements.findIndex(el => el.id === element.parentId);
+    if (parentIndex !== -1 && newElements[parentIndex].childElements) {
+      newElements[parentIndex] = {
+        ...newElements[parentIndex],
+        childElements: newElements[parentIndex].childElements?.filter(child => child.id !== element.id) || []
+      };
+    }
+
+    // Add the element as a top-level element
+    const standaloneElement = {
+      ...element,
+      inContainer: false,
+      parentId: undefined,
+      style: {
+        ...element.style,
+        x: absoluteX,
+        y: absoluteY
+      }
+    };
+
+    newElements.push(standaloneElement);
+    setElements(newElements);
+    setSelectedElement(standaloneElement);
+    
+    toast.success('Elemento removido do container');
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -208,11 +280,22 @@ export const CanvasWorkspace = () => {
       let newX = canvasX - dragStart.x / zoomLevel;
       let newY = canvasY - dragStart.y / zoomLevel;
 
-      // Apply constraints if the element is in a container
-      if (parentElement) {
-        // Constrain element within container bounds
-        newX = Math.max(parentElement.style.x, Math.min(newX, parentElement.style.x + parentElement.style.width - selectedElement.style.width));
-        newY = Math.max(parentElement.style.y, Math.min(newY, parentElement.style.y + parentElement.style.height - selectedElement.style.height));
+      // Check if element is being dragged outside its container
+      if (parentElement && selectedElement.inContainer) {
+        const isOutside = (
+          newX < 0 ||
+          newY < 0 ||
+          newX + selectedElement.style.width > parentElement.style.width ||
+          newY + selectedElement.style.height > parentElement.style.height
+        );
+        
+        handleElementExitContainer(selectedElement, isOutside);
+
+        // Constrain element within container bounds (unless it's exiting)
+        if (!isElementOutsideContainer) {
+          newX = Math.max(0, Math.min(newX, parentElement.style.width - selectedElement.style.width));
+          newY = Math.max(0, Math.min(newY, parentElement.style.height - selectedElement.style.height));
+        }
       } else {
         // If not in a container, constrain within canvas
         newX = Math.max(0, Math.min(newX, selectedSize.width - selectedElement.style.width));
@@ -223,32 +306,76 @@ export const CanvasWorkspace = () => {
       newX = snapToGrid(newX);
       newY = snapToGrid(newY);
 
-      // Update elements array
-      const updatedElements = elements.map(el => {
-        if (el.id === selectedElement.id) {
-          return { ...el, style: { ...el.style, x: newX, y: newY } };
-        }
+      // Calculate percentage values for responsive positioning
+      const xPercent = (newX / selectedSize.width) * 100;
+      const yPercent = (newY / selectedSize.height) * 100;
 
-        if (el.childElements && selectedElement.parentId === el.id) {
-          return {
-            ...el,
-            childElements: el.childElements.map(child =>
-              child.id === selectedElement.id
-                ? { ...child, style: { ...child.style, x: newX - el.style.x, y: newY - el.style.y } }
-                : child
-            )
-          };
-        }
+      // Update the selected element with new position
+      let updatedElements = [...elements];
+      
+      if (editingMode === 'global' && selectedElement.linkedElementId) {
+        // Update all linked elements across different sizes
+        updatedElements = updateAllLinkedElements(
+          updatedElements,
+          selectedElement,
+          { xPercent, yPercent },
+          { x: newX, y: newY }
+        );
+      } else {
+        // Only update the current element
+        updatedElements = updatedElements.map(el => {
+          if (el.id === selectedElement.id) {
+            return { 
+              ...el, 
+              style: { 
+                ...el.style, 
+                x: newX, 
+                y: newY,
+                xPercent,
+                yPercent 
+              },
+              isIndividuallyPositioned: editingMode === 'individual'
+            };
+          }
 
-        return el;
-      });
+          if (el.childElements && selectedElement.parentId === el.id) {
+            return {
+              ...el,
+              childElements: el.childElements.map(child =>
+                child.id === selectedElement.id
+                  ? { 
+                      ...child, 
+                      style: { 
+                        ...child.style, 
+                        x: newX - el.style.x, 
+                        y: newY - el.style.y,
+                        xPercent,
+                        yPercent
+                      },
+                      isIndividuallyPositioned: editingMode === 'individual'
+                    }
+                  : child
+              )
+            };
+          }
+
+          return el;
+        });
+      }
 
       setElements(updatedElements);
 
       // Update the selected element reference
       setSelectedElement({
         ...selectedElement,
-        style: { ...selectedElement.style, x: newX, y: newY }
+        style: { 
+          ...selectedElement.style, 
+          x: newX, 
+          y: newY,
+          xPercent,
+          yPercent
+        },
+        isIndividuallyPositioned: editingMode === 'individual'
       });
     } else if (isResizing) {
       // Handle resizing with similar improvements
@@ -287,58 +414,107 @@ export const CanvasWorkspace = () => {
         const parentElement = elements.find(el => el.id === selectedElement.parentId);
         if (parentElement) {
           // Ensure the element stays within the container bounds
-          if (newX < parentElement.style.x) {
-            newX = parentElement.style.x;
+          if (newX < 0) {
+            newX = 0;
             newWidth = selectedElement.style.width;
           }
-          if (newY < parentElement.style.y) {
-            newY = parentElement.style.y;
+          if (newY < 0) {
+            newY = 0;
             newHeight = selectedElement.style.height;
           }
-          if (newX + newWidth > parentElement.style.x + parentElement.style.width) {
-            newWidth = parentElement.style.x + parentElement.style.width - newX;
+          if (newX + newWidth > parentElement.style.width) {
+            newWidth = parentElement.style.width - newX;
           }
-          if (newY + newHeight > parentElement.style.y + parentElement.style.height) {
-            newHeight = parentElement.style.y + parentElement.style.height - newY;
+          if (newY + newHeight > parentElement.style.height) {
+            newHeight = parentElement.style.height - newY;
           }
         }
       }
 
+      // Calculate percentage values
+      const widthPercent = (newWidth / selectedSize.width) * 100;
+      const heightPercent = (newHeight / selectedSize.height) * 100;
+      const xPercent = (newX / selectedSize.width) * 100;
+      const yPercent = (newY / selectedSize.height) * 100;
+
       // Update elements array
-      const updatedElements = elements.map(el => {
-        if (el.id === selectedElement.id) {
-          return { ...el, style: { ...el.style, x: newX, y: newY, width: newWidth, height: newHeight } };
-        }
+      let updatedElements;
+      
+      if (editingMode === 'global' && selectedElement.linkedElementId) {
+        // Update all linked elements across different sizes
+        updatedElements = updateAllLinkedElements(
+          elements,
+          selectedElement,
+          { xPercent, yPercent, widthPercent, heightPercent },
+          { x: newX, y: newY, width: newWidth, height: newHeight }
+        );
+      } else {
+        // Update only the current element
+        updatedElements = elements.map(el => {
+          if (el.id === selectedElement.id) {
+            return { 
+              ...el, 
+              style: { 
+                ...el.style, 
+                x: newX, 
+                y: newY, 
+                width: newWidth, 
+                height: newHeight,
+                xPercent,
+                yPercent,
+                widthPercent,
+                heightPercent
+              },
+              isIndividuallyPositioned: editingMode === 'individual'
+            };
+          }
 
-        if (el.childElements && selectedElement.parentId === el.id) {
-          return {
-            ...el,
-            childElements: el.childElements.map(child =>
-              child.id === selectedElement.id
-                ? {
-                  ...child,
-                  style: {
-                    ...child.style,
-                    x: newX - el.style.x,
-                    y: newY - el.style.y,
-                    width: newWidth,
-                    height: newHeight
+          if (el.childElements && selectedElement.parentId === el.id) {
+            return {
+              ...el,
+              childElements: el.childElements.map(child =>
+                child.id === selectedElement.id
+                  ? {
+                    ...child,
+                    style: {
+                      ...child.style,
+                      x: newX - el.style.x,
+                      y: newY - el.style.y,
+                      width: newWidth,
+                      height: newHeight,
+                      xPercent,
+                      yPercent,
+                      widthPercent,
+                      heightPercent
+                    },
+                    isIndividuallyPositioned: editingMode === 'individual'
                   }
-                }
-                : child
-            )
-          };
-        }
+                  : child
+              )
+            };
+          }
 
-        return el;
-      });
+          return el;
+        });
+      }
 
       setElements(updatedElements);
 
       // Update selected element reference
       setSelectedElement({
         ...selectedElement,
-        style: { ...selectedElement.style, x: newX, y: newY, width: newWidth, height: newHeight }
+        style: { 
+          ...selectedElement.style, 
+          x: newX, 
+          y: newY, 
+          width: newWidth, 
+          height: newHeight,
+          xPercent,
+          yPercent,
+          widthPercent,
+          heightPercent
+        },
+        isIndividuallyPositioned: editingMode === 'individual'
       });
 
       setDragStart({
@@ -363,6 +539,12 @@ export const CanvasWorkspace = () => {
         // Otherwise, just re-organize elements
         organizeElements();
       }
+    }
+
+    if (containerExitTimer) {
+      clearTimeout(containerExitTimer);
+      setContainerExitTimer(null);
+      setIsElementOutsideContainer(false);
     }
 
     setIsDragging(false);
@@ -407,6 +589,10 @@ export const CanvasWorkspace = () => {
     const adjustedX = Math.min(relativeX, container.style.width - element.style.width);
     const adjustedY = Math.max(0, Math.min(relativeY, container.style.height - element.style.height));
 
+    // Calculate percentage values
+    const xPercent = (adjustedX / container.style.width) * 100;
+    const yPercent = (adjustedY / container.style.height) * 100;
+
     // Add the element to the container
     const childElements = updatedElements[containerIndex].childElements || [];
 
@@ -423,7 +609,9 @@ export const CanvasWorkspace = () => {
             ...element.style,
             // Set position relative to the container
             x: adjustedX,
-            y: adjustedY
+            y: adjustedY,
+            xPercent,
+            yPercent
           }
         }
       ]
@@ -439,15 +627,28 @@ export const CanvasWorkspace = () => {
       parentId: containerId,
       style: {
         ...element.style,
-        x: element.style.x,
-        y: element.style.y
+        x: adjustedX,
+        y: adjustedY,
+        xPercent,
+        yPercent
       }
     });
+    
+    toast.success('Elemento adicionado ao container');
   };
 
-  const renderElement = (element: any, isChild = false) => {
+  const renderElement = (element: any, isChild = false, canvasSize = selectedSize) => {
     const isHovered = hoveredContainer === element.id;
     const isContainer = element.type === "container" || element.type === "layout";
+    const isExiting = isElementOutsideContainer && selectedElement?.id === element.id;
+
+    // Apply optimal positioning for this specific canvas size
+    const optimalPosition = findOptimalPosition(element, canvasSize.width, canvasSize.height);
+    
+    // Use fixed positioning if element has been individually positioned
+    const position = element.isIndividuallyPositioned 
+      ? { x: element.style.x, y: element.style.y, width: element.style.width, height: element.style.height }
+      : optimalPosition;
 
     let positionStyle: React.CSSProperties = {};
 
@@ -455,39 +656,43 @@ export const CanvasWorkspace = () => {
       // Child elements are positioned relative to their container
       positionStyle = {
         position: "absolute",
-        left: element.style.x,
-        top: element.style.y
+        left: position.x,
+        top: position.y,
+        width: position.width,
+        height: position.height
       };
     } else {
       // Top-level elements are positioned absolutely within the canvas
       positionStyle = {
         position: "absolute",
-        left: element.style.x,
-        top: element.style.y
+        left: position.x,
+        top: position.y,
+        width: position.width,
+        height: position.height
       };
     }
 
     return (
       <div
-        key={`${element.id}-${key}`}
+        key={`${element.id}-${key}-${canvasSize.name}`}
         style={{
           ...positionStyle,
-          width: element.style.width,
-          height: element.style.height,
           animationPlayState: element.style.animationPlayState,
           animationDelay: element.style.animationDelay != null ? `${element.style.animationDelay}s` : undefined,
           animationDuration: element.style.animationDuration != null ? `${element.style.animationDuration}s` : undefined,
           backgroundColor: isContainer
             ? isHovered ? "rgba(200, 220, 255, 0.5)" : "rgba(240, 240, 240, 0.5)"
-            : undefined,
+            : element.style.backgroundColor,
           border: isContainer
             ? isHovered ? "1px dashed #4080ff" : "1px dashed #aaa"
             : undefined,
           zIndex: isDragging && selectedElement?.id === element.id ? 1000 : 1,
-          transition: "background-color 0.3s, border-color 0.3s",
+          transition: isExiting ? "none" : "background-color 0.3s, border-color 0.3s",
           overflow: isContainer ? "hidden" : "visible",
           cursor: canvasNavMode === 'pan' ? 'grab' : 'move',
           userSelect: "none",
+          opacity: isExiting ? 0.6 : 1,
+          boxShadow: isExiting ? "0 0 0 2px #ff4040" : undefined
         }}
         className={`${selectedElement?.id === element.id ? "outline outline-2 outline-blue-500" : ""} ${element.style.animation || ""}`}
         onMouseDown={(e) => handleMouseDown(e, element)}
@@ -507,7 +712,7 @@ export const CanvasWorkspace = () => {
         {/* Render child elements */}
         {isContainer && element.childElements && (
           <div className="absolute top-0 left-0 w-full h-full">
-            {element.childElements.map((child: any) => renderElement(child, true))}
+            {element.childElements.map((child: any) => renderElement(child, true, canvasSize))}
           </div>
         )}
 
@@ -570,7 +775,7 @@ export const CanvasWorkspace = () => {
                 onMouseLeave={handleMouseUp}
               >
                 {/* Render elements for this size */}
-                {elements.filter(el => !el.inContainer).map((element) => renderElement(element))}
+                {elements.filter(el => !el.inContainer).map((element) => renderElement(element, false, size))}
               </Card>
             </div>
           ))
@@ -598,9 +803,35 @@ export const CanvasWorkspace = () => {
         )}
       </div>
 
+      {/* Editing Mode Indicator */}
+      <div className="absolute bottom-14 right-4 bg-white px-3 py-1.5 rounded shadow-md">
+        <div 
+          className={`flex gap-1 text-xs items-center cursor-pointer ${editingMode === 'global' ? 'text-blue-600 font-medium' : 'text-gray-500'}`}
+          onClick={() => setEditingMode('global')}
+        >
+          <div className={`w-3 h-3 rounded-full ${editingMode === 'global' ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
+          Edição Global
+        </div>
+        <div 
+          className={`flex gap-1 text-xs items-center cursor-pointer mt-1 ${editingMode === 'individual' ? 'text-blue-600 font-medium' : 'text-gray-500'}`}
+          onClick={() => setEditingMode('individual')}
+        >
+          <div className={`w-3 h-3 rounded-full ${editingMode === 'individual' ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
+          Edição Individual
+        </div>
+      </div>
+
       {/* Zoom Level Indicator */}
-      <div className="absolute bottom-4 right-4 bg-white px-2 py-1 rounded shadow text-xs">
-        Zoom: {Math.round(zoomLevel * 100)}%
+      <div className="absolute bottom-4 right-4 bg-white px-3 py-1.5 rounded shadow-md flex items-center gap-3">
+        <span className="text-xs whitespace-nowrap">Zoom: {Math.round(zoomLevel * 100)}%</span>
+        <input 
+          type="range" 
+          min="10" 
+          max="500" 
+          value={zoomLevel * 100} 
+          onChange={(e) => setZoomLevel(Number(e.target.value) / 100)}
+          className="w-24 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+        />
       </div>
     </div>
   );

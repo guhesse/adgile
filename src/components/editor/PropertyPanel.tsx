@@ -26,9 +26,15 @@ export const PropertyPanel = ({ selectedElement, updateElementStyle, updateEleme
   // Get element title based on type
   const getElementTitle = () => {
     if (selectedElement.type === 'text') return 'Texto';
+    if (selectedElement.type === 'paragraph') return 'Parágrafo';
     if (selectedElement.type === 'image') return 'Imagem';
     if (selectedElement.type === 'button') return 'Botão';
     if (selectedElement.type === 'layout') return 'Container';
+    if (selectedElement.type === 'container') return 'Container';
+    if (selectedElement.type === 'divider') return 'Divisor';
+    if (selectedElement.type === 'spacer') return 'Espaçador';
+    if (selectedElement.type === 'logo') return 'Logo';
+    if (selectedElement.type === 'video') return 'Vídeo';
     return 'Elemento';
   };
 
@@ -39,7 +45,7 @@ export const PropertyPanel = ({ selectedElement, updateElementStyle, updateEleme
 
   // Render the appropriate panel based on element type and active tab
   const renderElementPanel = () => {
-    if (selectedElement.type === 'text') {
+    if (selectedElement.type === 'text' || selectedElement.type === 'paragraph') {
       return (
         <TextPanel
           element={selectedElement}
@@ -48,7 +54,7 @@ export const PropertyPanel = ({ selectedElement, updateElementStyle, updateEleme
           activeTab={activeTab}
         />
       );
-    } else if (selectedElement.type === 'image') {
+    } else if (selectedElement.type === 'image' || selectedElement.type === 'logo') {
       return (
         <ImagePanel
           element={selectedElement}
@@ -83,7 +89,8 @@ export const PropertyPanel = ({ selectedElement, updateElementStyle, updateEleme
       </div>
 
       {/* Tab Selector at the top for non-Animation panels */}
-      {selectedElement.type !== 'layout' && (
+      {selectedElement.type !== 'layout' && selectedElement.type !== 'container' && 
+       selectedElement.type !== 'divider' && selectedElement.type !== 'spacer' && (
         <div className="mx-4 mb-4">
           <div className="flex h-[39px] p-1 justify-center items-center gap-0 rounded bg-[#E9EAEB]">
             <div
