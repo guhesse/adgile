@@ -20,7 +20,6 @@ interface CanvasAreaProps {
   canvasNavMode: CanvasNavigationMode;
   handleMouseMove: (e: React.MouseEvent) => void;
   handleMouseUp: () => void;
-  key: string;
 }
 
 export const CanvasArea = ({
@@ -39,8 +38,7 @@ export const CanvasArea = ({
   handleContainerHoverEnd,
   canvasNavMode,
   handleMouseMove,
-  handleMouseUp,
-  key
+  handleMouseUp
 }: CanvasAreaProps) => {
   return (
     <div className="relative flex flex-col items-center">
@@ -67,7 +65,7 @@ export const CanvasArea = ({
       >
         {elements.filter(el => !el.inContainer).map((element) => (
           <CanvasElement
-            key={`${element.id}-${key}-${size.name}`}
+            key={`${element.id}-${size.name}`}
             element={element}
             canvasSize={size}
             selectedElement={selectedElement}

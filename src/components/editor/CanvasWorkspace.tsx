@@ -1,8 +1,11 @@
 
-import { useRef, useEffect, useState } from "react";
+import { useRef } from "react";
 import { CanvasWorkspaceContent } from "./canvas/CanvasWorkspaceContent";
 import { useDragAndResize } from "./canvas/useDragAndResize";
 import { useCanvas } from "./CanvasContext";
+import { useCanvasKeyboardShortcuts } from "./canvas/hooks/useCanvasKeyboardShortcuts";
+import { useCanvasZoomAndPan } from "./canvas/hooks/useCanvasZoomAndPan";
+import { useCanvasInitialization } from "./canvas/hooks/useCanvasInitialization";
 
 export const CanvasWorkspace = () => {
   const {
@@ -25,8 +28,17 @@ export const CanvasWorkspace = () => {
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
 
+  // Initialize canvas elements
+  useCanvasInitialization({ elements, organizeElements });
+
+  // Handle keyboard shortcuts
+  useCanvasKeyboardShortcuts({ canvasNavMode, setCanvasNavMode });
+
+  // Handle zoom and pan
+  const { panPosition } = useCanvasZoomAndPan({ containerRef, setZoomLevel });
+
+  // Handle drag and resize
   const {
     isDragging,
     isResizing,
@@ -51,69 +63,6 @@ export const CanvasWorkspace = () => {
     organizeElements,
     canvasNavMode
   });
-
-  useEffect(() => {
-    if (elements.length > 0) {
-      organizeElements();
-    }
-  }, []);
-
-  useEffect(() => {
-    const handleSpacebarDown = () => {
-      if (canvasNavMode !== 'pan') {
-        setCanvasNavMode('pan');
-      }
-    };
-
-    const handleSpacebarUp = () => {
-      if (canvasNavMode === 'pan') {
-        setCanvasNavMode('edit');
-      }
-    };
-
-    document.addEventListener('canvas-spacebar-down', handleSpacebarDown);
-    document.addEventListener('canvas-spacebar-up', handleSpacebarUp);
-
-    return () => {
-      document.removeEventListener('canvas-spacebar-down', handleSpacebarDown);
-      document.removeEventListener('canvas-spacebar-up', handleSpacebarUp);
-    };
-  }, [canvasNavMode, setCanvasNavMode]);
-
-  useEffect(() => {
-    const containerElement = containerRef.current;
-    if (!containerElement) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-
-      if (e.ctrlKey) {
-        const delta = e.deltaY > 0 ? -0.1 : 0.1;
-        setZoomLevel(prev => Math.min(Math.max(0.1, prev + delta), 5));
-        return;
-      }
-
-      if (e.shiftKey) {
-        // Update pan position for horizontal scrolling
-        setPanPosition(prev => ({
-          x: prev.x - e.deltaY,
-          y: prev.y
-        }));
-        return;
-      }
-
-      // Normal vertical scrolling
-      setPanPosition(prev => ({
-        x: prev.x,
-        y: prev.y - e.deltaY
-      }));
-    };
-
-    containerElement.addEventListener('wheel', handleWheel, { passive: false });
-    return () => {
-      containerElement.removeEventListener('wheel', handleWheel);
-    };
-  }, [setZoomLevel]);
 
   return (
     <CanvasWorkspaceContent
@@ -140,7 +89,7 @@ export const CanvasWorkspace = () => {
       handleContainerHoverEnd={handleContainerHoverEnd}
       handleMouseMove={handleMouseMove}
       handleMouseUp={handleMouseUp}
-      editorKey={key.toString()} // Fix: Convert number to string for editorKey
+      editorKey={key.toString()} // Convert number to string for editorKey
       editingMode={editingMode}
       setEditingMode={setEditingMode}
     />
