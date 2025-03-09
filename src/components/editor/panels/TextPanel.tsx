@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { EditorElement } from "../types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -91,6 +91,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
           onChange={(e) => updateElementContent(e.target.value)}
           className="w-full resize-none border-0 focus:outline-none min-h-[80px]"
           placeholder="Text Element"
+          onKeyDown={(e) => e.stopPropagation()} // Prevent event bubbling
         />
         <div className="w-2 h-2 bg-gray-600 opacity-60 absolute bottom-3 right-3"></div>
       </div>
@@ -98,7 +99,11 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
       <div className="space-y-2">
         <div className="text-center text-sm text-gray-500">Vincular a</div>
 
-        <Select value={linkType} onValueChange={setLinkType}>
+        <Select 
+          value={linkType} 
+          onValueChange={setLinkType}
+          onOpenChange={(open) => { if (open) { document.addEventListener('keydown', (e) => e.stopPropagation(), { once: true }) }}}
+        >
           <SelectTrigger className="w-full mb-2">
             <SelectValue placeholder="Página da Web" />
           </SelectTrigger>
@@ -113,6 +118,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
           type="text"
           value={linkUrl}
           onChange={(e) => setLinkUrl(e.target.value)}
+          onKeyDown={(e) => e.stopPropagation()} // Prevent event bubbling
           placeholder="Link"
           className="w-full px-3 py-2 border rounded-md bg-white"
         />
@@ -300,6 +306,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
               type="text"
               value={element.style.color || "#000000"}
               onChange={(e) => updateElementStyle("color", e.target.value)}
+              onKeyDown={(e) => e.stopPropagation()} // Prevent event bubbling
               className="flex-1 px-3 py-2 border rounded ml-2"
             />
           </div>

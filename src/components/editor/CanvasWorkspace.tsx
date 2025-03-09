@@ -25,7 +25,8 @@ export const CanvasWorkspace = () => {
     zoomLevel,
     setZoomLevel,
     canvasNavMode,
-    setCanvasNavMode
+    setCanvasNavMode,
+    activeSizes
   } = useCanvas();
 
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -76,8 +77,8 @@ export const CanvasWorkspace = () => {
 
       // Ctrl + wheel for zoom
       if (e.ctrlKey) {
-        const delta = e.deltaY > 0 ? -0.05 : 0.05;
-        setZoomLevel(prev => Math.min(Math.max(0.5, prev + delta), 2));
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        setZoomLevel(prev => Math.min(Math.max(0.2, prev + delta), 3)); // Extended zoom range from 0.2 to 3
         return;
       }
 
@@ -527,6 +528,9 @@ export const CanvasWorkspace = () => {
     );
   };
 
+  // Show all active sizes if there's more than one and selectedSize.name is 'All'
+  const shouldShowAllSizes = activeSizes.length > 1 && selectedSize.name === 'All';
+
   return (
     <div
       ref={containerRef}
@@ -539,27 +543,64 @@ export const CanvasWorkspace = () => {
         style={{
           transform: `translate(${panPosition.x}px, ${panPosition.y}px)`,
           transition: isPanning ? 'none' : 'transform 0.1s ease-out',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '40px',
+          alignItems: 'center',
         }}
       >
-        <Card
-          ref={canvasRef}
-          className="relative bg-white shadow-lg transform"
-          style={{
-            width: selectedSize.width,
-            height: selectedSize.height,
-            backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px)",
-            transform: `scale(${zoomLevel})`,
-            transformOrigin: "center center",
-            transition: "transform 0.2s ease-out"
-          }}
-          onMouseDown={handleCanvasMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-        >
-          {/* Render only top-level elements first */}
-          {elements.filter(el => !el.inContainer).map((element) => renderElement(element))}
-        </Card>
+        {shouldShowAllSizes ? (
+          // Display multiple canvas sizes
+          activeSizes.map((size, index) => (
+            <div key={`canvas-${size.name}`} className="relative flex flex-col items-center">
+              <div className="text-sm text-gray-600 mb-2">{size.name} ({size.width}×{size.height})</div>
+              <Card
+                className="relative bg-white shadow-lg transform"
+                style={{
+                  width: size.width,
+                  height: size.height,
+                  backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px)",
+                  transform: `scale(${zoomLevel})`,
+                  transformOrigin: "center center",
+                  transition: "transform 0.2s ease-out"
+                }}
+                onMouseDown={handleCanvasMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+              >
+                {/* Render elements for this size */}
+                {elements.filter(el => !el.inContainer).map((element) => renderElement(element))}
+              </Card>
+            </div>
+          ))
+        ) : (
+          // Display single canvas
+          <Card
+            ref={canvasRef}
+            className="relative bg-white shadow-lg transform"
+            style={{
+              width: selectedSize.width,
+              height: selectedSize.height,
+              backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px)",
+              transform: `scale(${zoomLevel})`,
+              transformOrigin: "center center",
+              transition: "transform 0.2s ease-out"
+            }}
+            onMouseDown={handleCanvasMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+          >
+            {/* Render only top-level elements first */}
+            {elements.filter(el => !el.inContainer).map((element) => renderElement(element))}
+          </Card>
+        )}
+      </div>
+
+      {/* Zoom Level Indicator */}
+      <div className="absolute bottom-4 right-4 bg-white px-2 py-1 rounded shadow text-xs">
+        Zoom: {Math.round(zoomLevel * 100)}%
       </div>
     </div>
   );

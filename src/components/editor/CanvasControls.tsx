@@ -1,10 +1,18 @@
-
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { BANNER_SIZES } from "./types";
 import { useCanvas } from "./CanvasContext";
 import { exportEmailHTML, downloadEmailTemplate } from "./utils/emailExporter";
-import { Grid3X3, ZoomIn, ZoomOut, Maximize, Hand } from "lucide-react";
+import { 
+  Grid3X3, 
+  ZoomIn, 
+  ZoomOut, 
+  Maximize, 
+  Hand, 
+  MinusCircle, 
+  PlusCircle
+} from "lucide-react";
+import { Slider } from "@/components/ui/slider";
 
 export const CanvasControls = () => {
   const { 
@@ -26,15 +34,19 @@ export const CanvasControls = () => {
   };
 
   const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(prev + 0.1, 2));
+    setZoomLevel(prev => Math.min(prev + 0.1, 3));
   };
 
   const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev - 0.1, 0.5));
+    setZoomLevel(prev => Math.max(prev - 0.1, 0.2));
   };
 
   const handleResetZoom = () => {
     setZoomLevel(1);
+  };
+
+  const handleZoomSliderChange = (value: number[]) => {
+    setZoomLevel(value[0] / 100);
   };
 
   const handleToggleNavMode = () => {
@@ -47,7 +59,7 @@ export const CanvasControls = () => {
         value={selectedSize.name === 'All' ? 'All' : selectedSize.name}
         onValueChange={(value) => {
           if (value === 'All') {
-            // All view - keeps current selected size but shows all active sizes
+            setSelectedSize({ ...selectedSize, name: 'All' });
           } else {
             const size = BANNER_SIZES.find(s => s.name === value);
             if (size) setSelectedSize(size);
@@ -84,17 +96,49 @@ export const CanvasControls = () => {
               {canvasNavMode === 'pan' ? 'Panning' : 'Hand Tool'}
             </span>
           </Button>
-        
-          <Button variant="outline" size="sm" onClick={handleZoomOut} className="px-2 mr-1" title="Zoom Out (Ctrl + Mouse Wheel Down)">
-            <ZoomOut size={16} />
-          </Button>
-          <span className="mx-2 text-sm">{Math.round(zoomLevel * 100)}%</span>
-          <Button variant="outline" size="sm" onClick={handleZoomIn} className="px-2 ml-1" title="Zoom In (Ctrl + Mouse Wheel Up)">
-            <ZoomIn size={16} />
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleResetZoom} className="px-2 ml-1" title="Reset Zoom">
-            <Maximize size={16} />
-          </Button>
+          
+          <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded mr-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleZoomOut} 
+              className="p-1 h-auto" 
+              title="Zoom Out (Ctrl + Mouse Wheel Down)"
+            >
+              <MinusCircle size={16} />
+            </Button>
+            
+            <Slider 
+              value={[zoomLevel * 100]} 
+              min={20} 
+              max={300}
+              step={5}
+              onValueChange={handleZoomSliderChange}
+              className="w-28"
+            />
+            
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleZoomIn} 
+              className="p-1 h-auto" 
+              title="Zoom In (Ctrl + Mouse Wheel Up)"
+            >
+              <PlusCircle size={16} />
+            </Button>
+            
+            <span className="mx-2 text-sm font-medium">{Math.round(zoomLevel * 100)}%</span>
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleResetZoom} 
+              className="p-1 h-7 ml-1" 
+              title="Reset Zoom"
+            >
+              <Maximize size={14} />
+            </Button>
+          </div>
         </div>
         
         <Button variant="outline" size="sm" onClick={organizeElements}>
