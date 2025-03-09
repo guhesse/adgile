@@ -1,4 +1,3 @@
-
 import { useRef, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { ElementRenderer } from "./ElementRenderer";
@@ -43,14 +42,12 @@ export const CanvasWorkspace = () => {
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [isElementOutsideContainer, setIsElementOutsideContainer] = useState(false);
 
-  // Auto-organize elements when new ones are added
   useEffect(() => {
     if (elements.length > 0) {
       organizeElements();
     }
   }, []);
 
-  // Event handlers for spacebar + canvas panning
   useEffect(() => {
     const handleSpacebarDown = () => {
       if (canvasNavMode !== 'pan') {
@@ -73,7 +70,6 @@ export const CanvasWorkspace = () => {
     };
   }, [canvasNavMode, setCanvasNavMode]);
 
-  // Handle wheel events for zooming and panning
   useEffect(() => {
     const containerElement = containerRef.current;
     if (!containerElement) return;
@@ -81,14 +77,12 @@ export const CanvasWorkspace = () => {
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
 
-      // Ctrl + wheel for zoom
       if (e.ctrlKey) {
         const delta = e.deltaY > 0 ? -0.1 : 0.1;
-        setZoomLevel(prev => Math.min(Math.max(0.1, prev + delta), 5)); // Extended zoom range from 0.1 to 5
+        setZoomLevel(prev => Math.min(Math.max(0.1, prev + delta), 5));
         return;
       }
 
-      // Shift + wheel for horizontal scroll
       if (e.shiftKey) {
         setPanPosition(prev => ({
           x: prev.x - e.deltaY,
@@ -97,7 +91,6 @@ export const CanvasWorkspace = () => {
         return;
       }
 
-      // Regular wheel for vertical scroll
       setPanPosition(prev => ({
         x: prev.x,
         y: prev.y - e.deltaY
@@ -112,7 +105,6 @@ export const CanvasWorkspace = () => {
 
   const handleMouseDown = (e: React.MouseEvent, element: any) => {
     if (canvasNavMode === 'pan') {
-      // Handle panning mode
       setIsPanning(true);
       setPanStart({
         x: e.clientX - panPosition.x,
@@ -126,7 +118,6 @@ export const CanvasWorkspace = () => {
     setSelectedElement(element);
     setIsDragging(true);
 
-    // Store the mouse position relative to the element top-left corner
     const rect = e.currentTarget.getBoundingClientRect();
     setDragStart({
       x: e.clientX - rect.left,
@@ -134,7 +125,6 @@ export const CanvasWorkspace = () => {
     });
   };
 
-  // Canvas panning when in pan mode
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
     if (canvasNavMode === 'pan') {
       setIsPanning(true);
@@ -157,20 +147,17 @@ export const CanvasWorkspace = () => {
   };
 
   const handleContainerHover = (e: React.MouseEvent, containerId: string) => {
-    // Only handle container hovering when dragging an element
     if (!isDragging || !selectedElement || selectedElement.id === containerId) {
       return;
     }
 
-    // Clear any existing hover timer
     if (containerHoverTimer) {
       clearTimeout(containerHoverTimer);
     }
 
-    // Set a new timer for hovering
     const timer = setTimeout(() => {
       setHoveredContainer(containerId);
-    }, 300); // 300ms hover time to consider moving into container
+    }, 300);
 
     setContainerHoverTimer(timer);
   };
@@ -186,7 +173,6 @@ export const CanvasWorkspace = () => {
   const handleElementExitContainer = (element: any, isOutside: boolean) => {
     if (!element.inContainer) return;
 
-    // If already tracking and no longer outside, cancel the exit
     if (containerExitTimer && !isOutside) {
       clearTimeout(containerExitTimer);
       setContainerExitTimer(null);
@@ -194,14 +180,13 @@ export const CanvasWorkspace = () => {
       return;
     }
 
-    // If newly outside, start the timer
     if (isOutside && !containerExitTimer) {
       setIsElementOutsideContainer(true);
       const timer = setTimeout(() => {
         moveElementOutOfContainer(element);
         setContainerExitTimer(null);
         setIsElementOutsideContainer(false);
-      }, 500); // 500ms to exit container
+      }, 500);
 
       setContainerExitTimer(timer);
     }
@@ -210,18 +195,14 @@ export const CanvasWorkspace = () => {
   const moveElementOutOfContainer = (element: any) => {
     if (!element.inContainer || !element.parentId) return;
 
-    // Find the parent container
     const parentContainer = elements.find(el => el.id === element.parentId);
     if (!parentContainer) return;
 
-    // Calculate absolute position in the canvas
     const absoluteX = parentContainer.style.x + element.style.x;
     const absoluteY = parentContainer.style.y + element.style.y;
 
-    // Create a new standalone element
     const newElements = [...elements];
-    
-    // Remove element from its parent's childElements
+
     const parentIndex = newElements.findIndex(el => el.id === element.parentId);
     if (parentIndex !== -1 && newElements[parentIndex].childElements) {
       newElements[parentIndex] = {
@@ -230,7 +211,6 @@ export const CanvasWorkspace = () => {
       };
     }
 
-    // Add the element as a top-level element
     const standaloneElement = {
       ...element,
       inContainer: false,
@@ -250,7 +230,6 @@ export const CanvasWorkspace = () => {
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    // Handle panning
     if (isPanning) {
       setPanPosition({
         x: e.clientX - panStart.x,
@@ -265,7 +244,6 @@ export const CanvasWorkspace = () => {
     if (!bounds || !selectedElement) return;
 
     if (isDragging) {
-      // Calculate the new position based on mouse and canvas coordinates
       const mouseX = e.clientX;
       const mouseY = e.clientY;
 
@@ -273,14 +251,12 @@ export const CanvasWorkspace = () => {
       const parentElement = selectedElement.inContainer ?
         elements.find(el => el.id === selectedElement.parentId) : null;
 
-      // Calculate new position by subtracting the drag start offset
       const canvasX = (mouseX - canvasRect.left) / zoomLevel;
       const canvasY = (mouseY - canvasRect.top) / zoomLevel;
 
       let newX = canvasX - dragStart.x / zoomLevel;
       let newY = canvasY - dragStart.y / zoomLevel;
 
-      // Check if element is being dragged outside its container
       if (parentElement && selectedElement.inContainer) {
         const isOutside = (
           newX < 0 ||
@@ -288,33 +264,27 @@ export const CanvasWorkspace = () => {
           newX + selectedElement.style.width > parentElement.style.width ||
           newY + selectedElement.style.height > parentElement.style.height
         );
-        
+
         handleElementExitContainer(selectedElement, isOutside);
 
-        // Constrain element within container bounds (unless it's exiting)
         if (!isElementOutsideContainer) {
           newX = Math.max(0, Math.min(newX, parentElement.style.width - selectedElement.style.width));
           newY = Math.max(0, Math.min(newY, parentElement.style.height - selectedElement.style.height));
         }
       } else {
-        // If not in a container, constrain within canvas
         newX = Math.max(0, Math.min(newX, selectedSize.width - selectedElement.style.width));
         newY = Math.max(0, Math.min(newY, selectedSize.height - selectedElement.style.height));
       }
 
-      // Apply grid snapping
       newX = snapToGrid(newX);
       newY = snapToGrid(newY);
 
-      // Calculate percentage values for responsive positioning
       const xPercent = (newX / selectedSize.width) * 100;
       const yPercent = (newY / selectedSize.height) * 100;
 
-      // Update the selected element with new position
       let updatedElements = [...elements];
-      
+
       if (editingMode === 'global' && selectedElement.linkedElementId) {
-        // Update all linked elements across different sizes
         updatedElements = updateAllLinkedElements(
           updatedElements,
           selectedElement,
@@ -322,7 +292,6 @@ export const CanvasWorkspace = () => {
           { x: newX, y: newY }
         );
       } else {
-        // Only update the current element
         updatedElements = updatedElements.map(el => {
           if (el.id === selectedElement.id) {
             return { 
@@ -365,7 +334,6 @@ export const CanvasWorkspace = () => {
 
       setElements(updatedElements);
 
-      // Update the selected element reference
       setSelectedElement({
         ...selectedElement,
         style: { 
@@ -378,7 +346,6 @@ export const CanvasWorkspace = () => {
         isIndividuallyPositioned: editingMode === 'individual'
       });
     } else if (isResizing) {
-      // Handle resizing with similar improvements
       const deltaX = e.clientX - dragStart.x;
       const deltaY = e.clientY - dragStart.y;
 
@@ -387,11 +354,9 @@ export const CanvasWorkspace = () => {
       let newX = selectedElement.style.x;
       let newY = selectedElement.style.y;
 
-      // Apply different scaling factor based on zoom level
       const scaledDeltaX = deltaX / zoomLevel;
       const scaledDeltaY = deltaY / zoomLevel;
 
-      // Handle different resize directions with grid snapping
       if (resizeDirection.includes('e')) {
         newWidth = snapToGrid(Math.max(50, selectedElement.style.width + scaledDeltaX));
       }
@@ -409,11 +374,9 @@ export const CanvasWorkspace = () => {
         newHeight = possibleHeight;
       }
 
-      // Apply parent container constraints if needed
       if (selectedElement.inContainer && selectedElement.parentId) {
         const parentElement = elements.find(el => el.id === selectedElement.parentId);
         if (parentElement) {
-          // Ensure the element stays within the container bounds
           if (newX < 0) {
             newX = 0;
             newWidth = selectedElement.style.width;
@@ -431,17 +394,14 @@ export const CanvasWorkspace = () => {
         }
       }
 
-      // Calculate percentage values
       const widthPercent = (newWidth / selectedSize.width) * 100;
       const heightPercent = (newHeight / selectedSize.height) * 100;
       const xPercent = (newX / selectedSize.width) * 100;
       const yPercent = (newY / selectedSize.height) * 100;
 
-      // Update elements array
       let updatedElements;
       
       if (editingMode === 'global' && selectedElement.linkedElementId) {
-        // Update all linked elements across different sizes
         updatedElements = updateAllLinkedElements(
           elements,
           selectedElement,
@@ -449,7 +409,6 @@ export const CanvasWorkspace = () => {
           { x: newX, y: newY, width: newWidth, height: newHeight }
         );
       } else {
-        // Update only the current element
         updatedElements = elements.map(el => {
           if (el.id === selectedElement.id) {
             return { 
@@ -500,7 +459,6 @@ export const CanvasWorkspace = () => {
 
       setElements(updatedElements);
 
-      // Update selected element reference
       setSelectedElement({
         ...selectedElement,
         style: { 
@@ -531,12 +489,9 @@ export const CanvasWorkspace = () => {
     }
 
     if (isDragging || isResizing) {
-      // If hovering over a container when releasing the element and not a container itself
       if (hoveredContainer && selectedElement && selectedElement.type !== 'container' && selectedElement.type !== 'layout') {
-        // Move the element into the container
         moveElementToContainer(selectedElement, hoveredContainer);
       } else {
-        // Otherwise, just re-organize elements
         organizeElements();
       }
     }
@@ -553,14 +508,11 @@ export const CanvasWorkspace = () => {
   };
 
   const moveElementToContainer = (element: any, containerId: string) => {
-    // Find the container
     const container = elements.find(el => el.id === containerId);
     if (!container) return;
 
-    // Create a copy of the elements array to modify
     const updatedElements = [...elements];
 
-    // If the element is already in a container, remove it from that container first
     if (element.inContainer && element.parentId) {
       const oldParentIndex = updatedElements.findIndex(el => el.id === element.parentId);
       if (oldParentIndex !== -1 && updatedElements[oldParentIndex].childElements) {
@@ -570,58 +522,27 @@ export const CanvasWorkspace = () => {
         };
       }
     } else {
-      // If not in a container, remove it from the main elements array
       const elementIndex = updatedElements.findIndex(el => el.id === element.id);
       if (elementIndex !== -1) {
         updatedElements.splice(elementIndex, 1);
       }
     }
 
-    // Find the container in our updated array
     const containerIndex = updatedElements.findIndex(el => el.id === containerId);
     if (containerIndex === -1) return;
 
-    // Calculate position relative to the container
     const relativeX = Math.max(0, element.style.x - container.style.x);
     const relativeY = Math.max(0, element.style.y - container.style.y);
 
-    // Ensure the element is within container bounds
     const adjustedX = Math.min(relativeX, container.style.width - element.style.width);
     const adjustedY = Math.max(0, Math.min(relativeY, container.style.height - element.style.height));
 
-    // Calculate percentage values
     const xPercent = (adjustedX / container.style.width) * 100;
     const yPercent = (adjustedY / container.style.height) * 100;
 
-    // Add the element to the container
     const childElements = updatedElements[containerIndex].childElements || [];
 
-    // Update container with the new child
-    updatedElements[containerIndex] = {
-      ...updatedElements[containerIndex],
-      childElements: [
-        ...childElements,
-        {
-          ...element,
-          inContainer: true,
-          parentId: containerId,
-          style: {
-            ...element.style,
-            // Set position relative to the container
-            x: adjustedX,
-            y: adjustedY,
-            xPercent,
-            yPercent
-          }
-        }
-      ]
-    };
-
-    // Update the elements state
-    setElements(updatedElements);
-
-    // Update the selected element to reflect its new container status
-    setSelectedElement({
+    const newElement = {
       ...element,
       inContainer: true,
       parentId: containerId,
@@ -632,7 +553,18 @@ export const CanvasWorkspace = () => {
         xPercent,
         yPercent
       }
-    });
+    };
+
+    updatedElements[containerIndex] = {
+      ...updatedElements[containerIndex],
+      childElements: [
+        ...childElements,
+        newElement
+      ]
+    };
+
+    setElements(updatedElements);
+    setSelectedElement(newElement);
     
     toast.success('Elemento adicionado ao container');
   };
@@ -642,10 +574,8 @@ export const CanvasWorkspace = () => {
     const isContainer = element.type === "container" || element.type === "layout";
     const isExiting = isElementOutsideContainer && selectedElement?.id === element.id;
 
-    // Apply optimal positioning for this specific canvas size
     const optimalPosition = findOptimalPosition(element, canvasSize.width, canvasSize.height);
     
-    // Use fixed positioning if element has been individually positioned
     const position = element.isIndividuallyPositioned 
       ? { x: element.style.x, y: element.style.y, width: element.style.width, height: element.style.height }
       : optimalPosition;
@@ -653,7 +583,6 @@ export const CanvasWorkspace = () => {
     let positionStyle: React.CSSProperties = {};
 
     if (isChild) {
-      // Child elements are positioned relative to their container
       positionStyle = {
         position: "absolute",
         left: position.x,
@@ -662,7 +591,6 @@ export const CanvasWorkspace = () => {
         height: position.height
       };
     } else {
-      // Top-level elements are positioned absolutely within the canvas
       positionStyle = {
         position: "absolute",
         left: position.x,
@@ -709,14 +637,12 @@ export const CanvasWorkspace = () => {
       >
         <ElementRenderer element={element} />
 
-        {/* Render child elements */}
         {isContainer && element.childElements && (
           <div className="absolute top-0 left-0 w-full h-full">
             {element.childElements.map((child: any) => renderElement(child, true, canvasSize))}
           </div>
         )}
 
-        {/* Resize Handles - only show for selected elements and not in pan mode */}
         {selectedElement?.id === element.id && canvasNavMode !== 'pan' && (
           <>
             <div className="resize-handle resize-handle-n" onMouseDown={(e) => handleResizeStart(e, 'n', element)}></div>
@@ -733,7 +659,6 @@ export const CanvasWorkspace = () => {
     );
   };
 
-  // Show all active sizes if there's more than one and selectedSize.name is 'All'
   const shouldShowAllSizes = activeSizes.length > 1 && selectedSize.name === 'All';
 
   return (
@@ -755,7 +680,6 @@ export const CanvasWorkspace = () => {
         }}
       >
         {shouldShowAllSizes ? (
-          // Display multiple canvas sizes
           activeSizes.map((size, index) => (
             <div key={`canvas-${size.name}`} className="relative flex flex-col items-center">
               <div className="text-sm text-gray-600 mb-2">{size.name} ({size.width}×{size.height})</div>
@@ -774,13 +698,11 @@ export const CanvasWorkspace = () => {
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
               >
-                {/* Render elements for this size */}
                 {elements.filter(el => !el.inContainer).map((element) => renderElement(element, false, size))}
               </Card>
             </div>
           ))
         ) : (
-          // Display single canvas
           <Card
             ref={canvasRef}
             className="relative bg-white shadow-lg transform"
@@ -797,13 +719,11 @@ export const CanvasWorkspace = () => {
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
           >
-            {/* Render only top-level elements first */}
             {elements.filter(el => !el.inContainer).map((element) => renderElement(element))}
           </Card>
         )}
       </div>
 
-      {/* Editing Mode Indicator */}
       <div className="absolute bottom-14 right-4 bg-white px-3 py-1.5 rounded shadow-md">
         <div 
           className={`flex gap-1 text-xs items-center cursor-pointer ${editingMode === 'global' ? 'text-blue-600 font-medium' : 'text-gray-500'}`}
@@ -821,7 +741,6 @@ export const CanvasWorkspace = () => {
         </div>
       </div>
 
-      {/* Zoom Level Indicator */}
       <div className="absolute bottom-4 right-4 bg-white px-3 py-1.5 rounded shadow-md flex items-center gap-3">
         <span className="text-xs whitespace-nowrap">Zoom: {Math.round(zoomLevel * 100)}%</span>
         <input 

@@ -1,5 +1,5 @@
 
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { EditorElement } from "../types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -28,42 +28,122 @@ interface TextPanelProps {
 }
 
 export const TextPanel = ({ element, updateElementStyle, updateElementContent, activeTab }: TextPanelProps) => {
+  // Setup refs for maintaining focus on inputs
+  const colorInputRef = useRef<HTMLInputElement>(null);
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const linkUrlRef = useRef<HTMLInputElement>(null);
+  
+  // State for the form elements
   const [linkType, setLinkType] = useState("webpage");
   const [linkUrl, setLinkUrl] = useState("");
   const [newTab, setNewTab] = useState(true);
   const [colorPickerValue, setColorPickerValue] = useState(element.style.color || "#414651");
+  const [fontSizeValue, setFontSizeValue] = useState<string>(String(element.style.fontSize || 16));
+  const [lineHeightValue, setLineHeightValue] = useState<string>(String(element.style.lineHeight || 1.5));
+  const [letterSpacingValue, setLetterSpacingValue] = useState<string>(String(element.style.letterSpacing || 0));
 
-  // Font size controls
+  // Sync form state with element props when element changes
+  useEffect(() => {
+    setColorPickerValue(element.style.color || "#414651");
+    setFontSizeValue(String(element.style.fontSize || 16));
+    setLineHeightValue(String(element.style.lineHeight || 1.5));
+    setLetterSpacingValue(String(element.style.letterSpacing || 0));
+  }, [element]);
+
+  // Font weight options
+  const fontWeightOptions = [
+    { value: "normal", label: "Normal" },
+    { value: "medium", label: "Medium" },
+    { value: "bold", label: "Bold" },
+  ];
+
+  // Font family options
+  const fontFamilyOptions = [
+    { value: "Arial", label: "Arial" },
+    { value: "Geist", label: "Geist" },
+    { value: "Inter", label: "Inter" },
+    { value: "Roboto", label: "Roboto" },
+    { value: "Open Sans", label: "Open Sans" },
+    { value: "Montserrat", label: "Montserrat" },
+    { value: "Poppins", label: "Poppins" },
+    { value: "Lato", label: "Lato" },
+    { value: "Playfair Display", label: "Playfair Display" },
+    { value: "Oswald", label: "Oswald" },
+    { value: "Source Sans Pro", label: "Source Sans Pro" },
+    { value: "Merriweather", label: "Merriweather" },
+    { value: "Raleway", label: "Raleway" },
+    { value: "PT Sans", label: "PT Sans" },
+    { value: "Quicksand", label: "Quicksand" },
+    { value: "Nunito", label: "Nunito" },
+    { value: "Work Sans", label: "Work Sans" },
+    { value: "Fira Sans", label: "Fira Sans" },
+  ];
+
+  // Font size controls with direct input
+  const handleFontSizeChange = (value: string) => {
+    // Allow only numbers
+    if (/^[0-9]*$/.test(value) || value === '') {
+      setFontSizeValue(value);
+      if (value !== '') {
+        updateElementStyle("fontSize", Number(value));
+      }
+    }
+  };
+
   const increaseFontSize = () => {
-    const currentSize = element.style.fontSize || 16;
-    updateElementStyle("fontSize", currentSize + 1);
+    const newSize = (element.style.fontSize || 16) + 1;
+    setFontSizeValue(String(newSize));
+    updateElementStyle("fontSize", newSize);
   };
 
   const decreaseFontSize = () => {
-    const currentSize = element.style.fontSize || 16;
-    updateElementStyle("fontSize", Math.max(8, currentSize - 1));
+    const newSize = Math.max(8, (element.style.fontSize || 16) - 1);
+    setFontSizeValue(String(newSize));
+    updateElementStyle("fontSize", newSize);
   };
 
-  // Line height controls
+  // Line height controls with direct input
+  const handleLineHeightChange = (value: string) => {
+    if (/^[0-9]*\.?[0-9]*$/.test(value) || value === '') {
+      setLineHeightValue(value);
+      if (value !== '') {
+        updateElementStyle("lineHeight", parseFloat(value));
+      }
+    }
+  };
+
   const increaseLineHeight = () => {
-    const currentLineHeight = element.style.lineHeight || 1.5;
-    updateElementStyle("lineHeight", Math.min(3, parseFloat((currentLineHeight + 0.1).toFixed(1))));
+    const newLineHeight = parseFloat((Math.min(3, (element.style.lineHeight || 1.5) + 0.1).toFixed(1)));
+    setLineHeightValue(String(newLineHeight));
+    updateElementStyle("lineHeight", newLineHeight);
   };
 
   const decreaseLineHeight = () => {
-    const currentLineHeight = element.style.lineHeight || 1.5;
-    updateElementStyle("lineHeight", Math.max(1, parseFloat((currentLineHeight - 0.1).toFixed(1))));
+    const newLineHeight = parseFloat((Math.max(1, (element.style.lineHeight || 1.5) - 0.1).toFixed(1)));
+    setLineHeightValue(String(newLineHeight));
+    updateElementStyle("lineHeight", newLineHeight);
   };
 
-  // Letter spacing controls
+  // Letter spacing controls with direct input
+  const handleLetterSpacingChange = (value: string) => {
+    if (/^-?[0-9]*\.?[0-9]*$/.test(value) || value === '') {
+      setLetterSpacingValue(value);
+      if (value !== '') {
+        updateElementStyle("letterSpacing", parseFloat(value));
+      }
+    }
+  };
+
   const increaseLetterSpacing = () => {
-    const currentSpacing = element.style.letterSpacing || 0;
-    updateElementStyle("letterSpacing", parseFloat((currentSpacing + 0.1).toFixed(1)));
+    const newSpacing = parseFloat(((element.style.letterSpacing || 0) + 0.1).toFixed(1));
+    setLetterSpacingValue(String(newSpacing));
+    updateElementStyle("letterSpacing", newSpacing);
   };
 
   const decreaseLetterSpacing = () => {
-    const currentSpacing = element.style.letterSpacing || 0;
-    updateElementStyle("letterSpacing", Math.max(-0.5, parseFloat((currentSpacing - 0.1).toFixed(1))));
+    const newSpacing = parseFloat((Math.max(-0.5, (element.style.letterSpacing || 0) - 0.1).toFixed(1)));
+    setLetterSpacingValue(String(newSpacing));
+    updateElementStyle("letterSpacing", newSpacing);
   };
 
   // Text style controls
@@ -80,6 +160,16 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
     }
   };
 
+  // Handle font family selection
+  const handleFontFamilyChange = (value: string) => {
+    updateElementStyle("fontFamily", value);
+  };
+
+  // Handle font weight selection
+  const handleFontWeightChange = (value: string) => {
+    updateElementStyle("fontWeight", value);
+  };
+
   // Content Panel - for editing the content and link
   const ContentPanel = () => (
     <div className="space-y-6 p-4">
@@ -87,6 +177,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
 
       <div className="border rounded-lg p-3 relative">
         <textarea
+          ref={contentTextareaRef}
           value={element.content}
           onChange={(e) => updateElementContent(e.target.value)}
           className="w-full resize-none border-0 focus:outline-none min-h-[80px]"
@@ -115,6 +206,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
         </Select>
 
         <input
+          ref={linkUrlRef}
           type="text"
           value={linkUrl}
           onChange={(e) => setLinkUrl(e.target.value)}
@@ -145,28 +237,44 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
       {/* Typography Section */}
       <div className="space-y-2">
         <div className="text-center text-sm text-gray-500">Tipografia</div>
-        <div className="flex items-center p-2 px-3 border rounded-md bg-white">
-          <span className="flex-1 text-xs">
-            {element.style.fontFamily || "Arial"}
-          </span>
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
+        <Select 
+          value={element.style.fontFamily || "Arial"} 
+          onValueChange={handleFontFamilyChange}
+          onOpenChange={(open) => { if (open) { document.addEventListener('keydown', (e) => e.stopPropagation(), { once: true }) }}}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Escolha uma fonte" />
+          </SelectTrigger>
+          <SelectContent>
+            {fontFamilyOptions.map(option => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Font Style Section */}
       <div className="space-y-2">
         <div className="text-center text-sm text-gray-500">Estilo de fonte</div>
         <div className="flex items-center justify-between">
-          <div className="flex items-center p-2 px-3 border rounded-md bg-white w-1/2 mr-2">
-            <span className="flex-1 text-xs">
-              {element.style.fontWeight === 'bold' ? "Bold" : "Medium"}
-            </span>
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
+          <Select 
+            value={element.style.fontWeight || "normal"} 
+            onValueChange={handleFontWeightChange}
+            onOpenChange={(open) => { if (open) { document.addEventListener('keydown', (e) => e.stopPropagation(), { once: true }) }}}
+          >
+            <SelectTrigger className="w-full mr-2">
+              <SelectValue placeholder="Peso da fonte" />
+            </SelectTrigger>
+            <SelectContent>
+              {fontWeightOptions.map(option => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <div className="flex space-x-2">
             <button
@@ -200,7 +308,13 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
             <button onClick={decreaseFontSize} className="p-1">
               <Minus size={14} />
             </button>
-            <span className="mx-2 text-xs">{element.style.fontSize || 16}</span>
+            <input
+              type="text"
+              value={fontSizeValue}
+              onChange={(e) => handleFontSizeChange(e.target.value)}
+              onKeyDown={(e) => e.stopPropagation()}
+              className="w-10 text-center bg-transparent border-0 focus:outline-none text-xs"
+            />
             <button onClick={increaseFontSize} className="p-1">
               <Plus size={14} />
             </button>
@@ -216,7 +330,13 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
             <button onClick={decreaseLineHeight} className="p-1">
               <Minus size={14} />
             </button>
-            <span className="mx-2 text-xs">{element.style.lineHeight || 1.5}</span>
+            <input
+              type="text"
+              value={lineHeightValue}
+              onChange={(e) => handleLineHeightChange(e.target.value)}
+              onKeyDown={(e) => e.stopPropagation()}
+              className="w-10 text-center bg-transparent border-0 focus:outline-none text-xs"
+            />
             <button onClick={increaseLineHeight} className="p-1">
               <Plus size={14} />
             </button>
@@ -232,7 +352,13 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
             <button onClick={decreaseLetterSpacing} className="p-1">
               <Minus size={14} />
             </button>
-            <span className="mx-2 text-xs">{element.style.letterSpacing || 0}</span>
+            <input
+              type="text"
+              value={letterSpacingValue}
+              onChange={(e) => handleLetterSpacingChange(e.target.value)}
+              onKeyDown={(e) => e.stopPropagation()}
+              className="w-10 text-center bg-transparent border-0 focus:outline-none text-xs"
+            />
             <button onClick={increaseLetterSpacing} className="p-1">
               <Plus size={14} />
             </button>
@@ -290,7 +416,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
         </div>
       </div>
 
-      {/* Color Section - Using the simplified color picker from ButtonPanel */}
+      {/* Color Section */}
       <div className="space-y-2">
         <div className="text-center text-sm text-gray-500">Cor</div>
         <div>
@@ -299,13 +425,20 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
             <input
               type="color"
               value={element.style.color || "#000000"}
-              onChange={(e) => updateElementStyle("color", e.target.value)}
+              onChange={(e) => {
+                setColorPickerValue(e.target.value);
+                updateElementStyle("color", e.target.value);
+              }}
               className="w-10 h-10 rounded cursor-pointer"
             />
             <input
+              ref={colorInputRef}
               type="text"
               value={element.style.color || "#000000"}
-              onChange={(e) => updateElementStyle("color", e.target.value)}
+              onChange={(e) => {
+                setColorPickerValue(e.target.value);
+                updateElementStyle("color", e.target.value);
+              }}
               onKeyDown={(e) => e.stopPropagation()} // Prevent event bubbling
               className="flex-1 px-3 py-2 border rounded ml-2"
             />
