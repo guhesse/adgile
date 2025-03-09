@@ -1,8 +1,7 @@
-
 import { BannerSize, CanvasNavigationMode, EditorElement } from "../types";
 import { ElementRenderer } from "../ElementRenderer";
 import { ElementHandles } from "./ElementHandles";
-import { findOptimalPosition } from "../utils/gridUtils";
+import { findOptimalPosition } from "../utils/grid/positionUtils";
 
 interface CanvasElementProps {
   element: EditorElement;
