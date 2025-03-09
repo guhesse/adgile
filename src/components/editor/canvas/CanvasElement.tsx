@@ -67,7 +67,6 @@ export const CanvasElement = ({
 
   return (
     <div
-      key={key}
       style={{
         ...positionStyle,
         animationPlayState: element.style.animationPlayState,

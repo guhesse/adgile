@@ -1,6 +1,6 @@
 
 import { Card } from "@/components/ui/card";
-import { BannerSize, EditorElement } from "../types";
+import { BannerSize, CanvasNavigationMode, EditorElement } from "../types";
 import { CanvasElement } from "./CanvasElement";
 
 interface CanvasAreaProps {
@@ -17,7 +17,7 @@ interface CanvasAreaProps {
   handleResizeStart: (e: React.MouseEvent, direction: string, element: EditorElement) => void;
   handleContainerHover: (e: React.MouseEvent, containerId: string) => void;
   handleContainerHoverEnd: () => void;
-  canvasNavMode: string;
+  canvasNavMode: CanvasNavigationMode;
   handleMouseMove: (e: React.MouseEvent) => void;
   handleMouseUp: () => void;
   key: string;

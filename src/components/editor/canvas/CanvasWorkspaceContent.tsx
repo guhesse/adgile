@@ -27,7 +27,7 @@ interface CanvasWorkspaceContentProps {
   handleContainerHoverEnd: () => void;
   handleMouseMove: (e: React.MouseEvent) => void;
   handleMouseUp: () => void;
-  key: string;
+  editorKey: string; // Changed from key to editorKey to avoid issues
   editingMode: EditingMode;
   setEditingMode: (mode: EditingMode) => void;
 }
@@ -56,7 +56,7 @@ export const CanvasWorkspaceContent = ({
   handleContainerHoverEnd,
   handleMouseMove,
   handleMouseUp,
-  key,
+  editorKey, // Changed from key to editorKey
   editingMode,
   setEditingMode
 }: CanvasWorkspaceContentProps) => {
@@ -97,7 +97,7 @@ export const CanvasWorkspaceContent = ({
               canvasNavMode={canvasNavMode}
               handleMouseMove={handleMouseMove}
               handleMouseUp={handleMouseUp}
-              key={`${key}-${index}`}
+              key={`${editorKey}-${index}`} // Changed from key to editorKey
             />
           ))
         ) : (
@@ -118,7 +118,7 @@ export const CanvasWorkspaceContent = ({
             canvasNavMode={canvasNavMode}
             handleMouseMove={handleMouseMove}
             handleMouseUp={handleMouseUp}
-            key={key}
+            key={editorKey} // Changed from key to editorKey
           />
         )}
       </div>

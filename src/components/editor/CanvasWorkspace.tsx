@@ -140,7 +140,7 @@ export const CanvasWorkspace = () => {
       handleContainerHoverEnd={handleContainerHoverEnd}
       handleMouseMove={handleMouseMove}
       handleMouseUp={handleMouseUp}
-      key={key}
+      editorKey={key} // Changed from key to editorKey to avoid naming conflict
       editingMode={editingMode}
       setEditingMode={setEditingMode}
     />
