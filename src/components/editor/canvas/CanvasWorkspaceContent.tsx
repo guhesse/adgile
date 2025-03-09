@@ -81,7 +81,7 @@ export const CanvasWorkspaceContent = ({
         {shouldShowAllSizes ? (
           activeSizes.map((size, index) => (
             <CanvasArea
-              key={`canvas-${size.name}`}
+              key={`canvas-${size.name}-${editorKey}-${index}`}
               size={size}
               elements={elements}
               selectedElement={selectedElement}
@@ -97,11 +97,11 @@ export const CanvasWorkspaceContent = ({
               canvasNavMode={canvasNavMode}
               handleMouseMove={handleMouseMove}
               handleMouseUp={handleMouseUp}
-              key={`${editorKey}-${index}`} // Changed from key to editorKey
             />
           ))
         ) : (
           <CanvasArea
+            key={`single-canvas-${editorKey}`}
             size={selectedSize}
             elements={elements}
             selectedElement={selectedElement}
@@ -118,7 +118,6 @@ export const CanvasWorkspaceContent = ({
             canvasNavMode={canvasNavMode}
             handleMouseMove={handleMouseMove}
             handleMouseUp={handleMouseUp}
-            key={editorKey} // Changed from key to editorKey
           />
         )}
       </div>
