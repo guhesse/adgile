@@ -1,4 +1,7 @@
 
+// Only updating the handleAddElement function to handle the new element types
+// The rest of the file stays the same
+
 import { createContext, useContext, useState, useEffect } from "react";
 import { EditorElement, BannerSize, BANNER_SIZES, CanvasNavigationMode } from "./types";
 import { organizeElementsInContainers, snapToGrid } from "./utils/gridUtils";
@@ -70,19 +73,39 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const newElement: EditorElement = {
       id: Date.now().toString(),
       type,
-      content: type === "text" ? "Text Element" : type === "button" ? "Button Element" : "",
+      content: type === "text" || type === "paragraph" ? "Text Element" : 
+               type === "button" ? "Button Element" : 
+               type === "divider" ? "" : 
+               type === "spacer" ? "" : 
+               type === "logo" ? "" : 
+               type === "video" ? "" : "",
       inContainer: false,
       style: {
         x: snapToGrid(100),
         y: snapToGrid(100),
-        width: snapToGrid(type === "text" ? 200 : type === "image" ? 150 : 200),
-        height: snapToGrid(type === "text" ? 40 : type === "image" ? 150 : 50),
-        fontSize: 16,
-        color: "#000000",
-        fontFamily: "Inter",
-        lineHeight: 1.5,
-        textAlign: "left",
-        backgroundColor: type === "button" ? "#1a1f2c" : undefined,
+        width: snapToGrid(
+          type === "text" || type === "paragraph" ? 200 : 
+          type === "image" || type === "logo" ? 150 : 
+          type === "video" ? 320 : 
+          type === "divider" ? 300 : 
+          type === "spacer" ? 100 : 200
+        ),
+        height: snapToGrid(
+          type === "text" ? 40 : 
+          type === "paragraph" ? 100 : 
+          type === "image" || type === "logo" ? 150 : 
+          type === "video" ? 180 : 
+          type === "divider" ? 2 : 
+          type === "spacer" ? 50 : 50
+        ),
+        fontSize: type === "text" || type === "paragraph" ? 16 : undefined,
+        color: type === "text" || type === "paragraph" ? "#000000" : undefined,
+        fontFamily: type === "text" || type === "paragraph" ? "Inter" : undefined,
+        lineHeight: type === "text" || type === "paragraph" ? 1.5 : undefined,
+        textAlign: type === "text" || type === "paragraph" ? "left" : undefined,
+        backgroundColor: type === "button" ? "#1a1f2c" : 
+                         type === "divider" ? "#d1d5db" : 
+                         type === "spacer" ? undefined : undefined,
         padding: type === "button" ? "8px 16px" : undefined,
       },
     };

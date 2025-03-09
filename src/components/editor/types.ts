@@ -1,4 +1,3 @@
-
 export type BannerSize = {
   name: string;
   width: number;
@@ -7,7 +6,7 @@ export type BannerSize = {
 
 export type EditorElement = {
   id: string;
-  type: "text" | "image" | "button" | "layout" | "container";
+  type: "text" | "image" | "button" | "layout" | "container" | "paragraph" | "divider" | "spacer" | "logo" | "video";
   content: string;
   style: {
     x: number;
