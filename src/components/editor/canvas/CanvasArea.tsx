@@ -58,7 +58,12 @@ export const CanvasArea = ({
           transformOrigin: "center center",
           transition: "transform 0.2s ease-out"
         }}
-        onMouseDown={handleCanvasMouseDown}
+        onMouseDown={(e) => {
+          // Verificar se clicou diretamente no Card (canvas) e não em um elemento
+          if (e.currentTarget === e.target) {
+            handleCanvasMouseDown(e);
+          }
+        }}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}

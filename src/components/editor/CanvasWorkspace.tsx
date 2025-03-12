@@ -23,7 +23,8 @@ export const CanvasWorkspace = () => {
     activeSizes,
     editingMode,
     setEditingMode,
-    updateAllLinkedElements
+    updateAllLinkedElements,
+    removeElement
   } = useCanvas();
 
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -33,7 +34,12 @@ export const CanvasWorkspace = () => {
   useCanvasInitialization({ elements, organizeElements });
 
   // Handle keyboard shortcuts
-  useCanvasKeyboardShortcuts({ canvasNavMode, setCanvasNavMode });
+  useCanvasKeyboardShortcuts({ 
+    canvasNavMode, 
+    setCanvasNavMode, 
+    selectedElement, 
+    removeElement 
+  });
 
   // Handle zoom and pan
   const { 
@@ -73,6 +79,17 @@ export const CanvasWorkspace = () => {
     canvasNavMode
   });
 
+  // Modificar o handleCanvasMouseDown para limpar a seleção quando clicar no canvas
+  const handleCanvasClick = (e: React.MouseEvent) => {
+    // Chama o comportamento original
+    handleCanvasMouseDown(e);
+    
+    // Limpa a seleção se não estiver no modo de pan
+    if (canvasNavMode !== 'pan') {
+      setSelectedElement(null);
+    }
+  };
+
   return (
     <CanvasWorkspaceContent
       containerRef={containerRef}
@@ -92,7 +109,7 @@ export const CanvasWorkspace = () => {
       isElementOutsideContainer={isElementOutsideContainer}
       hoveredContainer={hoveredContainer}
       handleMouseDown={handleMouseDown}
-      handleCanvasMouseDown={handleCanvasMouseDown}
+      handleCanvasMouseDown={handleCanvasClick}
       handleResizeStart={handleResizeStart}
       handleContainerHover={handleContainerHover}
       handleContainerHoverEnd={handleContainerHoverEnd}
