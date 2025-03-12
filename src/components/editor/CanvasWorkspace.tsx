@@ -36,14 +36,23 @@ export const CanvasWorkspace = () => {
   useCanvasKeyboardShortcuts({ canvasNavMode, setCanvasNavMode });
 
   // Handle zoom and pan
-  const { panPosition } = useCanvasZoomAndPan({ containerRef, setZoomLevel });
+  const { 
+    panPosition, 
+    setPanPosition, 
+    isPanning, 
+    setIsPanning 
+  } = useCanvasZoomAndPan({ 
+    canvasNavMode, 
+    setZoomLevel, 
+    zoomLevel,
+    containerRef 
+  });
 
   // Handle drag and resize
   const {
     isDragging,
     isResizing,
     hoveredContainer,
-    isPanning,
     isElementOutsideContainer,
     handleMouseDown,
     handleCanvasMouseDown,

@@ -1,21 +1,24 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { CanvasNavigationMode } from '../../types';
 
 interface UseCanvasZoomAndPanProps {
   canvasNavMode: CanvasNavigationMode;
   setZoomLevel: React.Dispatch<React.SetStateAction<number>>;
   zoomLevel: number;
+  containerRef?: React.RefObject<HTMLDivElement>;
 }
 
 export const useCanvasZoomAndPan = ({ 
   canvasNavMode, 
   setZoomLevel,
-  zoomLevel
+  zoomLevel,
+  containerRef
 }: UseCanvasZoomAndPanProps) => {
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
 
   // Zoom functions
   const handleZoomIn = useCallback(() => {
@@ -56,6 +59,8 @@ export const useCanvasZoomAndPan = ({
     setPanOffset,
     isPanning,
     setIsPanning,
+    panPosition,
+    setPanPosition,
     handleZoomIn,
     handleZoomOut,
     handleResetZoom
