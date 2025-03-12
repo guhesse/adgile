@@ -38,6 +38,8 @@ export type EditorElement = {
     borderTopRightRadius?: number;
     borderBottomLeftRadius?: number;
     borderBottomRightRadius?: number;
+    objectFit?: "contain" | "cover" | "fill" | "none" | "scale-down";
+    objectPosition?: "left" | "center" | "right" | "top" | "bottom" | string;
     gridArea?: string;
     gridColumn?: string;
     gridRow?: string;

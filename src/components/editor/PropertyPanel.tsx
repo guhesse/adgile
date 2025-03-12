@@ -94,13 +94,13 @@ export const PropertyPanel = ({ selectedElement, updateElementStyle, updateEleme
         <div className="mx-4 mb-4">
           <div className="flex h-[39px] p-1 justify-center items-center gap-0 rounded bg-[#E9EAEB]">
             <div
-              className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm font-['Geist',sans-serif] text-xs cursor-pointer ${activeTab === "content" ? "bg-[#53389E]  text-[#f5f5f5]" : "text-[#717680]"}`}
+              className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm font-['Geist',sans-serif] text-xs cursor-pointer ${activeTab === "content" ? "bg-[#6941C6]  text-[#f5f5f5]" : "text-[#717680]"}`}
               onClick={() => handleTabChange("content")}
             >
               Conteúdo
             </div>
             <div
-              className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm font-['Geist',sans-serif] text-xs cursor-pointer ${activeTab === "styles" ? "bg-[#53389E] text-[#f5f5f5]" : "text-[#717680]"}`}
+              className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm font-['Geist',sans-serif] text-xs cursor-pointer ${activeTab === "styles" ? "bg-[#6941C6] text-[#f5f5f5]" : "text-[#717680]"}`}
               onClick={() => handleTabChange("styles")}
             >
               Estilo

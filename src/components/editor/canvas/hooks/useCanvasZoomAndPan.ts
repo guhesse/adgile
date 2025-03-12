@@ -1,48 +1,63 @@
 
-import { useEffect, useState, RefObject } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { CanvasNavigationMode } from '../../types';
 
 interface UseCanvasZoomAndPanProps {
-  containerRef: RefObject<HTMLDivElement>;
-  setZoomLevel: (zoomLevel: number) => void;
+  canvasNavMode: CanvasNavigationMode;
+  setZoomLevel: React.Dispatch<React.SetStateAction<number>>;
+  zoomLevel: number;
 }
 
-export const useCanvasZoomAndPan = ({ containerRef, setZoomLevel }: UseCanvasZoomAndPanProps) => {
-  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
+export const useCanvasZoomAndPan = ({ 
+  canvasNavMode, 
+  setZoomLevel,
+  zoomLevel
+}: UseCanvasZoomAndPanProps) => {
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+
+  // Zoom functions
+  const handleZoomIn = useCallback(() => {
+    setZoomLevel((prev) => Math.min(prev + 0.1, 2));
+  }, [setZoomLevel]);
+
+  const handleZoomOut = useCallback(() => {
+    setZoomLevel((prev) => Math.max(prev - 0.1, 0.5));
+  }, [setZoomLevel]);
+
+  const handleResetZoom = useCallback(() => {
+    setZoomLevel(1);
+  }, [setZoomLevel]);
 
   useEffect(() => {
-    const containerElement = containerRef.current;
-    if (!containerElement) return;
-
     const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-
       if (e.ctrlKey) {
-        const delta = e.deltaY > 0 ? -0.1 : 0.1;
-        setZoomLevel(prev => Math.min(Math.max(0.1, prev + delta), 5));
-        return;
+        e.preventDefault();
+        if (e.deltaY < 0) {
+          handleZoomIn();
+        } else {
+          handleZoomOut();
+        }
       }
-
-      if (e.shiftKey) {
-        // Update pan position for horizontal scrolling
-        setPanPosition(prev => ({
-          x: prev.x - e.deltaY,
-          y: prev.y
-        }));
-        return;
-      }
-
-      // Normal vertical scrolling
-      setPanPosition(prev => ({
-        x: prev.x,
-        y: prev.y - e.deltaY
-      }));
     };
 
-    containerElement.addEventListener('wheel', handleWheel, { passive: false });
+    document.addEventListener('wheel', handleWheel, { passive: false });
+    
     return () => {
-      containerElement.removeEventListener('wheel', handleWheel);
+      document.removeEventListener('wheel', handleWheel);
     };
-  }, [setZoomLevel, containerRef]);
+  }, [handleZoomIn, handleZoomOut]);
 
-  return { panPosition, setPanPosition };
+  return {
+    panStart,
+    setPanStart,
+    panOffset,
+    setPanOffset,
+    isPanning,
+    setIsPanning,
+    handleZoomIn,
+    handleZoomOut,
+    handleResetZoom
+  };
 };

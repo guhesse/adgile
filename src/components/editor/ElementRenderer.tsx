@@ -49,18 +49,31 @@ export const ElementRenderer = ({ element }: ElementRendererProps) => {
   
   if (element.type === "image") {
     return (
-      <img
-        src={element.content || "/placeholder.svg"}
-        alt={element.alt || "Banner element"}
-        className="w-full h-full object-cover"
+      <div 
+        className="w-full h-full"
         style={{
+          backgroundColor: element.style.backgroundColor,
           borderRadius: element.style.borderRadius ? `${element.style.borderRadius}px` : undefined,
           borderTopLeftRadius: element.style.borderTopLeftRadius ? `${element.style.borderTopLeftRadius}px` : undefined,
           borderTopRightRadius: element.style.borderTopRightRadius ? `${element.style.borderTopRightRadius}px` : undefined,
           borderBottomLeftRadius: element.style.borderBottomLeftRadius ? `${element.style.borderBottomLeftRadius}px` : undefined,
           borderBottomRightRadius: element.style.borderBottomRightRadius ? `${element.style.borderBottomRightRadius}px` : undefined,
+          borderWidth: element.style.borderWidth ? `${element.style.borderWidth}px` : undefined,
+          borderStyle: element.style.borderStyle,
+          borderColor: element.style.borderColor,
+          overflow: "hidden"
         }}
-      />
+      >
+        <img
+          src={element.content || "/placeholder.svg"}
+          alt={element.alt || "Banner element"}
+          className="w-full h-full"
+          style={{
+            objectFit: element.style.objectFit || "cover",
+            objectPosition: element.style.objectPosition || "center",
+          }}
+        />
+      </div>
     );
   }
 
