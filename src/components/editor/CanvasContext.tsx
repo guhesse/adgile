@@ -1,7 +1,8 @@
+
 import { createContext, useContext, useState, useEffect } from "react";
 import { EditorElement, BannerSize, BANNER_SIZES, CanvasNavigationMode, EditingMode } from "./types";
 import { organizeElementsInContainers } from "./utils/gridUtils";
-import { createNewElement, createLayoutElement, handleImageUpload } from "./context/elementOperations";
+import { createNewElement, createLayoutElement, handleImageUpload } from "./context/elements";
 import { linkElementsAcrossSizes, unlinkElement, updateAllLinkedElements, createLinkedVersions } from "./context/responsiveOperations";
 import { removeElement, updateElementStyle, updateElementContent, animationOperations } from "./context/modificationOperations";
 import { CanvasContextType } from "./context/CanvasContextTypes";

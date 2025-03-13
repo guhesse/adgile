@@ -1,8 +1,7 @@
-
 import PSD from 'psd.js';
 import { EditorElement } from '../types';
 import { toast } from 'sonner';
-import { createNewElement } from '../context/elementOperations';
+import { createNewElement } from '../context/elements';
 
 export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElement[]> => {
   return new Promise((resolve, reject) => {
@@ -16,27 +15,20 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
       }
       
       try {
-        // Parse the PSD file using the correct API
-        // PSD.js doesn't have a direct fromBuffer method, we need to use PSD.parse()
         const buffer = e.target.result as ArrayBuffer;
         const psd = new PSD(new Uint8Array(buffer));
         psd.parse();
         
-        // Process the layers to create editor elements
         const elements: EditorElement[] = [];
         
-        // Convert PSD tree to an array of layers
         const flattenLayers = (node: any, parentId?: string): void => {
-          // Skip hidden layers
           if (node.hidden) return;
           
-          // Process each layer
           if (node.isLayer()) {
             const element = convertLayerToElement(node, selectedSize, parentId);
             if (element) elements.push(element);
           }
           
-          // Process child layers
           if (node.hasChildren()) {
             const containerElement = node.isRoot() ? undefined : createContainerFromGroup(node, selectedSize);
             
@@ -49,10 +41,8 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
           }
         };
         
-        // Start processing from the root
         flattenLayers(psd.tree());
 
-        // Convert x/y/width/height to percentages
         elements.forEach(element => {
           element.style.xPercent = (element.style.x / selectedSize.width) * 100;
           element.style.yPercent = (element.style.y / selectedSize.height) * 100;
@@ -81,10 +71,8 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
 const convertLayerToElement = (layer: any, selectedSize: any, parentId?: string): EditorElement | null => {
   const { width, height, left, top } = layer.export();
   
-  // Skip empty or invalid layers
   if (width <= 0 || height <= 0) return null;
   
-  // Check if layer has text
   if (layer.get('typeTool')) {
     const textData = layer.get('typeTool');
     const textElement = createNewElement('text', selectedSize);
@@ -95,7 +83,6 @@ const convertLayerToElement = (layer: any, selectedSize: any, parentId?: string)
     textElement.style.width = width;
     textElement.style.height = height;
     
-    // Try to extract text styling
     if (textData.styles && textData.styles.length > 0) {
       const style = textData.styles[0];
       if (style.fontSize) textElement.style.fontSize = style.fontSize;
@@ -111,7 +98,6 @@ const convertLayerToElement = (layer: any, selectedSize: any, parentId?: string)
     return textElement;
   }
   
-  // For image layers
   if (layer.isLayer()) {
     try {
       const canvas = layer.canvas();
@@ -146,7 +132,7 @@ const createContainerFromGroup = (group: any, selectedSize: any): EditorElement 
   containerElement.content = group.name;
   containerElement.style.x = left;
   containerElement.style.y = top;
-  containerElement.style.width = Math.max(width, 50); // Ensure minimum size
+  containerElement.style.width = Math.max(width, 50);
   containerElement.style.height = Math.max(height, 50);
   containerElement.childElements = [];
   
