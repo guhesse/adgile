@@ -30,10 +30,15 @@ export const PSDImport = () => {
       
       // Close loading toast
       toast.dismiss(loadingToast);
-      toast.success(`Imported ${elements.length} elements from ${file.name}`);
+      
+      if (elements.length === 0) {
+        toast.warning("No elements were imported from the PSD file.");
+      } else {
+        toast.success(`Imported ${elements.length} elements from ${file.name}`);
+      }
     } catch (error) {
       console.error("Error importing PSD file:", error);
-      toast.error("Failed to import PSD file. See console for details.");
+      toast.error("Failed to import PSD file. Please check the console for details.");
     }
     
     // Reset the input value to allow selecting the same file again

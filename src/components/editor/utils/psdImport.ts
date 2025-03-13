@@ -1,3 +1,4 @@
+
 import PSD from 'psd.js';
 import { EditorElement } from '../types';
 import { toast } from 'sonner';
@@ -17,32 +18,62 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
       try {
         const buffer = e.target.result as ArrayBuffer;
         const psd = new PSD(new Uint8Array(buffer));
-        psd.parse();
+        await psd.parse();
+        
+        console.log("PSD parsed successfully");
+        console.log("Tree structure:", psd.tree().export());
+        console.log("Layers count:", psd.layers.length);
         
         const elements: EditorElement[] = [];
         
+        // Flatten all layers recursively
         const flattenLayers = (node: any, parentId?: string): void => {
-          if (node.hidden) return;
+          console.log("Processing node:", node.name, "Hidden:", node.hidden, "Type:", node.type);
           
-          if (node.isLayer()) {
-            const element = convertLayerToElement(node, selectedSize, parentId);
-            if (element) elements.push(element);
+          // Skip hidden layers
+          if (node.hidden) {
+            console.log("Skipping hidden layer:", node.name);
+            return;
           }
           
+          // Process this layer if it's not a group or is a visible layer
+          if (node.isLayer()) {
+            console.log("Converting layer to element:", node.name);
+            const element = convertLayerToElement(node, selectedSize, parentId);
+            if (element) {
+              console.log("Created element from layer:", node.name, element);
+              elements.push(element);
+            } else {
+              console.log("Failed to convert layer to element:", node.name);
+            }
+          }
+          
+          // Process children if this is a group
           if (node.hasChildren()) {
+            console.log("Node has children:", node.name, "Children count:", node.children().length);
+            
+            // If it's not the root and is a group, create a container element
             const containerElement = node.isRoot() ? undefined : createContainerFromGroup(node, selectedSize);
             
             if (containerElement) {
+              console.log("Created container from group:", node.name);
               elements.push(containerElement);
+              // Process all children and associate them with this container
               node.children().forEach((child: any) => flattenLayers(child, containerElement.id));
             } else {
+              // Process all children without a parent container
+              console.log("Processing children without container");
               node.children().forEach((child: any) => flattenLayers(child, parentId));
             }
           }
         };
         
+        // Start processing from the root
         flattenLayers(psd.tree());
-
+        
+        console.log("Final elements count:", elements.length);
+        
+        // Calculate percentage values for responsive handling
         elements.forEach(element => {
           element.style.xPercent = (element.style.x / selectedSize.width) * 100;
           element.style.yPercent = (element.style.y / selectedSize.height) * 100;
@@ -50,7 +81,12 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
           element.style.heightPercent = (element.style.height / selectedSize.height) * 100;
         });
         
-        toast.success("PSD file imported successfully!");
+        if (elements.length === 0) {
+          toast.warning("No visible layers found in the PSD file.");
+        } else {
+          toast.success(`Imported ${elements.length} elements from PSD file.`);
+        }
+        
         resolve(elements);
       } catch (error) {
         console.error("Error parsing PSD file:", error);
@@ -60,6 +96,7 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
     };
     
     reader.onerror = (error) => {
+      console.error("Error reading file:", error);
       toast.error("Error reading the file.");
       reject(error);
     };
@@ -69,63 +106,100 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
 };
 
 const convertLayerToElement = (layer: any, selectedSize: any, parentId?: string): EditorElement | null => {
-  const { width, height, left, top } = layer.export();
-  
-  if (width <= 0 || height <= 0) return null;
-  
-  if (layer.get('typeTool')) {
-    const textData = layer.get('typeTool');
-    const textElement = createNewElement('text', selectedSize);
+  try {
+    console.log("Converting layer:", layer.name, "Layer export:", layer.export());
     
-    textElement.content = textData.text || layer.name;
-    textElement.style.x = left;
-    textElement.style.y = top;
-    textElement.style.width = width;
-    textElement.style.height = height;
+    const { width, height, left, top } = layer.export();
     
-    if (textData.styles && textData.styles.length > 0) {
-      const style = textData.styles[0];
-      if (style.fontSize) textElement.style.fontSize = style.fontSize;
-      if (style.fontName) textElement.style.fontFamily = style.fontName;
-      if (style.colors) textElement.style.color = convertPSDColorToHex(style.colors);
+    if (width <= 0 || height <= 0) {
+      console.log("Skipping layer with invalid dimensions:", width, height);
+      return null;
     }
     
-    if (parentId) {
-      textElement.parentId = parentId;
-      textElement.inContainer = true;
-    }
-    
-    return textElement;
-  }
-  
-  if (layer.isLayer()) {
-    try {
-      const canvas = layer.canvas();
-      if (canvas) {
-        const imageElement = createNewElement('image', selectedSize);
-        imageElement.content = canvas.toDataURL();
-        imageElement.style.x = left;
-        imageElement.style.y = top;
-        imageElement.style.width = width;
-        imageElement.style.height = height;
-        imageElement.alt = layer.name;
-        
-        if (parentId) {
-          imageElement.parentId = parentId;
-          imageElement.inContainer = true;
-        }
-        
-        return imageElement;
+    // Handle text layers
+    if (layer.get('typeTool')) {
+      console.log("Processing text layer:", layer.name, "Text data:", layer.get('typeTool'));
+      
+      const textData = layer.get('typeTool');
+      const textElement = createNewElement('text', selectedSize);
+      
+      textElement.content = textData.text || layer.name;
+      textElement.style.x = left;
+      textElement.style.y = top;
+      textElement.style.width = width;
+      textElement.style.height = height;
+      
+      if (textData.styles && textData.styles.length > 0) {
+        const style = textData.styles[0];
+        if (style.fontSize) textElement.style.fontSize = style.fontSize;
+        if (style.fontName) textElement.style.fontFamily = style.fontName;
+        if (style.colors) textElement.style.color = convertPSDColorToHex(style.colors);
       }
-    } catch (e) {
-      console.error("Error converting layer to image:", e);
+      
+      if (parentId) {
+        textElement.parentId = parentId;
+        textElement.inContainer = true;
+      }
+      
+      return textElement;
     }
+    
+    // Handle image layers
+    if (layer.isLayer()) {
+      try {
+        console.log("Creating canvas for layer:", layer.name);
+        const canvas = layer.canvas();
+        console.log("Canvas created:", !!canvas);
+        
+        if (canvas) {
+          const imageElement = createNewElement('image', selectedSize);
+          imageElement.content = canvas.toDataURL();
+          imageElement.style.x = left;
+          imageElement.style.y = top;
+          imageElement.style.width = width;
+          imageElement.style.height = height;
+          imageElement.alt = layer.name;
+          
+          if (parentId) {
+            imageElement.parentId = parentId;
+            imageElement.inContainer = true;
+          }
+          
+          return imageElement;
+        }
+      } catch (e) {
+        console.error("Error converting layer to image:", e);
+      }
+    }
+    
+    // If not handled as text or image but is still a valid layer, create a generic element
+    if (layer.isLayer() && width > 0 && height > 0) {
+      console.log("Creating generic element for layer:", layer.name);
+      const genericElement = createNewElement('container', selectedSize);
+      genericElement.content = layer.name;
+      genericElement.style.x = left;
+      genericElement.style.y = top;
+      genericElement.style.width = width;
+      genericElement.style.height = height;
+      
+      if (parentId) {
+        genericElement.parentId = parentId;
+        genericElement.inContainer = true;
+      }
+      
+      return genericElement;
+    }
+    
+    console.log("Layer not converted to any element:", layer.name);
+    return null;
+  } catch (error) {
+    console.error("Error in convertLayerToElement:", error);
+    return null;
   }
-  
-  return null;
 };
 
 const createContainerFromGroup = (group: any, selectedSize: any): EditorElement => {
+  console.log("Creating container from group:", group.name);
   const { width, height, left, top } = group.export();
   
   const containerElement = createNewElement('container', selectedSize);
