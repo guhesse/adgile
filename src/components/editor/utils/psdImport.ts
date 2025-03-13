@@ -16,8 +16,10 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
       }
       
       try {
-        // Parse the PSD file
-        const psd = await PSD.fromBuffer(e.target.result as ArrayBuffer);
+        // Parse the PSD file using the correct API
+        // PSD.js doesn't have a direct fromBuffer method, we need to use PSD.parse()
+        const buffer = e.target.result as ArrayBuffer;
+        const psd = new PSD(new Uint8Array(buffer));
         psd.parse();
         
         // Process the layers to create editor elements
