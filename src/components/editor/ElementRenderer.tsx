@@ -24,6 +24,8 @@ export const ElementRenderer = ({ element }: ElementRendererProps) => {
         margin: 0,
         padding: "4px",
         boxSizing: "border-box",
+        overflow: "hidden",
+        wordBreak: "break-word",
       }}>
         {element.content}
       </p>
@@ -66,7 +68,7 @@ export const ElementRenderer = ({ element }: ElementRendererProps) => {
       >
         <img
           src={element.content || "/placeholder.svg"}
-          alt={element.alt || "Banner element"}
+          alt={element.alt || "Image element"}
           className="w-full h-full"
           style={{
             objectFit: element.style.objectFit || "cover",
@@ -80,7 +82,9 @@ export const ElementRenderer = ({ element }: ElementRendererProps) => {
   if (element.type === "container") {
     return (
       <div className="w-full h-full flex flex-col p-2 relative">
-        <div className="text-xs text-gray-500 absolute top-0 left-0 bg-white px-1">Container</div>
+        <div className="text-xs text-gray-500 absolute top-0 left-0 bg-white px-1">
+          {element.content || "Container"}
+        </div>
       </div>
     );
   }
@@ -89,7 +93,9 @@ export const ElementRenderer = ({ element }: ElementRendererProps) => {
     // Render layout with columns
     return (
       <div className="w-full h-full bg-white rounded flex relative">
-        <div className="text-xs text-gray-500 absolute top-0 left-0 bg-white px-1">Layout</div>
+        <div className="text-xs text-gray-500 absolute top-0 left-0 bg-white px-1">
+          {element.content || "Layout"}
+        </div>
         {element.columns && Array.from({ length: element.columns }).map((_, index) => (
           <div 
             key={index} 

@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect } from "react";
 import { EditorElement, BannerSize, BANNER_SIZES, CanvasNavigationMode, EditingMode } from "./types";
 import { organizeElementsInContainers } from "./utils/gridUtils";
@@ -25,23 +24,19 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [canvasNavMode, setCanvasNavMode] = useState<CanvasNavigationMode>('edit');
   const [editingMode, setEditingMode] = useState<EditingMode>('global');
 
-  // Update element positions when size changes
   useEffect(() => {
     if (elements.length > 0) {
       organizeElements();
     }
   }, [selectedSize]);
 
-  // Method implementations
   const handleAddElement = (type: EditorElement["type"]) => {
     const newElement = createNewElement(type, selectedSize);
     
     let updatedElements = [...elements, newElement];
     
-    // If in global editing mode and multiple sizes active, create linked versions
     if (editingMode === 'global' && activeSizes.length > 1) {
       const linkedElements = createLinkedVersions(newElement, activeSizes, selectedSize);
-      // Replace the original element with the linked versions
       updatedElements = [...elements, ...linkedElements];
     } else {
       updatedElements = [...elements, newElement];
@@ -56,7 +51,6 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     
     let updatedElements = [...elements, layoutElement];
     
-    // If in global editing mode and multiple sizes active, create linked versions
     if (editingMode === 'global' && activeSizes.length > 1) {
       const linkedElements = createLinkedVersions(layoutElement, activeSizes, selectedSize);
       updatedElements = [...elements, ...linkedElements];
@@ -110,7 +104,6 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const updatedElements = linkElementsAcrossSizes(element, elements, selectedSize, activeSizes);
     setElements(updatedElements);
     
-    // Update the selected element reference
     if (selectedElement && selectedElement.id === element.id) {
       const updatedSelectedElement = updatedElements.find(el => el.id === element.id);
       if (updatedSelectedElement) {
@@ -123,7 +116,6 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const updatedElements = unlinkElement(element, elements);
     setElements(updatedElements);
     
-    // Update the selected element reference
     if (selectedElement && selectedElement.id === element.id) {
       const updatedSelectedElement = updatedElements.find(el => el.id === element.id);
       if (updatedSelectedElement) {

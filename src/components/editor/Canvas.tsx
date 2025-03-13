@@ -1,11 +1,11 @@
 
 import { useState } from "react";
 import { PropertyPanel } from "./PropertyPanel";
-import { Timeline } from "./Timeline";
 import { CanvasControls } from "./CanvasControls";
 import { CanvasWorkspace } from "./CanvasWorkspace";
 import { useCanvas } from "./CanvasContext";
 import { LeftSidebar } from "./LeftSidebar";
+import { PSDImport } from "./PSDImport";
 
 interface CanvasProps {
   editorMode: "email" | "banner";
@@ -35,7 +35,10 @@ const CanvasContent = ({ editorMode }: CanvasProps) => {
 
       {/* Canvas Area */}
       <div className="flex-1 bg-gray-100 overflow-hidden flex flex-col">
-        <CanvasControls />
+        <div className="flex justify-between items-center px-4 py-2 border-b">
+          <CanvasControls />
+          <PSDImport />
+        </div>
         <CanvasWorkspace />
       </div>
 
@@ -61,7 +64,8 @@ const CanvasContent = ({ editorMode }: CanvasProps) => {
         </div>
       </div>
 
-      {/* Timeline */}
+      {/* Timeline - Currently disabled */}
+      {/* 
       <Timeline 
         elements={elements} 
         currentTime={currentTime} 
@@ -70,7 +74,8 @@ const CanvasContent = ({ editorMode }: CanvasProps) => {
         setCurrentTime={setCurrentTime}
         updateAnimations={updateAnimations}
         setSelectedElement={setSelectedElement}
-      />
+      /> 
+      */}
     </div>
   );
 };
