@@ -14,13 +14,16 @@ export const PSDImport = () => {
 
     // Validate file type
     if (!file.name.toLowerCase().endsWith('.psd')) {
-      toast.error("Please upload a valid PSD file.");
+      toast.error("Por favor, carregue um arquivo PSD válido.");
       return;
     }
 
     try {
       // Show loading toast
-      const loadingToast = toast.loading("Importing PSD file...");
+      const loadingToast = toast.loading("Importando arquivo PSD...");
+      
+      // Log file information
+      console.log("Importing PSD file:", file.name, "Size:", Math.round(file.size / 1024), "KB");
       
       // Import PSD file
       const elements = await importPSDFile(file, selectedSize);
@@ -32,13 +35,13 @@ export const PSDImport = () => {
       toast.dismiss(loadingToast);
       
       if (elements.length === 0) {
-        toast.warning("No elements were imported from the PSD file.");
+        toast.warning("Nenhum elemento foi importado do arquivo PSD. Verifique os logs para mais detalhes.");
       } else {
-        toast.success(`Imported ${elements.length} elements from ${file.name}`);
+        toast.success(`Importados ${elements.length} elementos de ${file.name}`);
       }
     } catch (error) {
       console.error("Error importing PSD file:", error);
-      toast.error("Failed to import PSD file. Please check the console for details.");
+      toast.error("Falha ao importar arquivo PSD. Verifique o console para detalhes.");
     }
     
     // Reset the input value to allow selecting the same file again
@@ -58,7 +61,7 @@ export const PSDImport = () => {
         <Button variant="outline" size="sm" className="flex items-center gap-2" asChild>
           <span>
             <UploadIcon size={14} />
-            Import PSD
+            Importar PSD
           </span>
         </Button>
       </label>
