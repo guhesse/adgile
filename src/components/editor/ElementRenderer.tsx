@@ -66,22 +66,28 @@ export const ElementRenderer = ({ element }: ElementRendererProps) => {
           overflow: "hidden"
         }}
       >
-        <img
-          src={element.content || "/placeholder.svg"}
-          alt={element.alt || "Image element"}
-          className="w-full h-full"
-          style={{
-            objectFit: element.style.objectFit || "cover",
-            objectPosition: element.style.objectPosition || "center",
-          }}
-        />
+        {element.content ? (
+          <img
+            src={element.content}
+            alt={element.alt || "Image element"}
+            className="w-full h-full"
+            style={{
+              objectFit: element.style.objectFit || "cover",
+              objectPosition: element.style.objectPosition || "center",
+            }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-500 text-sm">
+            {element.alt || "Image"}
+          </div>
+        )}
       </div>
     );
   }
 
   if (element.type === "container") {
     return (
-      <div className="w-full h-full flex flex-col p-2 relative">
+      <div className="w-full h-full flex flex-col p-2 relative border border-dashed border-gray-300 rounded">
         <div className="text-xs text-gray-500 absolute top-0 left-0 bg-white px-1">
           {element.content || "Container"}
         </div>

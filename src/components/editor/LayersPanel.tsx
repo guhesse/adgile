@@ -53,9 +53,10 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
       case 'button':
         return <Square className="h-4 w-4 text-[#414651]" />;
       case 'layout':
+      case 'container':
         return <LayoutGrid className="h-4 w-4 text-[#414651]" />;
       default:
-        return null;
+        return <Square className="h-4 w-4 text-[#414651]" />;
     }
   };
 
@@ -168,6 +169,12 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
     }
   };
 
+  // Truncate layer name for display
+  const truncateName = (name: string, maxLength: number = 20) => {
+    if (!name) return '';
+    return name.length > maxLength ? `${name.substring(0, maxLength)}...` : name;
+  };
+
   // Render a container with its child elements
   const renderContainer = (container: EditorElement) => {
     const isCollapsed = collapsedContainers[container.id];
@@ -201,10 +208,10 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
               <ChevronDown className="h-4 w-4 text-[#414651]" />
             }
           </button>
-          <div className="flex items-center gap-2">
-            <LayoutGrid className="h-4 w-4 text-[#414651]" />
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <LayoutGrid className="h-4 w-4 flex-shrink-0 text-[#414651]" />
             <span className="text-sm font-medium truncate">
-              {container.content || `Container ${container.columns || 1}×`}
+              {truncateName(container.content) || `Container ${container.columns || 1}×`}
             </span>
           </div>
           <button 
@@ -229,8 +236,8 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
                 onDragStart={(e) => handleDragStart(e, child)}
               >
                 {renderElementIcon(child.type)}
-                <span className="truncate">
-                  {child.content || child.type}
+                <span className="truncate min-w-0 flex-1">
+                  {truncateName(child.content) || child.type}
                 </span>
                 <button 
                   className="ml-auto text-gray-400 hover:text-gray-600 p-1"
@@ -300,8 +307,8 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
               onDragStart={(e) => handleDragStart(e, element)}
             >
               {renderElementIcon(element.type)}
-              <span className="truncate">
-                {element.content || element.type}
+              <span className="truncate min-w-0 flex-1">
+                {truncateName(element.content) || element.type}
               </span>
               <button 
                 className="ml-auto text-gray-400 hover:text-gray-600 p-1"

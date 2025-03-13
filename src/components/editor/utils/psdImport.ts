@@ -57,12 +57,29 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
           if (node.isLayer && node.isLayer()) {
             console.log(`Converting layer to element: ${nodeName}`);
             try {
-              const element = convertLayerToElement(node, selectedSize, parentId);
-              if (element) {
-                console.log(`Created element from layer: ${nodeName}`, element);
-                elements.push(element);
+              // Check if it's a text layer
+              const isTextLayer = node.get && node.get('typeTool');
+              
+              if (isTextLayer) {
+                const textElement = createTextElement(node, selectedSize, parentId);
+                if (textElement) {
+                  console.log(`Created text element from layer: ${nodeName}`, textElement);
+                  elements.push(textElement);
+                }
               } else {
-                console.log(`Failed to convert layer to element: ${nodeName}`);
+                // Try to handle as image layer
+                const imageElement = createImageElement(node, selectedSize, parentId);
+                if (imageElement) {
+                  console.log(`Created image element from layer: ${nodeName}`, imageElement);
+                  elements.push(imageElement);
+                } else {
+                  // Create fallback if image creation failed
+                  const fallbackElement = createFallbackElement(node, selectedSize, parentId);
+                  if (fallbackElement) {
+                    console.log(`Created fallback element for layer: ${nodeName}`);
+                    elements.push(fallbackElement);
+                  }
+                }
               }
             } catch (error) {
               console.error(`Error converting layer ${nodeName}:`, error);
@@ -132,10 +149,27 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
           for (const layer of psd.layers) {
             try {
               if (!layer.hidden || !layer.hidden()) {
-                const element = convertLayerToElement(layer, selectedSize);
-                if (element) {
-                  console.log(`Created element from direct layer: ${layer.name}`, element);
-                  elements.push(element);
+                // Check if it's a text layer
+                const isTextLayer = layer.get && layer.get('typeTool');
+                
+                if (isTextLayer) {
+                  const textElement = createTextElement(layer, selectedSize);
+                  if (textElement) {
+                    console.log(`Created text element from direct layer: ${layer.name}`, textElement);
+                    elements.push(textElement);
+                  }
+                } else {
+                  const imageElement = createImageElement(layer, selectedSize);
+                  if (imageElement) {
+                    console.log(`Created image element from direct layer: ${layer.name}`, imageElement);
+                    elements.push(imageElement);
+                  } else {
+                    const fallbackElement = createFallbackElement(layer, selectedSize);
+                    if (fallbackElement) {
+                      console.log(`Created fallback element from direct layer: ${layer.name}`);
+                      elements.push(fallbackElement);
+                    }
+                  }
                 }
               }
             } catch (layerError) {
@@ -155,22 +189,22 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
         });
         
         if (elements.length === 0) {
-          toast.warning("No visible layers found in the PSD file.");
+          toast.warning("Nenhuma camada visível encontrada no arquivo PSD.");
         } else {
-          toast.success(`Imported ${elements.length} elements from PSD file.`);
+          toast.success(`Importados ${elements.length} elementos do arquivo PSD.`);
         }
         
         resolve(elements);
       } catch (error) {
         console.error("Error parsing PSD file:", error);
-        toast.error("Failed to parse the PSD file. Make sure it's a valid PSD.");
+        toast.error("Falha ao interpretar o arquivo PSD. Verifique se é um PSD válido.");
         reject(error);
       }
     };
     
     reader.onerror = (error) => {
       console.error("Error reading file:", error);
-      toast.error("Error reading the file.");
+      toast.error("Erro ao ler o arquivo.");
       reject(error);
     };
     
@@ -178,18 +212,79 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
   });
 };
 
-const convertLayerToElement = (layer: any, selectedSize: any, parentId?: string): EditorElement | null => {
+// Function to create a text element from a PSD text layer
+const createTextElement = (layer: any, selectedSize: any, parentId?: string): EditorElement | null => {
   try {
-    const layerName = layer.name || "Unnamed layer";
-    console.log(`Converting layer: ${layerName}`);
+    console.log(`Creating text element for layer: ${layer.name || 'unnamed'}`);
     
-    // Get layer export data
     let exportData;
     try {
       exportData = layer.export();
-      console.log(`Layer export data for ${layerName}:`, exportData);
+      console.log(`Text layer export data:`, exportData);
     } catch (error) {
-      console.error(`Error exporting layer ${layerName}:`, error);
+      console.error(`Error exporting text layer data:`, error);
+      return null;
+    }
+    
+    // Get dimensions and position
+    const { width, height, left, top } = exportData;
+    
+    // Get text content and style from typeTool
+    const textTool = layer.get('typeTool');
+    console.log('Text tool data:', textTool);
+    
+    const textElement = createNewElement('text', selectedSize);
+    
+    // Set position and dimensions
+    textElement.style.x = left || 0;
+    textElement.style.y = top || 0;
+    textElement.style.width = width > 0 ? width : 200;
+    textElement.style.height = height > 0 ? height : 50;
+    
+    // Set text content
+    textElement.content = textTool?.text || layer.name || 'Text Layer';
+    
+    // Set text styles if available
+    if (textTool?.styles && textTool.styles.length > 0) {
+      const style = textTool.styles[0];
+      
+      if (style.fontSize) textElement.style.fontSize = style.fontSize;
+      if (style.fontName) textElement.style.fontFamily = style.fontName;
+      if (style.colors) textElement.style.color = convertPSDColorToHex(style.colors);
+      if (style.alignment) textElement.style.textAlign = convertPSDAlignmentToCSS(style.alignment);
+      if (style.leading) textElement.style.lineHeight = style.leading / (style.fontSize || 16);
+      if (style.tracking) textElement.style.letterSpacing = style.tracking / 1000;
+      if (style.fontStyle) {
+        if (style.fontStyle.includes('Bold')) textElement.style.fontWeight = 'bold';
+        if (style.fontStyle.includes('Italic')) textElement.style.fontStyle = 'italic';
+        if (style.fontStyle.includes('Underline')) textElement.style.textDecoration = 'underline';
+      }
+    }
+    
+    // Set parent if applicable
+    if (parentId) {
+      textElement.parentId = parentId;
+      textElement.inContainer = true;
+    }
+    
+    return textElement;
+  } catch (error) {
+    console.error("Error creating text element:", error);
+    return null;
+  }
+};
+
+// Function to create an image element from a PSD layer
+const createImageElement = (layer: any, selectedSize: any, parentId?: string): EditorElement | null => {
+  try {
+    console.log(`Creating image element for layer: ${layer.name || 'unnamed'}`);
+    
+    let exportData;
+    try {
+      exportData = layer.export();
+      console.log(`Image layer export data:`, exportData);
+    } catch (error) {
+      console.error(`Error exporting image layer data:`, error);
       return null;
     }
     
@@ -202,103 +297,98 @@ const convertLayerToElement = (layer: any, selectedSize: any, parentId?: string)
       return null;
     }
     
-    // Handle text layers
-    if (layer.get && layer.get('typeTool')) {
-      console.log(`Processing text layer: ${layerName}`);
+    let canvas;
+    try {
+      canvas = layer.canvas();
+      console.log("Successfully created canvas for layer");
+    } catch (canvasError) {
+      console.error(`Error creating canvas:`, canvasError);
       
-      const textData = layer.get('typeTool');
-      const textElement = createNewElement('text', selectedSize);
-      
-      textElement.content = textData.text || layerName;
-      textElement.style.x = left;
-      textElement.style.y = top;
-      textElement.style.width = width;
-      textElement.style.height = height;
-      
-      if (textData.styles && textData.styles.length > 0) {
-        const style = textData.styles[0];
-        if (style.fontSize) textElement.style.fontSize = style.fontSize;
-        if (style.fontName) textElement.style.fontFamily = style.fontName;
-        if (style.colors) textElement.style.color = convertPSDColorToHex(style.colors);
-      }
-      
-      if (parentId) {
-        textElement.parentId = parentId;
-        textElement.inContainer = true;
-      }
-      
-      return textElement;
-    }
-    
-    // Handle image layers
-    if (layer.isLayer && layer.isLayer()) {
+      // Try alternative method
       try {
-        console.log(`Creating canvas for layer: ${layerName}`);
-        let canvas;
-        
-        try {
-          canvas = layer.canvas();
-        } catch (canvasError) {
-          console.error(`Error creating canvas for ${layerName}:`, canvasError);
-          console.log(`Falling back to alternative method for layer: ${layerName}`);
+        if (layer.toPng) {
+          console.log("Trying toPng method");
+          const pngData = layer.toPng();
+          if (!pngData) {
+            console.log("No PNG data available");
+            return null;
+          }
           
-          // Alternative method to try to get image data
-          try {
-            if (layer.toPng) {
-              const pngData = layer.toPng();
-              const tempCanvas = document.createElement('canvas');
-              tempCanvas.width = width;
-              tempCanvas.height = height;
-              const ctx = tempCanvas.getContext('2d');
-              
-              if (ctx && pngData) {
-                const img = new Image();
-                img.src = URL.createObjectURL(new Blob([pngData]));
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = width;
+          tempCanvas.height = height;
+          const ctx = tempCanvas.getContext('2d');
+          
+          if (ctx) {
+            const img = new Image();
+            const blob = new Blob([pngData], { type: 'image/png' });
+            img.src = URL.createObjectURL(blob);
+            
+            // We need to wait for the image to load
+            return new Promise((resolve) => {
+              img.onload = () => {
                 ctx.drawImage(img, 0, 0);
                 canvas = tempCanvas;
-              }
-            }
-          } catch (altError) {
-            console.error(`Alternative method failed for ${layerName}:`, altError);
+                URL.revokeObjectURL(img.src);
+                
+                const imageElement = createNewElement('image', selectedSize);
+                imageElement.content = canvas.toDataURL();
+                imageElement.style.x = left;
+                imageElement.style.y = top;
+                imageElement.style.width = width;
+                imageElement.style.height = height;
+                imageElement.alt = layer.name || 'Image Layer';
+                
+                if (parentId) {
+                  imageElement.parentId = parentId;
+                  imageElement.inContainer = true;
+                }
+                
+                resolve(imageElement);
+              };
+              
+              img.onerror = () => {
+                console.error("Failed to load PNG image data");
+                resolve(null);
+              };
+            });
           }
         }
-        
-        if (canvas) {
-          console.log(`Canvas created for ${layerName}`);
-          const imageElement = createNewElement('image', selectedSize);
-          
-          try {
-            imageElement.content = canvas.toDataURL();
-          } catch (dataUrlError) {
-            console.error(`Error getting dataURL for ${layerName}:`, dataUrlError);
-            imageElement.content = '';
-          }
-          
-          imageElement.style.x = left;
-          imageElement.style.y = top;
-          imageElement.style.width = width;
-          imageElement.style.height = height;
-          imageElement.alt = layerName;
-          
-          if (parentId) {
-            imageElement.parentId = parentId;
-            imageElement.inContainer = true;
-          }
-          
-          return imageElement;
-        } else {
-          console.log(`Could not create canvas for ${layerName}, creating generic element instead`);
-          return createFallbackElement(layer, selectedSize, parentId);
-        }
-      } catch (e) {
-        console.error(`Error converting layer to image: ${layerName}`, e);
-        return createFallbackElement(layer, selectedSize, parentId);
+      } catch (altError) {
+        console.error(`Alternative method failed:`, altError);
       }
+      
+      return null;
     }
     
-    return createFallbackElement(layer, selectedSize, parentId);
+    if (canvas) {
+      let imageDataUrl;
+      try {
+        imageDataUrl = canvas.toDataURL();
+      } catch (dataUrlError) {
+        console.error(`Error getting dataURL:`, dataUrlError);
+        return null;
+      }
+      
+      const imageElement = createNewElement('image', selectedSize);
+      imageElement.content = imageDataUrl;
+      imageElement.style.x = left;
+      imageElement.style.y = top;
+      imageElement.style.width = width;
+      imageElement.style.height = height;
+      imageElement.alt = layer.name || 'Image Layer';
+      
+      if (parentId) {
+        imageElement.parentId = parentId;
+        imageElement.inContainer = true;
+      }
+      
+      return imageElement;
+    }
+    
+    return null;
   } catch (error) {
-    console.error("Error in convertLayerToElement:", error);
+    console.error("Error creating image element:", error);
     return null;
   }
 };
@@ -389,3 +479,14 @@ const convertPSDColorToHex = (colors: any): string => {
   }
 };
 
+const convertPSDAlignmentToCSS = (alignment: string): "left" | "center" | "right" => {
+  switch (alignment) {
+    case 'right':
+      return 'right';
+    case 'center':
+      return 'center';
+    case 'left':
+    default:
+      return 'left';
+  }
+};

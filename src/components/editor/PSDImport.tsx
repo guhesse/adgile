@@ -4,9 +4,11 @@ import { useCanvas } from "./CanvasContext";
 import { importPSDFile } from "./utils/psdImport";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
+import { useState } from "react";
 
 export const PSDImport = () => {
   const { selectedSize, setElements } = useCanvas();
+  const [isImporting, setIsImporting] = useState(false);
 
   const handlePSDUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -19,11 +21,14 @@ export const PSDImport = () => {
     }
 
     try {
+      // Set importing state
+      setIsImporting(true);
+      
       // Show loading toast
       const loadingToast = toast.loading("Importando arquivo PSD...");
       
       // Log file information
-      console.log("Importing PSD file:", file.name, "Size:", Math.round(file.size / 1024), "KB");
+      console.log("Importando arquivo PSD:", file.name, "Tamanho:", Math.round(file.size / 1024), "KB");
       
       // Import PSD file
       const elements = await importPSDFile(file, selectedSize);
@@ -40,12 +45,15 @@ export const PSDImport = () => {
         toast.success(`Importados ${elements.length} elementos de ${file.name}`);
       }
     } catch (error) {
-      console.error("Error importing PSD file:", error);
+      console.error("Erro ao importar arquivo PSD:", error);
       toast.error("Falha ao importar arquivo PSD. Verifique o console para detalhes.");
+    } finally {
+      // Reset importing state
+      setIsImporting(false);
+      
+      // Reset the input value to allow selecting the same file again
+      event.target.value = '';
     }
-    
-    // Reset the input value to allow selecting the same file again
-    event.target.value = '';
   };
 
   return (
@@ -56,12 +64,19 @@ export const PSDImport = () => {
         accept=".psd"
         onChange={handlePSDUpload}
         className="hidden"
+        disabled={isImporting}
       />
       <label htmlFor="psd-upload">
-        <Button variant="outline" size="sm" className="flex items-center gap-2" asChild>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="flex items-center gap-2" 
+          asChild
+          disabled={isImporting}
+        >
           <span>
             <UploadIcon size={14} />
-            Importar PSD
+            {isImporting ? "Importando..." : "Importar PSD"}
           </span>
         </Button>
       </label>
