@@ -68,22 +68,24 @@ export const CanvasArea = ({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        {elements.filter(el => !el.inContainer).map((element) => (
-          <CanvasElement
-            key={`${element.id}-${size.name}`}
-            element={element}
-            canvasSize={size}
-            selectedElement={selectedElement}
-            isDragging={isDragging}
-            isElementOutsideContainer={isElementOutsideContainer}
-            handleMouseDown={handleMouseDown}
-            handleResizeStart={handleResizeStart}
-            handleContainerHover={handleContainerHover}
-            handleContainerHoverEnd={handleContainerHoverEnd}
-            hoveredContainer={hoveredContainer}
-            canvasNavMode={canvasNavMode}
-          />
-        ))}
+        {elements
+          .filter(el => !el.inContainer)
+          .map((element, index) => (
+            <CanvasElement
+              key={`${element.id}-${index}`}
+              element={element}
+              canvasSize={size}
+              selectedElement={selectedElement}
+              isDragging={isDragging}
+              isElementOutsideContainer={isElementOutsideContainer}
+              handleMouseDown={handleMouseDown}
+              handleResizeStart={handleResizeStart}
+              handleContainerHover={handleContainerHover}
+              handleContainerHoverEnd={handleContainerHoverEnd}
+              hoveredContainer={hoveredContainer}
+              canvasNavMode={canvasNavMode}
+            />
+          ))}
       </Card>
     </div>
   );

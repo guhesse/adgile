@@ -25,7 +25,7 @@ export const PSDImport = () => {
       setIsImporting(true);
       
       // Show loading toast
-      const loadingToast = toast.loading("Importando arquivo PSD...");
+      const loadingToast = toast.loading(`Importando ${file.name}... Este processo pode levar alguns segundos.`);
       
       // Log file information
       console.log("Importando arquivo PSD:", file.name, "Tamanho:", Math.round(file.size / 1024), "KB");

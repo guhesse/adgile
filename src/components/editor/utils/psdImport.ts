@@ -41,6 +41,7 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
           try {
             console.log(`Node visible:`, node.visible && node.visible());
             console.log(`Node hidden:`, node.hidden && node.hidden());
+            console.log(`Node type:`, node.type);
             console.log(`Node data:`, node.export());
           } catch (err) {
             console.error(`Error logging node ${nodeName}:`, err);
@@ -57,8 +58,11 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
           if (node.isLayer && node.isLayer()) {
             console.log(`Converting layer to element: ${nodeName}`);
             try {
-              // Check if it's a text layer
-              const isTextLayer = node.get && node.get('typeTool');
+              // Check if it's a text layer by looking for 'typeTool' or 'type' property
+              const isTextLayer = (node.get && node.get('typeTool')) || 
+                                 (node.type && node.type === 'text') ||
+                                 (node.text && typeof node.text === 'function') ||
+                                 nodeName.toLowerCase().includes('text');
               
               if (isTextLayer) {
                 const textElement = createTextElement(node, selectedSize, parentId);
@@ -150,7 +154,10 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
             try {
               if (!layer.hidden || !layer.hidden()) {
                 // Check if it's a text layer
-                const isTextLayer = layer.get && layer.get('typeTool');
+                const isTextLayer = (layer.get && layer.get('typeTool')) || 
+                                  (layer.type && layer.type === 'text') ||
+                                  (layer.text && typeof layer.text === 'function') ||
+                                  (layer.name && layer.name.toLowerCase().includes('text'));
                 
                 if (isTextLayer) {
                   const textElement = createTextElement(layer, selectedSize);
@@ -180,12 +187,16 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
           console.log("After direct processing, elements count:", elements.length);
         }
         
-        // Calculate percentage values for responsive handling
-        elements.forEach(element => {
+        // Calculate percentage values for responsive handling and add unique keys
+        elements.forEach((element, index) => {
           element.style.xPercent = (element.style.x / selectedSize.width) * 100;
           element.style.yPercent = (element.style.y / selectedSize.height) * 100;
           element.style.widthPercent = (element.style.width / selectedSize.width) * 100;
           element.style.heightPercent = (element.style.height / selectedSize.height) * 100;
+          
+          // Add timestamp and index to ensure unique IDs
+          const timestamp = Date.now();
+          element.id = `${timestamp}-${index}-${selectedSize.name}`;
         });
         
         if (elements.length === 0) {
@@ -230,7 +241,7 @@ const createTextElement = (layer: any, selectedSize: any, parentId?: string): Ed
     const { width, height, left, top } = exportData;
     
     // Get text content and style from typeTool
-    const textTool = layer.get('typeTool');
+    const textTool = layer.get ? layer.get('typeTool') : null;
     console.log('Text tool data:', textTool);
     
     const textElement = createNewElement('text', selectedSize);
@@ -241,8 +252,22 @@ const createTextElement = (layer: any, selectedSize: any, parentId?: string): Ed
     textElement.style.width = width > 0 ? width : 200;
     textElement.style.height = height > 0 ? height : 50;
     
-    // Set text content
-    textElement.content = textTool?.text || layer.name || 'Text Layer';
+    // Set text content - try multiple approaches
+    if (textTool?.text) {
+      textElement.content = textTool.text;
+    } else if (layer.text && typeof layer.text === 'function') {
+      try {
+        const text = layer.text();
+        if (text) textElement.content = text;
+      } catch (e) {
+        console.error("Error getting text content:", e);
+      }
+    }
+    
+    // Fallback to layer name if no text content found
+    if (!textElement.content || textElement.content.trim() === '') {
+      textElement.content = layer.name || 'Text Layer';
+    }
     
     // Set text styles if available
     if (textTool?.styles && textTool.styles.length > 0) {
@@ -297,10 +322,19 @@ const createImageElement = (layer: any, selectedSize: any, parentId?: string): E
       return null;
     }
     
+    // Check if this is a smart object
+    const isSmartObject = layer.smartObject || 
+                          (layer.get && layer.get('smartObject')) ||
+                          (layer.name && layer.name.toLowerCase().includes('smart object'));
+    
     let canvas;
+    let imageDataUrl = '';
+    
     try {
+      // Try to get canvas content
       canvas = layer.canvas();
       console.log("Successfully created canvas for layer");
+      imageDataUrl = canvas.toDataURL();
     } catch (canvasError) {
       console.error(`Error creating canvas:`, canvasError);
       
@@ -309,67 +343,43 @@ const createImageElement = (layer: any, selectedSize: any, parentId?: string): E
         if (layer.toPng) {
           console.log("Trying toPng method");
           const pngData = layer.toPng();
-          if (!pngData) {
-            console.log("No PNG data available");
-            return null;
-          }
-          
-          const tempCanvas = document.createElement('canvas');
-          tempCanvas.width = width;
-          tempCanvas.height = height;
-          const ctx = tempCanvas.getContext('2d');
-          
-          if (ctx) {
-            const img = new Image();
-            const blob = new Blob([pngData], { type: 'image/png' });
-            img.src = URL.createObjectURL(blob);
+          if (pngData) {
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = width;
+            tempCanvas.height = height;
+            const ctx = tempCanvas.getContext('2d');
             
-            // We need to wait for the image to load
-            return new Promise((resolve) => {
-              img.onload = () => {
-                ctx.drawImage(img, 0, 0);
-                canvas = tempCanvas;
-                URL.revokeObjectURL(img.src);
-                
-                const imageElement = createNewElement('image', selectedSize);
-                imageElement.content = canvas.toDataURL();
-                imageElement.style.x = left;
-                imageElement.style.y = top;
-                imageElement.style.width = width;
-                imageElement.style.height = height;
-                imageElement.alt = layer.name || 'Image Layer';
-                
-                if (parentId) {
-                  imageElement.parentId = parentId;
-                  imageElement.inContainer = true;
-                }
-                
-                resolve(imageElement);
-              };
+            if (ctx) {
+              const img = new Image();
+              const blob = new Blob([pngData], { type: 'image/png' });
+              img.src = URL.createObjectURL(blob);
               
-              img.onerror = () => {
-                console.error("Failed to load PNG image data");
-                resolve(null);
-              };
-            });
+              // Wait for the image to load
+              await new Promise<void>((resolve, reject) => {
+                img.onload = () => {
+                  ctx.drawImage(img, 0, 0);
+                  imageDataUrl = tempCanvas.toDataURL();
+                  URL.revokeObjectURL(img.src);
+                  resolve();
+                };
+                
+                img.onerror = () => {
+                  console.error("Failed to load PNG image data");
+                  reject(new Error("Failed to load PNG image data"));
+                };
+                
+                // Set a timeout in case the image loading hangs
+                setTimeout(() => reject(new Error("Image loading timeout")), 3000);
+              });
+            }
           }
         }
       } catch (altError) {
         console.error(`Alternative method failed:`, altError);
       }
-      
-      return null;
     }
     
-    if (canvas) {
-      let imageDataUrl;
-      try {
-        imageDataUrl = canvas.toDataURL();
-      } catch (dataUrlError) {
-        console.error(`Error getting dataURL:`, dataUrlError);
-        return null;
-      }
-      
+    if (imageDataUrl) {
       const imageElement = createNewElement('image', selectedSize);
       imageElement.content = imageDataUrl;
       imageElement.style.x = left;
@@ -386,7 +396,25 @@ const createImageElement = (layer: any, selectedSize: any, parentId?: string): E
       return imageElement;
     }
     
-    return null;
+    // If we couldn't get image data, create a placeholder
+    console.log("Could not extract image data, creating placeholder");
+    const placeholderElement = createNewElement('image', selectedSize);
+    placeholderElement.style.x = left;
+    placeholderElement.style.y = top;
+    placeholderElement.style.width = width;
+    placeholderElement.style.height = height;
+    placeholderElement.alt = layer.name || 'Image Layer';
+    
+    if (isSmartObject) {
+      placeholderElement.alt = `Smart Object: ${layer.name || 'Unnamed'}`;
+    }
+    
+    if (parentId) {
+      placeholderElement.parentId = parentId;
+      placeholderElement.inContainer = true;
+    }
+    
+    return placeholderElement;
   } catch (error) {
     console.error("Error creating image element:", error);
     return null;

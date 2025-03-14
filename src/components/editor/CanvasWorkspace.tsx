@@ -24,7 +24,8 @@ export const CanvasWorkspace = () => {
     editingMode,
     setEditingMode,
     updateAllLinkedElements,
-    removeElement
+    removeElement,
+    undo
   } = useCanvas();
 
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -38,7 +39,8 @@ export const CanvasWorkspace = () => {
     canvasNavMode, 
     setCanvasNavMode, 
     selectedElement, 
-    removeElement 
+    removeElement,
+    undo
   });
 
   // Handle zoom and pan

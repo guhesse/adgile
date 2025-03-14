@@ -48,4 +48,5 @@ export interface CanvasContextType {
   ) => EditorElement[];
   linkElementsAcrossSizes: (element: EditorElement) => void;
   unlinkElement: (element: EditorElement) => void;
+  undo: () => void;
 }

@@ -7,13 +7,15 @@ interface UseCanvasKeyboardShortcutsProps {
   setCanvasNavMode: (mode: CanvasNavigationMode) => void;
   selectedElement: any;
   removeElement: (id: string) => void;
+  undo: () => void;
 }
 
 export const useCanvasKeyboardShortcuts = ({
   canvasNavMode,
   setCanvasNavMode,
   selectedElement,
-  removeElement
+  removeElement,
+  undo
 }: UseCanvasKeyboardShortcutsProps) => {
   useEffect(() => {
     const handleSpacebarDown = () => {
@@ -28,10 +30,18 @@ export const useCanvasKeyboardShortcuts = ({
       }
     };
 
-    // Handle delete key press
+    // Handle keyboard shortcuts
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Delete/Backspace to remove selected element
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElement) {
         removeElement(selectedElement.id);
+      }
+      
+      // Ctrl+Z to undo
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault(); // Prevent browser's default undo
+        console.log("Undo shortcut triggered");
+        undo();
       }
     };
 
@@ -44,5 +54,5 @@ export const useCanvasKeyboardShortcuts = ({
       document.removeEventListener('canvas-spacebar-up', handleSpacebarUp);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [canvasNavMode, setCanvasNavMode, selectedElement, removeElement]);
+  }, [canvasNavMode, setCanvasNavMode, selectedElement, removeElement, undo]);
 };

@@ -1,11 +1,20 @@
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useRef } from "react";
 import { EditorElement, BannerSize, BANNER_SIZES, CanvasNavigationMode, EditingMode } from "./types";
 import { organizeElementsInContainers } from "./utils/gridUtils";
 import { createNewElement, createLayoutElement, handleImageUpload } from "./context/elements";
 import { linkElementsAcrossSizes, unlinkElement, updateAllLinkedElements, createLinkedVersions } from "./context/responsiveOperations";
 import { removeElement, updateElementStyle, updateElementContent, animationOperations } from "./context/modificationOperations";
 import { CanvasContextType } from "./context/CanvasContextTypes";
+import { toast } from "sonner";
+
+// Define a history interface
+interface HistoryState {
+  elements: EditorElement[];
+  selectedElementId: string | null;
+}
+
+const MAX_HISTORY_SIZE = 30;
 
 const CanvasContext = createContext<CanvasContextType | undefined>(undefined);
 
@@ -24,6 +33,56 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [zoomLevel, setZoomLevel] = useState(1);
   const [canvasNavMode, setCanvasNavMode] = useState<CanvasNavigationMode>('edit');
   const [editingMode, setEditingMode] = useState<EditingMode>('global');
+  
+  // History state for undo functionality
+  const [history, setHistory] = useState<HistoryState[]>([]);
+  const [currentHistoryIndex, setCurrentHistoryIndex] = useState(-1);
+  const historyActionInProgress = useRef(false);
+  
+  // Initialize history with the current empty state
+  useEffect(() => {
+    if (history.length === 0) {
+      setHistory([{ elements: [], selectedElementId: null }]);
+      setCurrentHistoryIndex(0);
+    }
+  }, []);
+
+  // Add current state to history when elements change
+  useEffect(() => {
+    // Skip history recording if this change is due to an undo/redo operation
+    if (historyActionInProgress.current) {
+      historyActionInProgress.current = false;
+      return;
+    }
+
+    // Skip if there are no elements and we haven't done anything yet
+    if (elements.length === 0 && currentHistoryIndex === 0) {
+      return;
+    }
+
+    const newHistoryState: HistoryState = {
+      elements: [...elements],
+      selectedElementId: selectedElement?.id || null,
+    };
+
+    // Add to history only if the state has changed
+    const lastHistoryState = history[currentHistoryIndex];
+    if (
+      lastHistoryState && 
+      JSON.stringify(lastHistoryState.elements) === JSON.stringify(newHistoryState.elements)
+    ) {
+      return;
+    }
+
+    // Cut off any future history if we've gone back in time and now made a new change
+    const newHistory = history.slice(0, currentHistoryIndex + 1);
+    
+    // Add new state and limit history size
+    const updatedHistory = [...newHistory, newHistoryState].slice(-MAX_HISTORY_SIZE);
+    
+    setHistory(updatedHistory);
+    setCurrentHistoryIndex(updatedHistory.length - 1);
+  }, [elements]);
 
   useEffect(() => {
     if (elements.length > 0) {
@@ -139,6 +198,35 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       activeSizes
     );
   };
+  
+  // Implement undo functionality
+  const handleUndo = () => {
+    if (currentHistoryIndex <= 0) {
+      toast.info("Não há mais ações para desfazer");
+      return;
+    }
+    
+    const newIndex = currentHistoryIndex - 1;
+    const previousState = history[newIndex];
+    
+    // Mark that we're performing an undo/redo operation
+    historyActionInProgress.current = true;
+    
+    setCurrentHistoryIndex(newIndex);
+    setElements(previousState.elements);
+    
+    // Restore the selected element if it exists
+    if (previousState.selectedElementId) {
+      const selectedEl = previousState.elements.find(
+        (el) => el.id === previousState.selectedElementId
+      );
+      setSelectedElement(selectedEl || null);
+    } else {
+      setSelectedElement(null);
+    }
+    
+    toast.success("Ação desfeita", { duration: 1500 });
+  };
 
   return (
     <CanvasContext.Provider value={{
@@ -182,7 +270,8 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       handleImageUpload,
       updateAllLinkedElements: handleUpdateAllLinkedElements,
       linkElementsAcrossSizes: handleLinkElementsAcrossSizes,
-      unlinkElement: handleUnlinkElement
+      unlinkElement: handleUnlinkElement,
+      undo: handleUndo
     }}>
       {children}
     </CanvasContext.Provider>
