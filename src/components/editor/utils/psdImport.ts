@@ -52,13 +52,10 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
           if (node.isLayer && node.isLayer()) {
             console.log(`Converting layer to element: ${nodeName}`);
             try {
-              const isTextLayer = (node.get && node.get('typeTool')) || 
-                                 (node.type && node.type === 'text') ||
-                                 (node.text && typeof node.text === 'function') ||
-                                 nodeName.toLowerCase().includes('text');
+              const isTextLayer = hasTextProperties(node);
               
               if (isTextLayer) {
-                const textElement = createTextElement(node, selectedSize, parentId);
+                const textElement = await createTextElement(node, selectedSize, parentId);
                 if (textElement) {
                   console.log(`Created text element from layer: ${nodeName}`, textElement);
                   elements.push(textElement);
@@ -137,13 +134,10 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
           for (const layer of psd.layers) {
             try {
               if (!layer.hidden || !layer.hidden()) {
-                const isTextLayer = (layer.get && layer.get('typeTool')) || 
-                                  (layer.type && layer.type === 'text') ||
-                                  (layer.text && typeof layer.text === 'function') ||
-                                  (layer.name && layer.name.toLowerCase().includes('text'));
+                const isTextLayer = hasTextProperties(layer);
                 
                 if (isTextLayer) {
-                  const textElement = createTextElement(layer, selectedSize);
+                  const textElement = await createTextElement(layer, selectedSize);
                   if (textElement) {
                     console.log(`Created text element from direct layer: ${layer.name}`, textElement);
                     elements.push(textElement);
@@ -169,6 +163,8 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
           
           console.log("After direct processing, elements count:", elements.length);
         }
+        
+        convertPossibleTextImagesIntoTextElements(elements);
         
         elements.forEach((element, index) => {
           element.style.xPercent = (element.style.x / selectedSize.width) * 100;
@@ -204,9 +200,88 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
   });
 };
 
-const createTextElement = (layer: any, selectedSize: any, parentId?: string): EditorElement | null => {
+const hasTextProperties = (node: any): boolean => {
   try {
-    console.log(`Creating text element for layer: ${layer.name || 'unnamed'}`);
+    const hasTypeTool = node.get && node.get('typeTool');
+    const isTextType = node.type && (node.type === 'text' || node.type === 'TextLayer');
+    const hasTextFunction = node.text && typeof node.text === 'function';
+    const nameIndicatesText = node.name && (
+      node.name.toLowerCase().includes('text') || 
+      node.name.toLowerCase().includes('texto') ||
+      node.name.toLowerCase().includes('título') ||
+      node.name.toLowerCase().includes('title') ||
+      node.name.toLowerCase().includes('heading') ||
+      node.name.toLowerCase().includes('label') ||
+      node.name.toLowerCase().includes('caption')
+    );
+    
+    const hasTextMetadata = node.metadata && 
+      (node.metadata.layerKind === 3 || 
+       node.metadata.textKey || 
+       node.metadata.textData);
+       
+    const hasTextStyles = node.text_styles || node.textStyles;
+    
+    console.log(`Text detection for ${node.name || 'unnamed'}:`, {
+      hasTypeTool,
+      isTextType,
+      hasTextFunction,
+      nameIndicatesText,
+      hasTextMetadata,
+      hasTextStyles
+    });
+    
+    return hasTypeTool || isTextType || hasTextFunction || nameIndicatesText || hasTextMetadata || hasTextStyles;
+  } catch (error) {
+    console.error("Error checking text properties:", error);
+    return node.name && (
+      node.name.toLowerCase().includes('text') || 
+      node.name.toLowerCase().includes('texto')
+    );
+  }
+};
+
+const convertPossibleTextImagesIntoTextElements = (elements: EditorElement[]): void => {
+  for (let i = 0; i < elements.length; i++) {
+    const element = elements[i];
+    
+    if (element.type === 'image') {
+      const nameOrAlt = element.alt || '';
+      const potentialTextImage = nameOrAlt.toLowerCase().includes('text') || 
+                                nameOrAlt.toLowerCase().includes('texto') ||
+                                nameOrAlt.toLowerCase().includes('title') ||
+                                nameOrAlt.toLowerCase().includes('título');
+      
+      if (potentialTextImage) {
+        console.log(`Converting potential text image to text element: ${nameOrAlt}`);
+        
+        const textElement = createNewElement('text', { width: 0, height: 0 });
+        
+        textElement.style.x = element.style.x;
+        textElement.style.y = element.style.y;
+        textElement.style.width = element.style.width;
+        textElement.style.height = element.style.height;
+        textElement.style.xPercent = element.style.xPercent;
+        textElement.style.yPercent = element.style.yPercent;
+        textElement.style.widthPercent = element.style.widthPercent;
+        textElement.style.heightPercent = element.style.heightPercent;
+        
+        textElement.content = nameOrAlt;
+        
+        textElement.style.fontSize = 16;
+        textElement.style.fontFamily = 'Arial';
+        textElement.style.color = '#000000';
+        textElement.style.textAlign = 'left';
+        
+        elements[i] = textElement;
+      }
+    }
+  }
+};
+
+const createTextElement = async (layer: any, selectedSize: any, parentId?: string): Promise<EditorElement | null> => {
+  try {
+    console.log(`Creating text element for layer: ${layer.name || 'unnamed'}`, layer);
     
     let exportData;
     try {
@@ -222,6 +297,9 @@ const createTextElement = (layer: any, selectedSize: any, parentId?: string): Ed
     const textTool = layer.get ? layer.get('typeTool') : null;
     console.log('Text tool data:', textTool);
     
+    let textContent = '';
+    let textStyles = null;
+    
     const textElement = createNewElement('text', selectedSize);
     
     textElement.style.x = left || 0;
@@ -230,22 +308,44 @@ const createTextElement = (layer: any, selectedSize: any, parentId?: string): Ed
     textElement.style.height = height > 0 ? height : 50;
     
     if (textTool?.text) {
-      textElement.content = textTool.text;
+      textContent = textTool.text;
+      textStyles = textTool.styles;
     } else if (layer.text && typeof layer.text === 'function') {
       try {
-        const text = layer.text();
-        if (text) textElement.content = text;
+        textContent = layer.text() || '';
       } catch (e) {
         console.error("Error getting text content:", e);
       }
+    } else if (layer.get && layer.get('text')) {
+      textContent = layer.get('text');
+    } else if (layer.textData) {
+      textContent = layer.textData.text || '';
+      textStyles = layer.textData.styles;
     }
     
-    if (!textElement.content || textElement.content.trim() === '') {
-      textElement.content = layer.name || 'Text Layer';
+    if ((!textContent || textContent.trim() === '') && layer.metadata && layer.metadata.textKey) {
+      try {
+        textContent = layer.metadata.textKey.textKey || '';
+        textStyles = layer.metadata.textKey.textStyleRange;
+      } catch (e) {
+        console.error("Error getting text from metadata:", e);
+      }
     }
     
-    if (textTool?.styles && textTool.styles.length > 0) {
-      const style = textTool.styles[0];
+    if (!textContent || textContent.trim() === '') {
+      textContent = layer.name || 'Text Layer';
+      
+      const textPrefix = /^(text:|texto:)\s*(.+)$/i;
+      const match = textContent.match(textPrefix);
+      if (match && match[2]) {
+        textContent = match[2];
+      }
+    }
+    
+    textElement.content = textContent;
+    
+    if (textStyles && Array.isArray(textStyles) && textStyles.length > 0) {
+      const style = textStyles[0];
       
       if (style.fontSize) textElement.style.fontSize = style.fontSize;
       if (style.fontName) textElement.style.fontFamily = style.fontName;
@@ -258,6 +358,11 @@ const createTextElement = (layer: any, selectedSize: any, parentId?: string): Ed
         if (style.fontStyle.includes('Italic')) textElement.style.fontStyle = 'italic';
         if (style.fontStyle.includes('Underline')) textElement.style.textDecoration = 'underline';
       }
+    } else {
+      textElement.style.fontSize = 16;
+      textElement.style.fontFamily = 'Arial';
+      textElement.style.color = '#000000';
+      textElement.style.textAlign = 'center';
     }
     
     if (parentId) {
@@ -300,9 +405,13 @@ const createImageElement = async (layer: any, selectedSize: any, parentId?: stri
     let imageDataUrl = '';
     
     try {
-      canvas = layer.canvas();
-      console.log("Successfully created canvas for layer");
-      imageDataUrl = canvas.toDataURL();
+      if (typeof layer.canvas === 'function') {
+        canvas = layer.canvas();
+        console.log("Successfully created canvas for layer");
+        imageDataUrl = canvas.toDataURL();
+      } else {
+        throw new Error("layer.canvas is not a function");
+      }
     } catch (canvasError) {
       console.error(`Error creating canvas:`, canvasError);
       
@@ -481,3 +590,4 @@ const convertPSDAlignmentToCSS = (alignment: string): "left" | "center" | "right
       return 'left';
   }
 };
+

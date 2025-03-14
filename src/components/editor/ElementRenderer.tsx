@@ -26,6 +26,7 @@ export const ElementRenderer = ({ element }: ElementRendererProps) => {
         boxSizing: "border-box",
         overflow: "hidden",
         wordBreak: "break-word",
+        backgroundColor: element.style.backgroundColor,
       }}>
         {element.content}
       </p>

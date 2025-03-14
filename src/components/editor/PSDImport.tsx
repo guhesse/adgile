@@ -39,10 +39,22 @@ export const PSDImport = () => {
       // Close loading toast
       toast.dismiss(loadingToast);
       
+      // Log information about imported elements
+      const textElements = elements.filter(el => el.type === 'text').length;
+      const imageElements = elements.filter(el => el.type === 'image').length;
+      const containerElements = elements.filter(el => el.type === 'container').length;
+      
+      console.log("Resumo da importação:", {
+        total: elements.length,
+        textos: textElements,
+        imagens: imageElements,
+        containers: containerElements
+      });
+      
       if (elements.length === 0) {
         toast.warning("Nenhum elemento foi importado do arquivo PSD. Verifique os logs para mais detalhes.");
       } else {
-        toast.success(`Importados ${elements.length} elementos de ${file.name}`);
+        toast.success(`Importados ${elements.length} elementos de ${file.name} (${textElements} textos, ${imageElements} imagens, ${containerElements} containers)`);
       }
     } catch (error) {
       console.error("Erro ao importar arquivo PSD:", error);

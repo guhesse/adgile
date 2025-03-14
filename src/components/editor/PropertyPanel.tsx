@@ -5,6 +5,7 @@ import { TextPanel } from "./panels/TextPanel";
 import { ImagePanel } from "./panels/ImagePanel";
 import { ButtonPanel } from "./panels/ButtonPanel";
 import { AnimationPanel } from "./panels/AnimationPanel";
+import { GenericPanel } from "./panels/GenericPanel";
 
 interface PropertyPanelProps {
   selectedElement: EditorElement | null;
@@ -76,9 +77,17 @@ export const PropertyPanel = ({ selectedElement, updateElementStyle, updateEleme
       return (
         <AnimationPanel element={selectedElement} updateElementStyle={updateElementStyle} />
       );
+    } else {
+      // Para outros tipos de elementos, usamos o painel genérico
+      return (
+        <GenericPanel 
+          element={selectedElement} 
+          updateElementStyle={updateElementStyle}
+          updateElementContent={updateElementContent}
+          activeTab={activeTab}
+        />
+      );
     }
-
-    return null;
   };
 
   return (

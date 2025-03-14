@@ -1,3 +1,4 @@
+
 import { BannerSize, CanvasNavigationMode, EditorElement } from "../types";
 import { ElementRenderer } from "../ElementRenderer";
 import { ElementHandles } from "./ElementHandles";
@@ -16,7 +17,6 @@ interface CanvasElementProps {
   handleContainerHoverEnd: () => void;
   hoveredContainer: string | null;
   canvasNavMode: CanvasNavigationMode;
-  key?: string;
 }
 
 export const CanvasElement = ({
@@ -31,8 +31,7 @@ export const CanvasElement = ({
   handleContainerHover,
   handleContainerHoverEnd,
   hoveredContainer,
-  canvasNavMode,
-  key
+  canvasNavMode
 }: CanvasElementProps) => {
   const isHovered = hoveredContainer === element.id;
   const isContainer = element.type === "container" || element.type === "layout";
@@ -104,7 +103,7 @@ export const CanvasElement = ({
         <div className="absolute top-0 left-0 w-full h-full">
           {element.childElements.map((child: EditorElement) => (
             <CanvasElement
-              key={`${child.id}-${canvasSize.name}`}
+              key={child.id}
               element={child}
               canvasSize={canvasSize}
               selectedElement={selectedElement}
