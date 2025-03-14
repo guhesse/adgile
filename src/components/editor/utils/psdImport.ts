@@ -177,10 +177,22 @@ export const importPSDFile = (file: File, selectedSize: BannerSize): Promise<Edi
           element.id = `${timestamp}-${index}-${selectedSize.name}`;
         });
         
+        // Count element types for the summary
+        const textElements = elements.filter(el => el.type === 'text').length;
+        const imageElements = elements.filter(el => el.type === 'image').length;
+        const containerElements = elements.filter(el => el.type === 'container').length;
+        
+        console.log("Resumo da importação:", {
+          total: elements.length,
+          textos: textElements,
+          imagens: imageElements,
+          containers: containerElements
+        });
+        
         if (elements.length === 0) {
           toast.warning("Nenhuma camada visível encontrada no arquivo PSD.");
         } else {
-          toast.success(`Importados ${elements.length} elementos do arquivo PSD.`);
+          toast.success(`Importados ${elements.length} elementos do arquivo PSD. (${textElements} textos, ${imageElements} imagens, ${containerElements} containers)`);
         }
         
         resolve(elements);
@@ -203,9 +215,17 @@ export const importPSDFile = (file: File, selectedSize: BannerSize): Promise<Edi
 
 const hasTextProperties = (node: any): boolean => {
   try {
+    // Enhanced text detection algorithm
+    // Check for type tool properties
     const hasTypeTool = node.get && node.get('typeTool');
+    
+    // Check for text type designation
     const isTextType = node.type && (node.type === 'text' || node.type === 'TextLayer');
+    
+    // Check for text function
     const hasTextFunction = node.text && typeof node.text === 'function';
+    
+    // Check name for text indicators (expanded list)
     const nameIndicatesText = node.name && (
       node.name.toLowerCase().includes('text') || 
       node.name.toLowerCase().includes('texto') ||
@@ -216,11 +236,13 @@ const hasTextProperties = (node: any): boolean => {
       node.name.toLowerCase().includes('caption')
     );
     
+    // Check for text metadata in layer properties
     const hasTextMetadata = node.metadata && 
-      (node.metadata.layerKind === 3 || 
+      (node.metadata.layerKind === 3 || // layerKind 3 is text in PSD
        node.metadata.textKey || 
        node.metadata.textData);
        
+    // Check for text styles
     const hasTextStyles = node.text_styles || node.textStyles;
     
     console.log(`Text detection for ${node.name || 'unnamed'}:`, {
@@ -232,9 +254,11 @@ const hasTextProperties = (node: any): boolean => {
       hasTextStyles
     });
     
+    // Return true if any text indicator is found
     return hasTypeTool || isTextType || hasTextFunction || nameIndicatesText || hasTextMetadata || hasTextStyles;
   } catch (error) {
     console.error("Error checking text properties:", error);
+    // Fallback to name-based detection if error occurs
     return node.name && (
       node.name.toLowerCase().includes('text') || 
       node.name.toLowerCase().includes('texto')
