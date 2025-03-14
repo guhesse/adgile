@@ -1,9 +1,10 @@
+
 import PSD from 'psd.js';
-import { EditorElement } from '../types';
+import { EditorElement, BannerSize } from '../types';
 import { toast } from 'sonner';
 import { createNewElement } from '../context/elements';
 
-export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElement[]> => {
+export const importPSDFile = (file: File, selectedSize: BannerSize): Promise<EditorElement[]> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     
@@ -255,7 +256,14 @@ const convertPossibleTextImagesIntoTextElements = (elements: EditorElement[]): v
       if (potentialTextImage) {
         console.log(`Converting potential text image to text element: ${nameOrAlt}`);
         
-        const textElement = createNewElement('text', { width: 0, height: 0 });
+        // Create proper BannerSize object for the new text element
+        const bannerSize: BannerSize = {
+          name: "Converted Text",
+          width: element.style.width,
+          height: element.style.height
+        };
+        
+        const textElement = createNewElement('text', bannerSize);
         
         textElement.style.x = element.style.x;
         textElement.style.y = element.style.y;
@@ -279,7 +287,7 @@ const convertPossibleTextImagesIntoTextElements = (elements: EditorElement[]): v
   }
 };
 
-const createTextElement = async (layer: any, selectedSize: any, parentId?: string): Promise<EditorElement | null> => {
+const createTextElement = async (layer: any, selectedSize: BannerSize, parentId?: string): Promise<EditorElement | null> => {
   try {
     console.log(`Creating text element for layer: ${layer.name || 'unnamed'}`, layer);
     
@@ -377,7 +385,7 @@ const createTextElement = async (layer: any, selectedSize: any, parentId?: strin
   }
 };
 
-const createImageElement = async (layer: any, selectedSize: any, parentId?: string): Promise<EditorElement | null> => {
+const createImageElement = async (layer: any, selectedSize: BannerSize, parentId?: string): Promise<EditorElement | null> => {
   try {
     console.log(`Creating image element for layer: ${layer.name || 'unnamed'}`);
     
@@ -494,7 +502,7 @@ const createImageElement = async (layer: any, selectedSize: any, parentId?: stri
   }
 };
 
-const createFallbackElement = (layer: any, selectedSize: any, parentId?: string): EditorElement | null => {
+const createFallbackElement = (layer: any, selectedSize: BannerSize, parentId?: string): EditorElement | null => {
   try {
     console.log(`Creating fallback element for layer: ${layer.name || 'unnamed'}`);
     
@@ -532,7 +540,7 @@ const createFallbackElement = (layer: any, selectedSize: any, parentId?: string)
   }
 };
 
-const createContainerFromGroup = (group: any, selectedSize: any): EditorElement | null => {
+const createContainerFromGroup = (group: any, selectedSize: BannerSize): EditorElement | null => {
   try {
     console.log(`Creating container from group: ${group.name || 'unnamed'}`);
     
@@ -590,4 +598,3 @@ const convertPSDAlignmentToCSS = (alignment: string): "left" | "center" | "right
       return 'left';
   }
 };
-

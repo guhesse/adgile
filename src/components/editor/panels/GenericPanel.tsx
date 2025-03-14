@@ -112,11 +112,11 @@ export const GenericPanel = ({ element, updateElementStyle, updateElementContent
         <div className="flex justify-between">
           <Label>Opacidade</Label>
           <span className="text-xs text-gray-500">
-            {Math.round((element.style.opacity || 1) * 100)}%
+            {Math.round(((element.style.opacity !== undefined ? element.style.opacity : 1) * 100))}%
           </span>
         </div>
         <Slider
-          defaultValue={[(element.style.opacity || 1) * 100]}
+          defaultValue={[(element.style.opacity !== undefined ? element.style.opacity : 1) * 100]}
           max={100}
           step={1}
           onValueChange={handleOpacityChange}

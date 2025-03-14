@@ -43,6 +43,7 @@ export type EditorElement = {
     gridArea?: string;
     gridColumn?: string;
     gridRow?: string;
+    opacity?: number; // Add opacity property to the style type
     // Percentage-based positioning for responsive handling
     xPercent?: number;
     yPercent?: number;
