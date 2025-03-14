@@ -1,4 +1,3 @@
-
 import PSD from 'psd.js';
 import { EditorElement } from '../types';
 import { toast } from 'sonner';
@@ -26,9 +25,7 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
         
         const elements: EditorElement[] = [];
         
-        // Flatten all layers recursively
-        const flattenLayers = (node: any, parentId?: string): void => {
-          // Skip if node is undefined
+        const flattenLayers = async (node: any, parentId?: string): Promise<void> => {
           if (!node) {
             console.log("Node is undefined, skipping");
             return;
@@ -37,7 +34,6 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
           const nodeName = node.name || "Unnamed";
           console.log(`Processing node: ${nodeName}`);
           
-          // Log node properties for debugging
           try {
             console.log(`Node visible:`, node.visible && node.visible());
             console.log(`Node hidden:`, node.hidden && node.hidden());
@@ -47,18 +43,15 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
             console.error(`Error logging node ${nodeName}:`, err);
           }
           
-          // Fix: Only skip if we can confirm the layer is hidden
           const isHidden = node.hidden && typeof node.hidden === 'function' && node.hidden();
           if (isHidden) {
             console.log(`Skipping hidden layer: ${nodeName}`);
             return;
           }
           
-          // Process this layer if it has image data or is a text layer
           if (node.isLayer && node.isLayer()) {
             console.log(`Converting layer to element: ${nodeName}`);
             try {
-              // Check if it's a text layer by looking for 'typeTool' or 'type' property
               const isTextLayer = (node.get && node.get('typeTool')) || 
                                  (node.type && node.type === 'text') ||
                                  (node.text && typeof node.text === 'function') ||
@@ -71,13 +64,11 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
                   elements.push(textElement);
                 }
               } else {
-                // Try to handle as image layer
-                const imageElement = createImageElement(node, selectedSize, parentId);
+                const imageElement = await createImageElement(node, selectedSize, parentId);
                 if (imageElement) {
                   console.log(`Created image element from layer: ${nodeName}`, imageElement);
                   elements.push(imageElement);
                 } else {
-                  // Create fallback if image creation failed
                   const fallbackElement = createFallbackElement(node, selectedSize, parentId);
                   if (fallbackElement) {
                     console.log(`Created fallback element for layer: ${nodeName}`);
@@ -87,7 +78,6 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
               }
             } catch (error) {
               console.error(`Error converting layer ${nodeName}:`, error);
-              // Create a fallback generic container for this layer
               try {
                 const fallbackElement = createFallbackElement(node, selectedSize, parentId);
                 if (fallbackElement) {
@@ -100,11 +90,9 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
             }
           }
           
-          // Process children if this is a group
           if (node.hasChildren && node.hasChildren()) {
             console.log(`Node has children: ${nodeName}, Children count:`, node.children().length);
             
-            // If it's not the root and is a group, create a container element
             let containerElement = undefined;
             try {
               containerElement = (!node.isRoot || !node.isRoot()) ? createContainerFromGroup(node, selectedSize) : undefined;
@@ -115,45 +103,40 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
             if (containerElement) {
               console.log(`Created container from group: ${nodeName}`);
               elements.push(containerElement);
-              // Process all children and associate them with this container
-              node.children().forEach((child: any) => {
+              for (const child of node.children()) {
                 try {
-                  flattenLayers(child, containerElement.id);
+                  await flattenLayers(child, containerElement.id);
                 } catch (err) {
                   console.error(`Error processing child of ${nodeName}:`, err);
                 }
-              });
+              }
             } else {
-              // Process all children without a parent container
               console.log(`Processing children without container for ${nodeName}`);
-              node.children().forEach((child: any) => {
+              for (const child of node.children()) {
                 try {
-                  flattenLayers(child, parentId);
+                  await flattenLayers(child, parentId);
                 } catch (err) {
                   console.error(`Error processing child of ${nodeName}:`, err);
                 }
-              });
+              }
             }
           }
         };
         
-        // Start processing from the root
         try {
-          flattenLayers(psd.tree());
+          await flattenLayers(psd.tree());
         } catch (error) {
           console.error("Error during layer processing:", error);
         }
         
         console.log("Final elements count:", elements.length);
         
-        // Fallback: If no elements were extracted, try to process all layers directly
         if (elements.length === 0 && psd.layers && psd.layers.length > 0) {
           console.log("No elements were created from tree structure. Trying direct layer processing...");
           
           for (const layer of psd.layers) {
             try {
               if (!layer.hidden || !layer.hidden()) {
-                // Check if it's a text layer
                 const isTextLayer = (layer.get && layer.get('typeTool')) || 
                                   (layer.type && layer.type === 'text') ||
                                   (layer.text && typeof layer.text === 'function') ||
@@ -166,7 +149,7 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
                     elements.push(textElement);
                   }
                 } else {
-                  const imageElement = createImageElement(layer, selectedSize);
+                  const imageElement = await createImageElement(layer, selectedSize);
                   if (imageElement) {
                     console.log(`Created image element from direct layer: ${layer.name}`, imageElement);
                     elements.push(imageElement);
@@ -187,14 +170,12 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
           console.log("After direct processing, elements count:", elements.length);
         }
         
-        // Calculate percentage values for responsive handling and add unique keys
         elements.forEach((element, index) => {
           element.style.xPercent = (element.style.x / selectedSize.width) * 100;
           element.style.yPercent = (element.style.y / selectedSize.height) * 100;
           element.style.widthPercent = (element.style.width / selectedSize.width) * 100;
           element.style.heightPercent = (element.style.height / selectedSize.height) * 100;
           
-          // Add timestamp and index to ensure unique IDs
           const timestamp = Date.now();
           element.id = `${timestamp}-${index}-${selectedSize.name}`;
         });
@@ -223,7 +204,6 @@ export const importPSDFile = (file: File, selectedSize: any): Promise<EditorElem
   });
 };
 
-// Function to create a text element from a PSD text layer
 const createTextElement = (layer: any, selectedSize: any, parentId?: string): EditorElement | null => {
   try {
     console.log(`Creating text element for layer: ${layer.name || 'unnamed'}`);
@@ -237,22 +217,18 @@ const createTextElement = (layer: any, selectedSize: any, parentId?: string): Ed
       return null;
     }
     
-    // Get dimensions and position
     const { width, height, left, top } = exportData;
     
-    // Get text content and style from typeTool
     const textTool = layer.get ? layer.get('typeTool') : null;
     console.log('Text tool data:', textTool);
     
     const textElement = createNewElement('text', selectedSize);
     
-    // Set position and dimensions
     textElement.style.x = left || 0;
     textElement.style.y = top || 0;
     textElement.style.width = width > 0 ? width : 200;
     textElement.style.height = height > 0 ? height : 50;
     
-    // Set text content - try multiple approaches
     if (textTool?.text) {
       textElement.content = textTool.text;
     } else if (layer.text && typeof layer.text === 'function') {
@@ -264,12 +240,10 @@ const createTextElement = (layer: any, selectedSize: any, parentId?: string): Ed
       }
     }
     
-    // Fallback to layer name if no text content found
     if (!textElement.content || textElement.content.trim() === '') {
       textElement.content = layer.name || 'Text Layer';
     }
     
-    // Set text styles if available
     if (textTool?.styles && textTool.styles.length > 0) {
       const style = textTool.styles[0];
       
@@ -286,7 +260,6 @@ const createTextElement = (layer: any, selectedSize: any, parentId?: string): Ed
       }
     }
     
-    // Set parent if applicable
     if (parentId) {
       textElement.parentId = parentId;
       textElement.inContainer = true;
@@ -299,8 +272,7 @@ const createTextElement = (layer: any, selectedSize: any, parentId?: string): Ed
   }
 };
 
-// Function to create an image element from a PSD layer
-const createImageElement = (layer: any, selectedSize: any, parentId?: string): EditorElement | null => {
+const createImageElement = async (layer: any, selectedSize: any, parentId?: string): Promise<EditorElement | null> => {
   try {
     console.log(`Creating image element for layer: ${layer.name || 'unnamed'}`);
     
@@ -313,16 +285,13 @@ const createImageElement = (layer: any, selectedSize: any, parentId?: string): E
       return null;
     }
     
-    // Get dimensions and position
     const { width, height, left, top } = exportData;
     
-    // Safety check for valid dimensions
     if (!width || !height || width <= 0 || height <= 0) {
       console.log(`Skipping layer with invalid dimensions: ${width}x${height}`);
       return null;
     }
     
-    // Check if this is a smart object
     const isSmartObject = layer.smartObject || 
                           (layer.get && layer.get('smartObject')) ||
                           (layer.name && layer.name.toLowerCase().includes('smart object'));
@@ -331,14 +300,12 @@ const createImageElement = (layer: any, selectedSize: any, parentId?: string): E
     let imageDataUrl = '';
     
     try {
-      // Try to get canvas content
       canvas = layer.canvas();
       console.log("Successfully created canvas for layer");
       imageDataUrl = canvas.toDataURL();
     } catch (canvasError) {
       console.error(`Error creating canvas:`, canvasError);
       
-      // Try alternative method
       try {
         if (layer.toPng) {
           console.log("Trying toPng method");
@@ -354,7 +321,6 @@ const createImageElement = (layer: any, selectedSize: any, parentId?: string): E
               const blob = new Blob([pngData], { type: 'image/png' });
               img.src = URL.createObjectURL(blob);
               
-              // Wait for the image to load
               await new Promise<void>((resolve, reject) => {
                 img.onload = () => {
                   ctx.drawImage(img, 0, 0);
@@ -368,7 +334,6 @@ const createImageElement = (layer: any, selectedSize: any, parentId?: string): E
                   reject(new Error("Failed to load PNG image data"));
                 };
                 
-                // Set a timeout in case the image loading hangs
                 setTimeout(() => reject(new Error("Image loading timeout")), 3000);
               });
             }
@@ -396,7 +361,6 @@ const createImageElement = (layer: any, selectedSize: any, parentId?: string): E
       return imageElement;
     }
     
-    // If we couldn't get image data, create a placeholder
     console.log("Could not extract image data, creating placeholder");
     const placeholderElement = createNewElement('image', selectedSize);
     placeholderElement.style.x = left;
@@ -473,7 +437,6 @@ const createContainerFromGroup = (group: any, selectedSize: any): EditorElement 
     
     let { width, height, left, top } = exportData;
     
-    // Ensure we have valid dimensions
     width = Math.max(width || 50, 50);
     height = Math.max(height || 50, 50);
     left = left || 0;
