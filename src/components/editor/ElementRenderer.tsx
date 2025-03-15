@@ -1,6 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { EditorElement } from "./types";
+import { isValidImageUrl } from "./context/elements/imageOperations";
 
 interface ElementRendererProps {
   element: EditorElement;
@@ -51,6 +52,8 @@ export const ElementRenderer = ({ element }: ElementRendererProps) => {
   } 
   
   if (element.type === "image") {
+    const hasValidImage = element.content && isValidImageUrl(element.content as string);
+    
     return (
       <div 
         className="w-full h-full"
@@ -67,9 +70,9 @@ export const ElementRenderer = ({ element }: ElementRendererProps) => {
           overflow: "hidden"
         }}
       >
-        {element.content ? (
+        {hasValidImage ? (
           <img
-            src={element.content}
+            src={element.content as string}
             alt={element.alt || "Image element"}
             className="w-full h-full"
             style={{
@@ -79,7 +82,7 @@ export const ElementRenderer = ({ element }: ElementRendererProps) => {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-500 text-sm p-2 text-center">
-            {element.alt || "Image"}
+            {element.alt || element.name || "Imagem"}
           </div>
         )}
       </div>

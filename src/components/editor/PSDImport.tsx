@@ -1,5 +1,5 @@
 
-import { UploadIcon } from "lucide-react";
+import { UploadIcon, FileUp } from "lucide-react";
 import { useCanvas } from "./CanvasContext";
 import { importPSDFile, PSDFileData } from "./utils/psd/importPSD";
 import { Button } from "../ui/button";
@@ -9,14 +9,19 @@ import { useState } from "react";
 export const PSDImport = () => {
   const { selectedSize, setElements } = useCanvas();
   const [isImporting, setIsImporting] = useState(false);
+  const [fileName, setFileName] = useState<string | null>(null);
 
   const handlePSDUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Store file name for display
+    setFileName(file.name);
+
     // Validate file type
     if (!file.name.toLowerCase().endsWith('.psd')) {
       toast.error("Por favor, carregue um arquivo PSD válido.");
+      setFileName(null);
       return;
     }
 
@@ -53,7 +58,7 @@ export const PSDImport = () => {
         containers: containerElements
       });
       
-      // Exibe informações sobre os dados salvos
+      // Display information about saved data
       const psdDataKeys = Object.keys(localStorage).filter(key => key.startsWith('psd-import-'));
       if (psdDataKeys.length > 0) {
         console.log(`PSD data disponíveis no localStorage: ${psdDataKeys.length}`);
@@ -88,7 +93,7 @@ export const PSDImport = () => {
         className="hidden"
         disabled={isImporting}
       />
-      <label htmlFor="psd-upload">
+      <label htmlFor="psd-upload" className="flex gap-2 items-center">
         <Button 
           variant="outline" 
           size="sm" 
@@ -101,6 +106,12 @@ export const PSDImport = () => {
             {isImporting ? "Importando..." : "Importar PSD"}
           </span>
         </Button>
+        
+        {fileName && !isImporting && (
+          <span className="text-xs text-gray-500 whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px] ml-1">
+            {fileName}
+          </span>
+        )}
       </label>
     </div>
   );

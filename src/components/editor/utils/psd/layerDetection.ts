@@ -1,6 +1,7 @@
 
 // Layer type detection utility functions
 import { saveImageToStorage } from './storage';
+import pako from 'pako';
 
 type LayerType = 'text' | 'image' | 'generic';
 
@@ -143,20 +144,20 @@ const createTempCanvas = (width: number, height: number): HTMLCanvasElement => {
  */
 const createPlaceholderImage = (layerName: string, width: number, height: number): string => {
   try {
-    const canvas = createTempCanvas(width, height);
+    const canvas = createTempCanvas(Math.max(width, 100), Math.max(height, 100));
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
     
     // Fill background
     ctx.fillStyle = '#e5e7eb';
-    ctx.fillRect(0, 0, width, height);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // Add text
     ctx.fillStyle = '#000000';
     ctx.font = 'bold 16px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(layerName, width / 2, height / 2);
+    ctx.fillText(layerName, canvas.width / 2, canvas.height / 2);
     
     return canvas.toDataURL('image/png');
   } catch (error) {
@@ -166,7 +167,189 @@ const createPlaceholderImage = (layerName: string, width: number, height: number
 };
 
 /**
- * Extract image data from a PSD layer using manual pixel extraction
+ * Gets image data from image resource blocks
+ * @param layer The PSD layer
+ * @returns Image data in base64 format or null
+ */
+const getImageFromResources = (layer: any): string | null => {
+  try {
+    if (!layer || !layer.resources) return null;
+    
+    console.log("Checking layer resources for image data");
+    
+    // Look for image resource blocks
+    for (const resourceId in layer.resources) {
+      const resource = layer.resources[resourceId];
+      
+      // Process image data if found
+      if (resource && resource.data && (resource.type === 'imageData' || resource.id === 1061)) {
+        console.log("Found image resource block");
+        
+        // Convert to base64
+        const base64Data = arrayBufferToBase64(resource.data);
+        if (base64Data) {
+          return `data:image/png;base64,${base64Data}`;
+        }
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error("Error extracting image from resources:", error);
+    return null;
+  }
+};
+
+/**
+ * Get image from layer pixels
+ * @param layer The PSD layer
+ * @returns Image data as base64 URL or null
+ */
+const getImageFromPixels = (layer: any): string | null => {
+  try {
+    if (!layer || !layer.imageData || !layer.width || !layer.height) return null;
+    
+    console.log("Using layer.imageData for extraction");
+    
+    const { imageData, width, height } = layer;
+    const canvas = createTempCanvas(width, height);
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) return null;
+    
+    // Create image data from pixels
+    const imgData = ctx.createImageData(width, height);
+    
+    // Copy pixel data
+    for (let i = 0; i < imageData.length && i < imgData.data.length; i++) {
+      imgData.data[i] = imageData[i];
+    }
+    
+    ctx.putImageData(imgData, 0, 0);
+    return canvas.toDataURL('image/png');
+  } catch (error) {
+    console.error("Error extracting from pixels:", error);
+    return null;
+  }
+};
+
+/**
+ * Get image from layer channel data
+ * @param layer The PSD layer
+ * @returns Image data as base64 URL or null
+ */
+const getImageFromChannels = (layer: any): string | null => {
+  try {
+    if (!layer || !layer.channels || !layer.width || !layer.height) return null;
+    
+    console.log("Trying to extract image from channel data");
+    
+    const { width, height, channels } = layer;
+    const canvas = createTempCanvas(width, height);
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) return null;
+    
+    // Create image data
+    const imgData = ctx.createImageData(width, height);
+    const redChannel = channels[0]?.channelData;
+    const greenChannel = channels[1]?.channelData;
+    const blueChannel = channels[2]?.channelData;
+    const alphaChannel = channels[3]?.channelData;
+    
+    if (!redChannel || !greenChannel || !blueChannel) {
+      console.log("Missing RGB channels for image data");
+      return null;
+    }
+    
+    // Combine channels into RGBA
+    for (let i = 0; i < width * height; i++) {
+      imgData.data[i * 4] = redChannel[i] || 0;         // R
+      imgData.data[i * 4 + 1] = greenChannel[i] || 0;   // G
+      imgData.data[i * 4 + 2] = blueChannel[i] || 0;    // B
+      imgData.data[i * 4 + 3] = alphaChannel ? alphaChannel[i] : 255; // A
+    }
+    
+    ctx.putImageData(imgData, 0, 0);
+    return canvas.toDataURL('image/png');
+  } catch (error) {
+    console.error("Error extracting from channel data:", error);
+    return null;
+  }
+};
+
+/**
+ * Try to extract image using direct PSD methods
+ * @param layer The PSD layer
+ * @returns Image data as base64 URL or null
+ */
+const getImageFromPSDMethods = (layer: any): string | null => {
+  try {
+    if (!layer) return null;
+    
+    // Try using psd.js toCanvas() method
+    if (typeof layer.toCanvas === 'function') {
+      console.log("Using layer.toCanvas() method");
+      const canvas = layer.toCanvas();
+      if (canvas && canvas.toDataURL) {
+        return canvas.toDataURL('image/png');
+      }
+    }
+    
+    // Try using layer.toPng() method
+    if (typeof layer.toPng === 'function') {
+      console.log("Using layer.toPng() method");
+      const pngData = layer.toPng();
+      if (pngData) {
+        // Convert PNG binary data to base64
+        const base64Data = arrayBufferToBase64(pngData);
+        if (base64Data) {
+          return `data:image/png;base64,${base64Data}`;
+        }
+      }
+    }
+    
+    // Try using layer.saveAsPng() method if available
+    if (typeof layer.saveAsPng === 'function') {
+      console.log("Using layer.saveAsPng() method");
+      const result = layer.saveAsPng();
+      if (result && result.url) {
+        return result.url;
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error("Error using PSD methods:", error);
+    return null;
+  }
+};
+
+/**
+ * Convert array buffer to base64 string
+ * @param buffer The array buffer to convert
+ * @returns Base64 string
+ */
+const arrayBufferToBase64 = (buffer: Uint8Array | ArrayBuffer): string => {
+  try {
+    // Ensure we have a Uint8Array
+    const uint8Array = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+    
+    // Convert to base64
+    let binary = '';
+    const len = uint8Array.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(uint8Array[i]);
+    }
+    return window.btoa(binary);
+  } catch (error) {
+    console.error("Error converting to base64:", error);
+    return '';
+  }
+};
+
+/**
+ * Extract image data from a PSD layer using multiple methods
  * @param layer The PSD layer
  * @param layerName The layer name for reference
  * @returns Promise resolving to an object containing the image data URL and storage key
@@ -181,8 +364,17 @@ export const extractLayerImageData = async (layer: any, layerName: string): Prom
     
     let resultImageData = '';
     
-    // Method 1: Use canvas() function if available
-    if (typeof layer.canvas === 'function') {
+    // Try multiple approaches to extract image data
+    // Method 1: Get image from PSD image resource blocks
+    resultImageData = getImageFromResources(layer) || resultImageData;
+    
+    // Method 2: Get image from direct PSD methods
+    if (!resultImageData) {
+      resultImageData = getImageFromPSDMethods(layer) || resultImageData;
+    }
+    
+    // Method 3: Try to get image from canvas() method if available
+    if (!resultImageData && typeof layer.canvas === 'function') {
       try {
         const canvas = layer.canvas();
         console.log("Successfully created canvas for layer");
@@ -192,21 +384,17 @@ export const extractLayerImageData = async (layer: any, layerName: string): Prom
       }
     }
     
-    // Method 2: Use toPng() function if available
-    if (!resultImageData && layer.toPng && typeof layer.toPng === 'function') {
-      try {
-        console.log("Trying toPng method");
-        const pngData = layer.toPng();
-        if (pngData) {
-          const blob = new Blob([pngData], { type: 'image/png' });
-          resultImageData = URL.createObjectURL(blob);
-        }
-      } catch (pngError) {
-        console.error("Error using toPng method:", pngError);
-      }
+    // Method 4: Try to get pixel data from layer
+    if (!resultImageData) {
+      resultImageData = getImageFromPixels(layer) || resultImageData;
     }
     
-    // Method 3: Manual pixel extraction if available
+    // Method 5: Try to construct image from channel data
+    if (!resultImageData) {
+      resultImageData = getImageFromChannels(layer) || resultImageData;
+    }
+    
+    // Method 6: Manual pixel extraction if available
     if (!resultImageData && layer.pixelData && Array.isArray(layer.pixelData)) {
       try {
         console.log("Trying manual pixel extraction");
@@ -228,7 +416,7 @@ export const extractLayerImageData = async (layer: any, layerName: string): Prom
       }
     }
     
-    // Method 4: Try to extract from layer.image property
+    // Method 7: Try to extract from layer.image property
     if (!resultImageData && layer.image) {
       try {
         console.log("Layer has image property");
@@ -263,7 +451,33 @@ export const extractLayerImageData = async (layer: any, layerName: string): Prom
       }
     }
     
-    // Method 5: Create placeholder image if all other methods fail
+    // Method 8: If we have layer.rawImage or layer.imageRaw, try to use it
+    if (!resultImageData && (layer.rawImage || layer.imageRaw)) {
+      try {
+        console.log("Trying to extract from rawImage data");
+        const imageData = layer.rawImage || layer.imageRaw;
+        if (imageData && imageData.length > 0) {
+          const canvas = createTempCanvas(width, height);
+          const ctx = canvas.getContext('2d');
+          
+          if (ctx) {
+            const imgData = ctx.createImageData(width, height);
+            
+            // Assume RGBA format
+            for (let i = 0; i < imageData.length && i < imgData.data.length; i++) {
+              imgData.data[i] = imageData[i];
+            }
+            
+            ctx.putImageData(imgData, 0, 0);
+            resultImageData = canvas.toDataURL('image/png');
+          }
+        }
+      } catch (rawImageError) {
+        console.error("Error extracting from raw image data:", rawImageError);
+      }
+    }
+    
+    // Method 9: Create placeholder image if all other methods fail
     if (!resultImageData) {
       console.log("Using placeholder image as fallback");
       resultImageData = createPlaceholderImage(layerName, width, height);

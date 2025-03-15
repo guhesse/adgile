@@ -20,13 +20,41 @@ export const processLayer = async (
   try {
     console.log(`Processing layer: ${layer.name || 'unnamed'}`);
     
+    // Debug layer properties
+    if (layer.debug) {
+      try {
+        console.log("Layer debug info:", layer.debug());
+      } catch (e) {
+        console.log("Could not access layer debug info");
+      }
+    }
+    
     // Skip hidden layers
     if (layer.hidden && typeof layer.hidden !== 'function') return null;
     if (typeof layer.hidden === 'function' && layer.hidden()) return null;
     
+    // Check if this is a group layer with no dimensions
+    if (layer.isGroup && typeof layer.isGroup === 'function' && layer.isGroup()) {
+      console.log(`Layer "${layer.name}" is a group layer - skipping`);
+      return null;
+    }
+    
+    // Get layer export data to check dimensions
+    let exportData;
+    try {
+      exportData = layer.export();
+      if (!exportData.width || !exportData.height || exportData.width <= 0 || exportData.height <= 0) {
+        console.log(`Layer "${layer.name}" has invalid dimensions - skipping`);
+        return null;
+      }
+    } catch (exportError) {
+      console.error(`Could not export layer data for "${layer.name}":`, exportError);
+      return null;
+    }
+    
     // Check layer type
     const layerType = detectLayerType(layer);
-    console.log(`Detected layer type: ${layerType}`);
+    console.log(`Detected layer type for "${layer.name}": ${layerType}`);
     
     // Create element based on type
     let element: EditorElement | null = null;
@@ -78,15 +106,23 @@ export const processLayer = async (
         psdData.layers.push(layerInfo);
       }
     } else {
-      element = createFallbackElement(layer, selectedSize);
+      // For generic layers that might contain images or other content
+      // First check if it could be treated as an image
+      element = await createImageElement(layer, selectedSize);
+      
+      // If image creation failed, create a fallback element
+      if (!element) {
+        element = createFallbackElement(layer, selectedSize);
+      }
+      
       if (element) {
-        console.log(`Created fallback element from layer: ${layer.name}`);
+        console.log(`Created ${element.type} element from layer: ${layer.name}`);
         
         // Add to PSD data
         const layerInfo: PSDLayerInfo = {
           id: element.id,
           name: layer.name || 'Generic Layer',
-          type: 'container',
+          type: element.type,
           position: {
             x: element.style.x,
             y: element.style.y,
@@ -94,6 +130,11 @@ export const processLayer = async (
             height: element.style.height
           }
         };
+        
+        if (element.type === 'image' && element.content) {
+          layerInfo.imageUrl = element.content as string;
+          layerInfo.imageKey = saveImageToStorage(element.content as string, layer.name || 'image');
+        }
         
         psdData.layers.push(layerInfo);
       }

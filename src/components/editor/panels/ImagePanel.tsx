@@ -7,7 +7,8 @@ import { useEffect, useState } from "react";
 import { ANIMATION_PRESETS } from "../types";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
-import { CornerDownLeft, CornerDownRight, CornerLeftDown, CornerLeftUp, CornerRightDown, CornerRightUp, AlignLeft, AlignCenter, AlignRight, Check, ChevronDown, Minus, Plus } from "lucide-react";
+import { CornerDownLeft, CornerDownRight, CornerLeftDown, CornerLeftUp, CornerRightDown, CornerRightUp, 
+         AlignLeft, AlignCenter, AlignRight, Check, ChevronDown, Minus, Plus, Upload } from "lucide-react";
 
 interface ImagePanelProps {
   element: any;
@@ -25,6 +26,8 @@ export const ImagePanel = ({ element, updateElementStyle, updateElementContent, 
   const [borderWidth, setBorderWidth] = useState(element?.style.borderWidth || 0);
   const [borderColor, setBorderColor] = useState(element?.style.borderColor || "#000000");
   const [borderStyle, setBorderStyle] = useState(element?.style.borderStyle || "solid");
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState("");
 
   useEffect(() => {
     if (element) {
@@ -37,17 +40,22 @@ export const ImagePanel = ({ element, updateElementStyle, updateElementContent, 
     }
   }, [element]);
 
-  const handleUpload = async (e: any) => {
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     try {
+      setIsUploading(true);
+      setSelectedFileName(file.name);
+      
       const url = await handleImageUpload(file);
       setImageUrl(url);
       updateElementContent(url);
     } catch (error) {
       console.error("Error uploading image:", error);
       alert("Error uploading image.");
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -109,12 +117,53 @@ export const ImagePanel = ({ element, updateElementStyle, updateElementContent, 
 
         <div className="space-y-2">
           <Label htmlFor="upload">Upload da Imagem</Label>
-          <Input
-            type="file"
-            id="upload"
-            onChange={handleUpload}
-          />
+          <div className="relative">
+            <div className="flex">
+              <div className="relative flex-1">
+                <Input
+                  type="file"
+                  id="upload"
+                  accept="image/*"
+                  onChange={handleUpload}
+                  className="hidden"
+                  disabled={isUploading}
+                />
+                <Button 
+                  variant="outline" 
+                  size="default"
+                  className="w-full flex items-center justify-start gap-2 text-sm h-10"
+                  onClick={() => document.getElementById("upload")?.click()}
+                  disabled={isUploading}
+                >
+                  <Upload size={16} className="opacity-70" />
+                  <span className="flex-1 text-left truncate">
+                    {isUploading ? "Carregando..." : "Escolher ficheiro"}
+                  </span>
+                </Button>
+              </div>
+              <div className="ml-2 flex-none">
+                {selectedFileName && (
+                  <div className="px-3 h-10 border rounded flex items-center text-xs text-gray-600 max-w-[130px] truncate">
+                    {selectedFileName}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
+
+        {element.content && (
+          <div className="border rounded-md overflow-hidden mt-3 p-1">
+            <div className="text-xs text-gray-500 mb-1 px-1">Imagem atual:</div>
+            <div className="relative aspect-video bg-slate-100 flex items-center justify-center rounded">
+              <img
+                src={element.content}
+                alt="Preview"
+                className="max-h-[150px] max-w-full object-contain"
+              />
+            </div>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label>Tamanho</Label>
