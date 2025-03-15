@@ -1,4 +1,3 @@
-
 import PSD from 'psd.js';
 import { EditorElement, BannerSize } from '../../types';
 import { toast } from 'sonner';
@@ -24,26 +23,105 @@ export const importPSDFile = (file: File, selectedSize: BannerSize): Promise<Edi
         
         console.log("====== PSD PARSING DEBUG INFO ======");
         console.log("PSD parsed successfully");
+        
+        // Log full PSD structure in raw format
+        console.log("=== FULL RAW PSD TREE STRUCTURE ===");
+        const rawTree = psd.tree().export();
+        console.log("Raw PSD Tree:", rawTree);
+        
+        // Log detailed information about the PSD file
+        console.log("PSD Width:", psd.header.width);
+        console.log("PSD Height:", psd.header.height);
+        console.log("PSD Channels:", psd.header.channels);
+        console.log("PSD BitDepth:", psd.header.depth);
+        console.log("PSD ColorMode:", psd.header.mode);
+
+        // More detailed layer debugging
+        console.log("=== DETAILED LAYER INFO ===");
+        console.log("Layers count:", psd.layers.length);
+        psd.layers.forEach((layer, index) => {
+          console.log(`\n--- LAYER ${index}: "${layer.name}" ---`);
+          console.log("Layer object:", layer);
+          
+          // Try to log all the properties of the layer
+          console.log("Layer properties:");
+          for (const prop in layer) {
+            try {
+              const value = typeof layer[prop] === 'function' 
+                ? '[Function]' 
+                : layer[prop];
+              console.log(`- ${prop}:`, value);
+            } catch (err) {
+              console.log(`- ${prop}: [Error accessing property]`);
+            }
+          }
+          
+          // Log additional layer info
+          if (layer.export) {
+            try {
+              const exported = layer.export();
+              console.log("Exported layer data:", exported);
+              
+              // Log dimensions and position
+              console.log("- Position:", {
+                top: exported.top,
+                left: exported.left,
+                bottom: exported.bottom,
+                right: exported.right,
+                width: exported.width,
+                height: exported.height
+              });
+            } catch (err) {
+              console.log("Error exporting layer:", err);
+            }
+          }
+          
+          // Try to log text data if it exists
+          if (layer.text || (layer.get && typeof layer.get === 'function')) {
+            console.log("Text data:");
+            try {
+              if (typeof layer.text === 'function') {
+                console.log("- text() result:", layer.text());
+              } else if (layer.text) {
+                console.log("- text property:", layer.text);
+              }
+              
+              try {
+                const typeTool = layer.get && layer.get('typeTool');
+                console.log("- typeTool:", typeTool);
+              } catch (e) {
+                console.log("- Error accessing typeTool:", e);
+              }
+            } catch (err) {
+              console.log("Error accessing text data:", err);
+            }
+          }
+          
+          // Try to log image/canvas data if it exists
+          try {
+            console.log("Image/canvas data:");
+            if (typeof layer.canvas === 'function') {
+              console.log("- canvas() available: Yes");
+            }
+            if (layer.toPng && typeof layer.toPng === 'function') {
+              console.log("- toPng() available: Yes");
+            }
+            if (layer.image) {
+              console.log("- image property available: Yes");
+            }
+          } catch (err) {
+            console.log("Error checking image data:", err);
+          }
+          
+          console.log("--- END LAYER INFO ---");
+        });
+        
+        // Tree structure
         console.log("Tree structure:", psd.tree().export());
         console.log("Layers count:", psd.layers.length);
         
-        // Log detailed layer information
-        console.log("DETAILED LAYER INFO:");
-        psd.layers.forEach((layer, index) => {
-          console.log(`Layer ${index}: Name: "${layer.name}"`);
-          console.log(`Layer ${index}: Type:`, layer.type);
-          
-          if (layer.export) {
-            const exported = layer.export();
-            console.log(`Layer ${index}: Export data:`, exported);
-          }
-          
-          console.log(`Layer ${index}: Is group?`, layer.isGroup && layer.isGroup());
-          console.log(`Layer ${index}: Is root?`, layer.isRoot && layer.isRoot());
-          
-          console.log(`--------------------------------`);
-        });
-        
+        // Continue with existing processing...
+        // ... keep existing code (layer processing and element creation)
         const elements: EditorElement[] = [];
         
         // Process all layers directly from the PSD file
