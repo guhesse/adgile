@@ -1,5 +1,6 @@
+
 import { EditorElement, BannerSize } from '../../types';
-import { detectLayerType, isTextLayer } from './layerDetection';
+import { detectLayerType } from './layerDetection';
 import { createTextElement, createImageElement, createFallbackElement } from './elementCreation';
 import { PSDFileData, PSDLayerInfo } from './types';
 import { saveImageToStorage } from './storage';
@@ -20,6 +21,15 @@ export const processLayer = async (
 ): Promise<EditorElement | null> => {
   try {
     console.log(`Processing layer: ${layer.name || 'unnamed'}`);
+    
+    // Debug layer properties
+    if (layer.debug) {
+      try {
+        console.log("Layer debug info:", layer.debug());
+      } catch (e) {
+        console.log("Could not access layer debug info");
+      }
+    }
     
     // Skip hidden layers
     if (layer.hidden && typeof layer.hidden !== 'function') return null;
@@ -44,38 +54,7 @@ export const processLayer = async (
       return null;
     }
     
-    // CRITICAL: First check if this is a text layer using our improved detection
-    if (isTextLayer(layer)) {
-      console.log(`Detected text layer "${layer.name}" - processing as text`);
-      const element = await createTextElement(layer, selectedSize);
-      
-      if (element) {
-        console.log(`Created text element from layer: ${layer.name}`);
-        
-        // Add to PSD data
-        const layerInfo: PSDLayerInfo = {
-          id: element.id,
-          name: layer.name || 'Text Layer',
-          type: 'text',
-          position: {
-            x: element.style.x,
-            y: element.style.y,
-            width: element.style.width,
-            height: element.style.height
-          },
-          content: element.content as string
-        };
-        
-        psdData.layers.push(layerInfo);
-        
-        // Ensure the element has the correct sizeId
-        element.sizeId = selectedSize.name;
-        return element;
-      }
-      return null;
-    }
-    
-    // For non-text layers, continue with regular detection
+    // Check layer type
     const layerType = detectLayerType(layer);
     console.log(`Detected layer type for "${layer.name}": ${layerType}`);
     
@@ -117,14 +96,7 @@ export const processLayer = async (
         console.log(`Created image element from layer: ${layer.name}`);
         
         // Store image in our application storage
-        let imageKey = '';
-        try {
-          imageKey = saveImageToStorage(element.content as string, layer.name || 'image');
-        } catch (storageError) {
-          console.error("Error saving image to localStorage:", storageError);
-          // Continue with default key
-          imageKey = `psd-image-${Date.now()}-${(layer.name || 'image').replace(/\s+/g, '-').toLowerCase()}`;
-        }
+        const imageKey = saveImageToStorage(element.content as string, layer.name || 'image');
         
         // Add to PSD data
         const layerInfo: PSDLayerInfo = {
@@ -182,22 +154,11 @@ export const processLayer = async (
         
         if (element.type === 'image' && element.content) {
           layerInfo.imageUrl = element.content as string;
-          try {
-            layerInfo.imageKey = saveImageToStorage(element.content as string, layer.name || 'image');
-          } catch (storageError) {
-            console.error("Error saving image to localStorage:", storageError);
-            // Continue with default key
-            layerInfo.imageKey = `psd-image-${Date.now()}-${(layer.name || 'image').replace(/\s+/g, '-').toLowerCase()}`;
-          }
+          layerInfo.imageKey = saveImageToStorage(element.content as string, layer.name || 'image');
         }
         
         psdData.layers.push(layerInfo);
       }
-    }
-    
-    // Ensure the element has the correct sizeId
-    if (element) {
-      element.sizeId = selectedSize.name;
     }
     
     return element;

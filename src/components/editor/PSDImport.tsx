@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 
 export const PSDImport = () => {
-  const { selectedSize, setElements, activeSizes } = useCanvas();
+  const { selectedSize, setElements } = useCanvas();
   const [isImporting, setIsImporting] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
 
@@ -36,8 +36,8 @@ export const PSDImport = () => {
       console.log("=== PSD IMPORT STARTED ===");
       console.log("Importando arquivo PSD:", file.name, "Tamanho:", Math.round(file.size / 1024), "KB");
       
-      // Import PSD file with AI optimization across all active sizes
-      const elements = await importPSDFile(file, selectedSize, activeSizes);
+      // Import PSD file
+      const elements = await importPSDFile(file, selectedSize);
       
       // Update canvas elements
       setElements(elements);

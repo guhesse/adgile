@@ -1,137 +1,122 @@
 
-import { EditorElement, BannerSize } from "../../types";
-import { parsePSDFile } from "./psdParser";
-import { processLayer } from "./elementProcessor";
-import { savePSDDataToStorage } from "./storage";
-import { optimizeLayout } from "../ai/layoutOptimizer";
+import { EditorElement, BannerSize } from '../../types';
+import { toast } from 'sonner';
+import { parsePSDFile } from './psdParser';
+import { processLayer, calculatePercentageValues } from './elementProcessor';
+import { savePSDDataToStorage, getPSDStorageKeys } from './storage';
+import { PSDFileData } from './types';
 
 /**
- * Import a PSD file and extract elements from it
+ * Re-export the PSDFileData type for backward compatibility
+ */
+export type { PSDFileData } from './types';
+
+/**
+ * Import a PSD file and convert it to editor elements
  * @param file The PSD file to import
  * @param selectedSize The selected banner size
  * @returns A promise resolving to an array of editor elements
  */
-export const importPSDFile = async (
-  file: File,
-  selectedSize: BannerSize,
-  activeSizes: BannerSize[] = []
-): Promise<EditorElement[]> => {
+export const importPSDFile = async (file: File, selectedSize: BannerSize): Promise<EditorElement[]> => {
   try {
-    console.log("=== PSD IMPORT STARTED ===");
-    console.log("Importing PSD file:", file.name);
-    
     // Parse the PSD file
     const { psd, psdData, extractedImages } = await parsePSDFile(file);
     
-    // Process each layer in the PSD
-    const processedElements: EditorElement[] = [];
-    const tree = psd.tree();
+    // Process layers
+    const elements: EditorElement[] = [];
+    console.log("=== PROCESSING LAYERS ===");
+    console.log("Layers count:", psd.layers.length);
+    console.log("Pre-extracted images:", extractedImages.size);
     
-    console.log("Extracting elements from PSD layers...");
-    
-    // Process the root node and its children
-    if (tree.children) {
-      // Handle different PSD library implementations
-      let children = [];
-      if (typeof tree.children === 'function') {
-        children = tree.children();
-      } else {
-        children = tree.children;
+    // Now process all layers
+    for (const layer of psd.layers) {
+      const element = await processLayer(layer, selectedSize, psdData, extractedImages);
+      if (element) {
+        elements.push(element);
       }
+    }
+    
+    // If no elements were processed directly from psd.layers,
+    // try to use the tree() to get layers
+    if (elements.length === 0 && psd.tree && typeof psd.tree === 'function') {
+      console.log("No elements found in direct layers array, trying tree approach");
+      const tree = psd.tree();
       
-      // Process each child layer to extract elements
-      for (const layer of children) {
-        const element = await processLayer(layer, selectedSize, psdData, extractedImages);
-        if (element) {
-          processedElements.push(element);
-          
-          // Log element creation
-          console.log(`Created ${element.type} element from layer: ${layer.name || 'unnamed'}`);
+      // Check if the tree has descendants method (similar to the example)
+      if (tree.descendants && typeof tree.descendants === 'function') {
+        const descendants = tree.descendants();
+        console.log("Processing descendants:", descendants.length);
+        
+        for (const node of descendants) {
+          if (!node.isGroup || (typeof node.isGroup === 'function' && !node.isGroup())) {
+            console.log(`Processing descendant: ${node.name}`);
+            
+            // Process this node with pre-extracted images
+            const element = await processLayer(node.layer || node, selectedSize, psdData, extractedImages);
+            if (element) {
+              elements.push(element);
+            }
+          }
         }
+      } else if (tree.children && Array.isArray(tree.children)) {
+        // If tree has children property, process them recursively
+        console.log("Processing tree children");
+        const processChildrenRecursively = async (children: any[]) => {
+          for (const child of children) {
+            if (!child.isGroup || (typeof child.isGroup === 'function' && !child.isGroup())) {
+              const element = await processLayer(child.layer || child, selectedSize, psdData, extractedImages);
+              if (element) {
+                elements.push(element);
+              }
+            }
+            
+            if (child.children && Array.isArray(child.children)) {
+              await processChildrenRecursively(child.children);
+            }
+          }
+        };
+        
+        await processChildrenRecursively(tree.children);
       }
     }
     
-    // If we have descendant() function, use it to process all layers
-    if (tree.descendants && typeof tree.descendants === 'function') {
-      const allLayers = tree.descendants();
-      
-      for (const layer of allLayers) {
-        // Skip group layers and already processed layers
-        if ((layer.isGroup && layer.isGroup()) || 
-            processedElements.some(el => el.id === `psd-${layer.name}`)) {
-          continue;
-        }
-        
-        const element = await processLayer(layer, selectedSize, psdData, extractedImages);
-        if (element) {
-          processedElements.push(element);
-        }
-      }
+    // Calculate percentage values
+    calculatePercentageValues(elements, selectedSize);
+    
+    // Save PSD data to localStorage
+    console.log("=== PSD DATA FOR DATABASE ===");
+    console.log(JSON.stringify(psdData, null, 2));
+    
+    const storageKey = savePSDDataToStorage(psdData);
+    
+    // Display information about saved PSD data
+    const psdDataKeys = getPSDStorageKeys();
+    if (psdDataKeys.length > 0) {
+      console.log(`PSD data disponíveis no localStorage: ${psdDataKeys.length}`);
+      console.log(`Último PSD salvo: ${psdDataKeys[psdDataKeys.length - 1]}`);
     }
     
-    // Save PSD data to storage
-    psdData.storageKey = `psd-import-${Date.now()}`;
-    
-    try {
-      savePSDDataToStorage(psdData);
-    } catch (storageError) {
-      console.error("Error saving PSD data to localStorage:", storageError);
-      // Continue even if localStorage fails - this is non-critical
-    }
-    
-    console.log("Elements extracted:", processedElements.length);
-    
-    // Make sure all elements have the correct sizeId set to the current selected size
-    processedElements.forEach(element => {
-      element.sizeId = selectedSize.name;
-    });
-    
-    // If no active sizes or only the current size is active, return the processed elements
-    if (activeSizes.length <= 1) {
-      return processedElements;
-    }
-    
-    // For each active size that isn't the current one, apply AI layout optimization
-    let allOptimizedElements = [...processedElements];
-    
-    console.log("Applying AI layout optimization for all active sizes...");
-    
-    // For each active size that isn't the current one
-    for (const size of activeSizes) {
-      if (size.name !== selectedSize.name) {
-        console.log(`Running AI layout optimization for ${size.name}`);
-        
-        // Create optimized elements for this size
-        const optimizedElements = optimizeLayout(
-          processedElements, 
-          size, 
-          selectedSize
-        );
-        
-        // Each optimized element should have its own sizeId matching the target size
-        optimizedElements.forEach(element => {
-          element.sizeId = size.name;
-        });
-        
-        // Add to the collection
-        allOptimizedElements = [...allOptimizedElements, ...optimizedElements];
-      }
-    }
-    
-    // Log information about imported elements for debugging
-    const textElements = allOptimizedElements.filter(el => el.type === 'text').length;
-    const imageElements = allOptimizedElements.filter(el => el.type === 'image').length;
-    const containerElements = allOptimizedElements.filter(el => el.type === 'container').length;
+    // Log summary of imported elements
+    const textElements = elements.filter(el => el.type === 'text').length;
+    const imageElements = elements.filter(el => el.type === 'image').length;
+    const containerElements = elements.filter(el => el.type === 'container').length;
     
     console.log("FINAL IMPORT SUMMARY:");
-    console.log("Total elements:", allOptimizedElements.length);
+    console.log("Total elements:", elements.length);
     console.log("Text elements:", textElements);
     console.log("Image elements:", imageElements);
     console.log("Container elements:", containerElements);
     
-    return allOptimizedElements;
+    if (elements.length === 0) {
+      toast.warning("Nenhuma camada visível encontrada no arquivo PSD.");
+    } else {
+      toast.success(`Importados ${elements.length} elementos do arquivo PSD. (${textElements} textos, ${imageElements} imagens, ${containerElements} containers)`);
+    }
+    
+    return elements;
   } catch (error) {
     console.error("Error importing PSD file:", error);
+    toast.error("Falha ao interpretar o arquivo PSD. Verifique se é um PSD válido.");
     throw error;
   }
 };

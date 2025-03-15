@@ -82,7 +82,7 @@ export const ElementRenderer = ({ element }: ElementRendererProps) => {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-500 text-sm p-2 text-center">
-            {element.alt || (element.content as string) || "Imagem"}
+            {element.alt || element.name || "Imagem"}
           </div>
         )}
       </div>
@@ -111,7 +111,9 @@ export const ElementRenderer = ({ element }: ElementRendererProps) => {
             key={index} 
             className={`h-full ${index > 0 ? "border-l border-dashed border-gray-300" : ""}`} 
             style={{ width: `${100 / element.columns!}%` }}
-          />
+          >
+            {/* We don't render child elements here anymore as they are handled in CanvasWorkspace */}
+          </div>
         ))}
       </div>
     );
