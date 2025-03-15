@@ -28,6 +28,7 @@ export const PSDImport = () => {
       const loadingToast = toast.loading(`Importando ${file.name}... Este processo pode levar alguns segundos.`);
       
       // Log file information
+      console.log("=== PSD IMPORT STARTED ===");
       console.log("Importando arquivo PSD:", file.name, "Tamanho:", Math.round(file.size / 1024), "KB");
       
       // Import PSD file
@@ -44,6 +45,7 @@ export const PSDImport = () => {
       const imageElements = elements.filter(el => el.type === 'image').length;
       const containerElements = elements.filter(el => el.type === 'container').length;
       
+      console.log("=== PSD IMPORT COMPLETED ===");
       console.log("Resumo da importação:", {
         total: elements.length,
         textos: textElements,
@@ -57,6 +59,7 @@ export const PSDImport = () => {
         toast.success(`Importados ${elements.length} elementos de ${file.name} (${textElements} textos, ${imageElements} imagens, ${containerElements} containers)`);
       }
     } catch (error) {
+      console.error("=== PSD IMPORT ERROR ===");
       console.error("Erro ao importar arquivo PSD:", error);
       toast.error("Falha ao importar arquivo PSD. Verifique o console para detalhes.");
     } finally {
