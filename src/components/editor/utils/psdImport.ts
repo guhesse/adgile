@@ -53,7 +53,8 @@ export const importPSDFile = (file: File, selectedSize: BannerSize): Promise<Edi
           if (node.isLayer && node.isLayer()) {
             console.log(`Converting layer to element: ${nodeName}`);
             try {
-              const isTextLayer = hasTextProperties(node);
+              // First check if it's a text layer using more reliable methods
+              const isTextLayer = detectTextLayer(node);
               
               if (isTextLayer) {
                 const textElement = await createTextElement(node, selectedSize, parentId);
@@ -135,7 +136,8 @@ export const importPSDFile = (file: File, selectedSize: BannerSize): Promise<Edi
           for (const layer of psd.layers) {
             try {
               if (!layer.hidden || !layer.hidden()) {
-                const isTextLayer = hasTextProperties(layer);
+                // First try to detect text layers using more reliable methods
+                const isTextLayer = detectTextLayer(layer);
                 
                 if (isTextLayer) {
                   const textElement = await createTextElement(layer, selectedSize);
@@ -165,7 +167,8 @@ export const importPSDFile = (file: File, selectedSize: BannerSize): Promise<Edi
           console.log("After direct processing, elements count:", elements.length);
         }
         
-        convertPossibleTextImagesIntoTextElements(elements);
+        // Post-processing of elements to detect text images and make enhancements
+        convertPossibleTextImagesIntoTextElements(elements, selectedSize);
         
         elements.forEach((element, index) => {
           element.style.xPercent = (element.style.x / selectedSize.width) * 100;
@@ -213,19 +216,67 @@ export const importPSDFile = (file: File, selectedSize: BannerSize): Promise<Edi
   });
 };
 
-const hasTextProperties = (node: any): boolean => {
+// Improved text layer detection that focuses on layer type rather than just name
+const detectTextLayer = (node: any): boolean => {
   try {
-    // Enhanced text detection algorithm
-    // Check for type tool properties
+    if (!node) return false;
+    
+    // Method 1: Check the layer kind directly - most reliable for PSD format
+    // Layer kind 3 is specifically for text layers in PSD
+    if (node.layer && node.layer.info && node.layer.info.layerKind === 3) {
+      console.log(`Layer ${node.name} detected as text by layerKind`);
+      return true;
+    }
+    
+    if (node.info && node.info.layerKind === 3) {
+      console.log(`Layer ${node.name} detected as text by direct layerKind`);
+      return true;
+    }
+    
+    if (node.metadata && node.metadata.layerKind === 3) {
+      console.log(`Layer ${node.name} detected as text by metadata layerKind`);
+      return true;
+    }
+    
+    // Method 2: Look for specific text properties
     const hasTypeTool = node.get && node.get('typeTool');
+    if (hasTypeTool) {
+      console.log(`Layer ${node.name} detected as text by typeTool property`);
+      return true;
+    }
     
-    // Check for text type designation
-    const isTextType = node.type && (node.type === 'text' || node.type === 'TextLayer');
+    // Method 3: Check for text content/data
+    if (node.text && typeof node.text === 'function') {
+      try {
+        const textContent = node.text();
+        if (textContent && textContent.trim().length > 0) {
+          console.log(`Layer ${node.name} detected as text by text() function`);
+          return true;
+        }
+      } catch (e) {
+        // Error in text extraction - silently continue to other methods
+      }
+    }
     
-    // Check for text function
-    const hasTextFunction = node.text && typeof node.text === 'function';
+    // Method 4: Check for text metadata
+    if (node.metadata && (node.metadata.textKey || node.metadata.textData)) {
+      console.log(`Layer ${node.name} detected as text by textKey/textData metadata`);
+      return true;
+    }
     
-    // Check name for text indicators (expanded list)
+    // Method 5: Check the type property
+    if (node.type === 'text' || node.type === 'TextLayer') {
+      console.log(`Layer ${node.name} detected as text by type property`);
+      return true;
+    }
+    
+    // Method 6: Check for text style properties
+    if (node.text_styles || node.textStyles) {
+      console.log(`Layer ${node.name} detected as text by text_styles property`);
+      return true;
+    }
+    
+    // Method 7: As a last resort, check by name for common text indicators
     const nameIndicatesText = node.name && (
       node.name.toLowerCase().includes('text') || 
       node.name.toLowerCase().includes('texto') ||
@@ -236,37 +287,20 @@ const hasTextProperties = (node: any): boolean => {
       node.name.toLowerCase().includes('caption')
     );
     
-    // Check for text metadata in layer properties
-    const hasTextMetadata = node.metadata && 
-      (node.metadata.layerKind === 3 || // layerKind 3 is text in PSD
-       node.metadata.textKey || 
-       node.metadata.textData);
-       
-    // Check for text styles
-    const hasTextStyles = node.text_styles || node.textStyles;
+    if (nameIndicatesText) {
+      console.log(`Layer ${node.name} detected as text by name indicators`);
+      return true;
+    }
     
-    console.log(`Text detection for ${node.name || 'unnamed'}:`, {
-      hasTypeTool,
-      isTextType,
-      hasTextFunction,
-      nameIndicatesText,
-      hasTextMetadata,
-      hasTextStyles
-    });
-    
-    // Return true if any text indicator is found
-    return hasTypeTool || isTextType || hasTextFunction || nameIndicatesText || hasTextMetadata || hasTextStyles;
+    // Not detected as text
+    return false;
   } catch (error) {
-    console.error("Error checking text properties:", error);
-    // Fallback to name-based detection if error occurs
-    return node.name && (
-      node.name.toLowerCase().includes('text') || 
-      node.name.toLowerCase().includes('texto')
-    );
+    console.error("Error in text layer detection:", error);
+    return false;
   }
 };
 
-const convertPossibleTextImagesIntoTextElements = (elements: EditorElement[]): void => {
+const convertPossibleTextImagesIntoTextElements = (elements: EditorElement[], selectedSize: BannerSize): void => {
   for (let i = 0; i < elements.length; i++) {
     const element = elements[i];
     
@@ -280,14 +314,8 @@ const convertPossibleTextImagesIntoTextElements = (elements: EditorElement[]): v
       if (potentialTextImage) {
         console.log(`Converting potential text image to text element: ${nameOrAlt}`);
         
-        // Create proper BannerSize object for the new text element
-        const bannerSize: BannerSize = {
-          name: "Converted Text",
-          width: element.style.width,
-          height: element.style.height
-        };
-        
-        const textElement = createNewElement('text', bannerSize);
+        // Create a proper text element to replace the image
+        const textElement = createNewElement('text', selectedSize);
         
         textElement.style.x = element.style.x;
         textElement.style.y = element.style.y;
@@ -326,12 +354,6 @@ const createTextElement = async (layer: any, selectedSize: BannerSize, parentId?
     
     const { width, height, left, top } = exportData;
     
-    const textTool = layer.get ? layer.get('typeTool') : null;
-    console.log('Text tool data:', textTool);
-    
-    let textContent = '';
-    let textStyles = null;
-    
     const textElement = createNewElement('text', selectedSize);
     
     textElement.style.x = left || 0;
@@ -339,43 +361,56 @@ const createTextElement = async (layer: any, selectedSize: BannerSize, parentId?
     textElement.style.width = width > 0 ? width : 200;
     textElement.style.height = height > 0 ? height : 50;
     
-    if (textTool?.text) {
-      textContent = textTool.text;
-      textStyles = textTool.styles;
+    // Extract text content from various possible locations
+    let textContent = '';
+    let textStyles = null;
+    
+    // Try to extract text content from different locations
+    if (layer.get && layer.get('typeTool') && layer.get('typeTool').text) {
+      textContent = layer.get('typeTool').text;
+      textStyles = layer.get('typeTool').styles;
+      console.log(`Extracted text from typeTool: ${textContent}`);
     } else if (layer.text && typeof layer.text === 'function') {
       try {
         textContent = layer.text() || '';
+        console.log(`Extracted text from text() function: ${textContent}`);
       } catch (e) {
-        console.error("Error getting text content:", e);
+        console.error("Error getting text content from text() function:", e);
       }
     } else if (layer.get && layer.get('text')) {
       textContent = layer.get('text');
-    } else if (layer.textData) {
-      textContent = layer.textData.text || '';
+      console.log(`Extracted text from get('text'): ${textContent}`);
+    } else if (layer.textData && layer.textData.text) {
+      textContent = layer.textData.text;
       textStyles = layer.textData.styles;
-    }
-    
-    if ((!textContent || textContent.trim() === '') && layer.metadata && layer.metadata.textKey) {
+      console.log(`Extracted text from textData: ${textContent}`);
+    } else if (layer.metadata && layer.metadata.textKey) {
       try {
         textContent = layer.metadata.textKey.textKey || '';
         textStyles = layer.metadata.textKey.textStyleRange;
+        console.log(`Extracted text from metadata.textKey: ${textContent}`);
       } catch (e) {
         console.error("Error getting text from metadata:", e);
       }
     }
     
+    // If no text content was found, use layer name or placeholder
     if (!textContent || textContent.trim() === '') {
       textContent = layer.name || 'Text Layer';
       
+      // Extract text content from layer name with prefix pattern
       const textPrefix = /^(text:|texto:)\s*(.+)$/i;
       const match = textContent.match(textPrefix);
       if (match && match[2]) {
         textContent = match[2];
       }
+      
+      console.log(`Using layer name as text content: ${textContent}`);
     }
     
     textElement.content = textContent;
     
+    // Apply any text styles if available
     if (textStyles && Array.isArray(textStyles) && textStyles.length > 0) {
       const style = textStyles[0];
       
@@ -391,6 +426,7 @@ const createTextElement = async (layer: any, selectedSize: BannerSize, parentId?
         if (style.fontStyle.includes('Underline')) textElement.style.textDecoration = 'underline';
       }
     } else {
+      // Default styling
       textElement.style.fontSize = 16;
       textElement.style.fontFamily = 'Arial';
       textElement.style.color = '#000000';
@@ -433,23 +469,31 @@ const createImageElement = async (layer: any, selectedSize: BannerSize, parentId
                           (layer.get && layer.get('smartObject')) ||
                           (layer.name && layer.name.toLowerCase().includes('smart object'));
     
-    let canvas;
+    // Create the image element
+    const imageElement = createNewElement('image', selectedSize);
+    imageElement.style.x = left;
+    imageElement.style.y = top;
+    imageElement.style.width = width;
+    imageElement.style.height = height;
+    imageElement.alt = layer.name || 'Image Layer';
+    
+    if (isSmartObject) {
+      imageElement.alt = `Smart Object: ${layer.name || 'Unnamed'}`;
+    }
+    
+    // Try to extract image data
     let imageDataUrl = '';
+    let canvas;
     
     try {
       if (typeof layer.canvas === 'function') {
         canvas = layer.canvas();
         console.log("Successfully created canvas for layer");
         imageDataUrl = canvas.toDataURL();
-      } else {
-        throw new Error("layer.canvas is not a function");
-      }
-    } catch (canvasError) {
-      console.error(`Error creating canvas:`, canvasError);
-      
-      try {
-        if (layer.toPng) {
-          console.log("Trying toPng method");
+        imageElement.content = imageDataUrl;
+      } else if (layer.toPng && typeof layer.toPng === 'function') {
+        console.log("Trying toPng method");
+        try {
           const pngData = layer.toPng();
           if (pngData) {
             const tempCanvas = document.createElement('canvas');
@@ -466,6 +510,7 @@ const createImageElement = async (layer: any, selectedSize: BannerSize, parentId
                 img.onload = () => {
                   ctx.drawImage(img, 0, 0);
                   imageDataUrl = tempCanvas.toDataURL();
+                  imageElement.content = imageDataUrl;
                   URL.revokeObjectURL(img.src);
                   resolve();
                 };
@@ -479,47 +524,20 @@ const createImageElement = async (layer: any, selectedSize: BannerSize, parentId
               });
             }
           }
+        } catch (toPngError) {
+          console.error("Error using toPng method:", toPngError);
         }
-      } catch (altError) {
-        console.error(`Alternative method failed:`, altError);
       }
-    }
-    
-    if (imageDataUrl) {
-      const imageElement = createNewElement('image', selectedSize);
-      imageElement.content = imageDataUrl;
-      imageElement.style.x = left;
-      imageElement.style.y = top;
-      imageElement.style.width = width;
-      imageElement.style.height = height;
-      imageElement.alt = layer.name || 'Image Layer';
-      
-      if (parentId) {
-        imageElement.parentId = parentId;
-        imageElement.inContainer = true;
-      }
-      
-      return imageElement;
-    }
-    
-    console.log("Could not extract image data, creating placeholder");
-    const placeholderElement = createNewElement('image', selectedSize);
-    placeholderElement.style.x = left;
-    placeholderElement.style.y = top;
-    placeholderElement.style.width = width;
-    placeholderElement.style.height = height;
-    placeholderElement.alt = layer.name || 'Image Layer';
-    
-    if (isSmartObject) {
-      placeholderElement.alt = `Smart Object: ${layer.name || 'Unnamed'}`;
+    } catch (canvasError) {
+      console.error(`Error creating canvas:`, canvasError);
     }
     
     if (parentId) {
-      placeholderElement.parentId = parentId;
-      placeholderElement.inContainer = true;
+      imageElement.parentId = parentId;
+      imageElement.inContainer = true;
     }
     
-    return placeholderElement;
+    return imageElement;
   } catch (error) {
     console.error("Error creating image element:", error);
     return null;
