@@ -56,7 +56,7 @@ export const PSDImport = () => {
       if (elements.length === 0) {
         toast.warning("Nenhum elemento foi importado do arquivo PSD. Verifique os logs para mais detalhes.");
       } else {
-        toast.success(`Importados ${elements.length} elementos de ${file.name} (${textElements} textos, ${imageElements} imagens, ${containerElements} containers)`);
+        toast.success(`Importados ${elements.length} elementos do arquivo PSD. (${textElements} textos, ${imageElements} imagens, ${containerElements} containers)`);
       }
     } catch (error) {
       console.error("=== PSD IMPORT ERROR ===");
