@@ -1,7 +1,7 @@
 
 import { UploadIcon } from "lucide-react";
 import { useCanvas } from "./CanvasContext";
-import { importPSDFile } from "./utils/psd";
+import { importPSDFile, PSDFileData } from "./utils/psd/importPSD";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -52,6 +52,13 @@ export const PSDImport = () => {
         imagens: imageElements,
         containers: containerElements
       });
+      
+      // Exibe informações sobre os dados salvos
+      const psdDataKeys = Object.keys(localStorage).filter(key => key.startsWith('psd-import-'));
+      if (psdDataKeys.length > 0) {
+        console.log(`PSD data disponíveis no localStorage: ${psdDataKeys.length}`);
+        console.log(`Último PSD salvo: ${psdDataKeys[psdDataKeys.length - 1]}`);
+      }
       
       if (elements.length === 0) {
         toast.warning("Nenhum elemento foi importado do arquivo PSD. Verifique os logs para mais detalhes.");

@@ -28,20 +28,26 @@ export const isTextLayer = (layer: any): boolean => {
     
     console.log(`Checking text indicators for "${layer.name || 'unnamed'}" layer`);
     
-    // Check 1: Direct type identification
+    // Fastest check: Look for TySh in infoKeys (PSD marker for text layers)
+    if (layer.infoKeys && Array.isArray(layer.infoKeys) && layer.infoKeys.includes('TySh')) {
+      console.log(`Layer "${layer.name}" is text - has TySh in infoKeys`);
+      return true;
+    }
+    
+    // Check: Direct type identification
     if (layer.type === 'type' || layer.type === 'text' || layer.type === 'TextLayer') {
       console.log(`Layer "${layer.name}" is text by type property: ${layer.type}`);
       return true;
     }
     
-    // Check 2: Text patterns in layer name
+    // Check: Text patterns in layer name
     const textPatterns = /heading|h1|h2|h3|h4|h5|h6|paragraph|text|body|title|subtitle|button|label|caption/i;
     if (layer.name && textPatterns.test(layer.name)) {
       console.log(`Layer "${layer.name}" is text by name pattern`);
       return true;
     }
     
-    // Check 3: Layer kind (3 is text in PSD spec)
+    // Check: Layer kind (3 is text in PSD spec)
     if (layer.info && layer.info.layerKind === 3) {
       console.log(`Layer "${layer.name}" is text by layerKind: 3`);
       return true;
@@ -52,67 +58,22 @@ export const isTextLayer = (layer: any): boolean => {
       return true;
     }
     
-    // Check 4: Export data
-    if (layer.export && typeof layer.export === 'function') {
-      try {
-        const exportData = layer.export();
-        
-        if (exportData && (exportData.type === 'type' || exportData.type === 'text')) {
-          console.log(`Layer "${layer.name}" is text by export().type: ${exportData.type}`);
-          return true;
-        }
-        
-        if (exportData && exportData.layerKind === 3) {
-          console.log(`Layer "${layer.name}" is text by export().layerKind: 3`);
-          return true;
-        }
-        
-        // Check for text content in export data
-        if (exportData && exportData.text) {
-          console.log(`Layer "${layer.name}" is text - has text in export data`);
-          return true;
-        }
-      } catch (err) {
-        console.log(`Error exporting layer "${layer.name}":`, err);
-      }
-    }
-    
-    // Check 5: Text function or property
-    if (layer.text) {
-      console.log(`Layer "${layer.name}" has text property`);
-      return true;
-    }
-    
-    // Check 6: typeTool presence
-    if (layer.get && typeof layer.get === 'function') {
-      try {
-        const typeTool = layer.get('typeTool');
-        if (typeTool) {
-          console.log(`Layer "${layer.name}" is text - has typeTool property`);
-          return true;
-        }
-      } catch (err) {
-        console.log(`Error getting typeTool from "${layer.name}":`, err);
-      }
-    }
-    
-    // NEW Check 7: Look for TySh in infoKeys (PSD marker for text layers)
-    if (layer.infoKeys && Array.isArray(layer.infoKeys) && layer.infoKeys.includes('TySh')) {
-      console.log(`Layer "${layer.name}" is text - has TySh in infoKeys`);
-      return true;
-    }
-    
-    // NEW Check 8: Check if typeTool exists as a function or LazyExecute object in adjustments
+    // Check: typeTool presence in adjustments
     if (layer.adjustments && layer.adjustments.typeTool) {
       console.log(`Layer "${layer.name}" is text - has typeTool in adjustments`);
       return true;
     }
     
-    // NEW Check 9: Try to execute the typeTool function if available
+    // Check: Text function or property
+    if (layer.text) {
+      console.log(`Layer "${layer.name}" has text property`);
+      return true;
+    }
+    
+    // Check: typeTool function
     if (typeof layer.typeTool === 'function') {
       try {
         const typeToolData = layer.typeTool();
-        console.log(`Layer "${layer.name}" typeTool data:`, typeToolData);
         if (typeToolData) {
           console.log(`Layer "${layer.name}" is text - has valid typeTool function`);
           return true;
@@ -147,9 +108,86 @@ export const shouldBeImageLayer = (layer: any): boolean => {
       return false;
     }
     
+    // Check if this is NOT a text layer (since text layers have dimensions too)
+    if (isTextLayer(layer)) {
+      return false;
+    }
+    
     return true;
   } catch (error) {
     console.error(`Error checking if layer is image:`, error);
     return false;
+  }
+};
+
+/**
+ * Extract image data from a PSD layer 
+ * @param layer The PSD layer
+ * @param layerName Name to use for the extracted image
+ * @returns Promise resolving to a data URL of the image
+ */
+export const extractLayerImageData = async (layer: any, layerName: string): Promise<string | null> => {
+  try {
+    console.log(`Extracting image data for layer: ${layerName}`);
+    
+    // Method 1: Use canvas() function if available
+    if (typeof layer.canvas === 'function') {
+      const canvas = layer.canvas();
+      console.log("Successfully created canvas for layer");
+      return canvas.toDataURL('image/png');
+    } 
+    
+    // Method 2: Use toPng() function if available
+    if (layer.toPng && typeof layer.toPng === 'function') {
+      console.log("Trying toPng method");
+      const pngData = layer.toPng();
+      if (pngData) {
+        const blob = new Blob([pngData], { type: 'image/png' });
+        return URL.createObjectURL(blob);
+      }
+    }
+    
+    // Method 3: Try image property if available
+    if (layer.image) {
+      console.log("Layer has image property");
+      if (typeof layer.image === 'function') {
+        const imageData = layer.image();
+        if (imageData) {
+          const blob = new Blob([imageData], { type: 'image/png' });
+          return URL.createObjectURL(blob);
+        }
+      }
+    }
+    
+    console.log("Could not extract image data from layer");
+    return null;
+  } catch (error) {
+    console.error(`Error extracting image data:`, error);
+    return null;
+  }
+};
+
+/**
+ * Process all image layers in a PSD tree
+ * @param node The current PSD tree node
+ * @param onImageExtracted Callback function receiving the image data URL and node
+ */
+export const processImageLayers = (node: any, onImageExtracted: (imageData: string, nodeName: string) => void) => {
+  if (!node) return;
+  
+  // Process this node if it's an image layer
+  if (node.type === 'layer' && shouldBeImageLayer(node.layer)) {
+    extractLayerImageData(node.layer, node.name).then(imageData => {
+      if (imageData) {
+        onImageExtracted(imageData, node.name);
+      }
+    });
+  }
+  
+  // Process children recursively
+  if (node.children && node.children.length > 0) {
+    node.children.forEach((child: any) => {
+      processImageLayers(child, onImageExtracted);
+    });
   }
 };
