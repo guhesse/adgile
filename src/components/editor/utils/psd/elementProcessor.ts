@@ -1,5 +1,5 @@
 
-import { EditorElement, BannerSize } from '../../../types';
+import { EditorElement, BannerSize } from '../../types';
 import { detectLayerType } from './layerDetection';
 import { createTextElement, createImageElement, createFallbackElement } from './elementCreation';
 import { PSDFileData, PSDLayerInfo } from './types';

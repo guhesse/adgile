@@ -3,7 +3,7 @@
  * Type definitions for PSD import functionality
  */
 
-import { BannerSize } from "../../../types";
+import { BannerSize } from "../../types";
 
 /**
  * Structure for storing PSD file data

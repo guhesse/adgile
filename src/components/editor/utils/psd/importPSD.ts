@@ -1,3 +1,4 @@
+
 import { EditorElement, BannerSize } from '../../types';
 import { toast } from 'sonner';
 import { parsePSDFile } from './psdParser';
@@ -8,7 +9,7 @@ import { PSDFileData } from './types';
 /**
  * Re-export the PSDFileData type for backward compatibility
  */
-export { PSDFileData } from './types';
+export type { PSDFileData } from './types';
 
 /**
  * Import a PSD file and convert it to editor elements
@@ -73,14 +74,4 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
     toast.error("Falha ao interpretar o arquivo PSD. Verifique se é um PSD válido.");
     throw error;
   }
-};
-
-/**
- * Save PSD data to database or storage
- * This is a placeholder function that can be implemented when a database is available
- */
-export const savePSDDataToStorage = async (psdData: PSDFileData): Promise<void> => {
-  // Redirect to the more specific function in storage.ts
-  savePSDDataToStorage(psdData);
-  return Promise.resolve();
 };
