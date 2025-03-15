@@ -111,9 +111,7 @@ export const ElementRenderer = ({ element }: ElementRendererProps) => {
             key={index} 
             className={`h-full ${index > 0 ? "border-l border-dashed border-gray-300" : ""}`} 
             style={{ width: `${100 / element.columns!}%` }}
-          >
-            {/* We don't render child elements here anymore as they are handled in CanvasWorkspace */}
-          </div>
+          />
         ))}
       </div>
     );

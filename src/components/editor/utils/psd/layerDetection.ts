@@ -10,7 +10,9 @@ type LayerType = 'text' | 'image' | 'generic';
  * @returns The detected layer type
  */
 export const detectLayerType = (layer: any): LayerType => {
+  // CRITICAL FIX: Always check for text layers first with stronger detection
   if (isTextLayer(layer)) {
+    console.log(`Layer "${layer.name}" detected as text layer`);
     return 'text';
   } else if (shouldBeImageLayer(layer)) {
     return 'image';
@@ -29,6 +31,21 @@ export const isTextLayer = (layer: any): boolean => {
     
     console.log(`Checking text indicators for "${layer.name || 'unnamed'}" layer`);
     
+    // FIX: Layer name pattern matching with higher priority
+    // Check: Text patterns in layer name - this is reliable in Photoshop files
+    const textPatterns = /heading|h1|h2|h3|h4|h5|h6|paragraph|text|body|title|subtitle|button|label|caption/i;
+    if (layer.name && textPatterns.test(layer.name)) {
+      console.log(`Layer "${layer.name}" is text by name pattern (HIGH PRIORITY)`);
+      return true;
+    }
+    
+    // FIX: Enhanced checking for layer having text content - this is most reliable
+    const textContent = extractTextContent(layer);
+    if (textContent && textContent.text && textContent.text.trim() !== '') {
+      console.log(`Layer "${layer.name}" is text because it has valid text content: "${textContent.text}"`);
+      return true;
+    }
+    
     // Fastest check: Look for TySh in infoKeys (PSD marker for text layers)
     if (layer.infoKeys && Array.isArray(layer.infoKeys) && layer.infoKeys.includes('TySh')) {
       console.log(`Layer "${layer.name}" is text - has TySh in infoKeys`);
@@ -38,13 +55,6 @@ export const isTextLayer = (layer: any): boolean => {
     // Check: Direct type identification
     if (layer.type === 'type' || layer.type === 'text' || layer.type === 'TextLayer') {
       console.log(`Layer "${layer.name}" is text by type property: ${layer.type}`);
-      return true;
-    }
-    
-    // Check: Text patterns in layer name
-    const textPatterns = /heading|h1|h2|h3|h4|h5|h6|paragraph|text|body|title|subtitle|button|label|caption/i;
-    if (layer.name && textPatterns.test(layer.name)) {
-      console.log(`Layer "${layer.name}" is text by name pattern`);
       return true;
     }
     
@@ -113,17 +123,18 @@ export const isTextLayer = (layer: any): boolean => {
 export const shouldBeImageLayer = (layer: any): boolean => {
   if (!layer) return false;
   
+  // IMPORTANT FIX: First check if it's a text layer - never treat text layers as images
+  if (isTextLayer(layer)) {
+    console.log(`Layer "${layer.name}" is a text layer, NOT an image layer`);
+    return false;
+  }
+  
   // Skip group layers or layers without dimensions
   if (layer.isGroup && layer.isGroup()) return false;
   
   try {
     const exportData = layer.export();
     if (!exportData.width || !exportData.height || exportData.width <= 0 || exportData.height <= 0) {
-      return false;
-    }
-    
-    // Check if this is NOT a text layer (since text layers have dimensions too)
-    if (isTextLayer(layer)) {
       return false;
     }
     
@@ -365,20 +376,21 @@ export const extractTextContent = (layer: any): {
   let textAlign = undefined;
   
   try {
-    // Try multiple approaches to extract text content
+    // ENHANCED TEXT EXTRACTION - try all possible methods to get text content
+    
+    // Method 1: Direct text properties
     if (layer.text && typeof layer.text === 'object' && layer.text.value) {
-      // Direct text.value property
       textContent = layer.text.value;
       console.log(`Extracted text from text.value: ${textContent}`);
       
-      // Try to get style information
+      // Extract style info
       if (layer.text.font) fontFamily = layer.text.font;
       if (layer.text.fontSize) fontSize = parseInt(layer.text.fontSize, 10);
       if (layer.text.color) color = layer.text.color;
       if (layer.text.justification) textAlign = layer.text.justification;
     } 
+    // Method 2: Text function
     else if (layer.text && typeof layer.text === 'function') {
-      // Text function that returns text data
       try {
         const textData = layer.text();
         if (typeof textData === 'string') {
@@ -388,47 +400,46 @@ export const extractTextContent = (layer: any): {
           textContent = textData.value;
           console.log(`Extracted text from text().value: ${textContent}`);
           
-          // Try to get style information
+          // Extract style info
           if (textData.font) fontFamily = textData.font;
           if (textData.fontSize) fontSize = parseInt(textData.fontSize, 10);
           if (textData.color) color = textData.color;
           if (textData.justification) textAlign = textData.justification;
         }
       } catch (e) {
-        console.error("Error getting text content from text() function:", e);
+        console.log("Error getting text content from text() function:", e);
       }
     }
+    // Method 3: typeTool via get
     else if (layer.get && typeof layer.get === 'function') {
-      // Try to get text from typeTool
       try {
         const typeTool = layer.get('typeTool');
         if (typeTool && typeTool.text) {
           textContent = typeTool.text;
           console.log(`Extracted text from typeTool: ${textContent}`);
           
-          // Try to get style information
+          // Extract style info
           if (typeTool.font) fontFamily = typeTool.font;
           if (typeTool.fontSize) fontSize = parseInt(typeTool.fontSize, 10);
           if (typeTool.color) color = typeTool.color;
           if (typeTool.justification) textAlign = typeTool.justification;
         }
       } catch (e) {
-        console.error("Error getting text from typeTool:", e);
+        console.log("Error getting text from typeTool:", e);
       }
     }
-    // Try to get text from typeTool function
+    // Method 4: Direct typeTool function
     else if (typeof layer.typeTool === 'function') {
       try {
         const typeToolData = layer.typeTool();
         console.log(`TypeTool data for "${layer.name}":`, typeToolData);
         
         if (typeToolData) {
-          // Check for various text properties in the typeTool data
           if (typeToolData.textData && typeToolData.textData.text) {
             textContent = typeToolData.textData.text;
             console.log(`Extracted text from typeTool().textData.text: ${textContent}`);
             
-            // Try to get style information
+            // Extract style info
             if (typeToolData.textData.fontName) fontFamily = typeToolData.textData.fontName;
             if (typeToolData.textData.fontSize) fontSize = parseInt(typeToolData.textData.fontSize, 10);
             if (typeToolData.textData.color) color = typeToolData.textData.color;
@@ -442,27 +453,30 @@ export const extractTextContent = (layer: any): {
           }
         }
       } catch (e) {
-        console.error("Error extracting data from typeTool function:", e);
+        console.log("Error extracting data from typeTool function:", e);
       }
     }
     
-    // If we still don't have text content, extract from layer name as fallback
+    // Method 5: Use layer name as fallback, but only for layers with text indicators
     if (!textContent || textContent.trim() === '') {
-      // For layers that have text indicators in their name, use the name without the prefix
-      const nameWithoutPrefix = layer.name.replace(/^(heading|h1|h2|h3|paragraph|text|title|subtitle)\s*/i, '');
-      
-      // Check if the layer has a legacyName property which could contain the text
-      if (layer.legacyName && layer.legacyName.trim() !== '') {
+      if (layer.name && /heading|h[1-6]|paragraph|text|title|subtitle|button|label|caption/i.test(layer.name)) {
+        // Strip type prefix if present
+        const nameWithoutPrefix = layer.name.replace(/^(heading|h[1-6]|paragraph|text|title|subtitle)\s*/i, '');
+        textContent = nameWithoutPrefix || layer.name;
+        console.log(`Using layer name as text content (for text-like named layer): ${textContent}`);
+      } else if (layer.legacyName && layer.legacyName.trim() !== '') {
         textContent = layer.legacyName;
         console.log(`Using layer.legacyName as text content: ${textContent}`);
-      } else {
-        textContent = nameWithoutPrefix || layer.name;
-        console.log(`Using layer name as text content: ${textContent}`);
       }
     }
   } catch (error) {
     console.error("Error extracting text content:", error);
-    textContent = layer.name || "Text Layer";
+    // Still provide fallback text if we encountered an error
+    if (layer.name && /heading|h[1-6]|paragraph|text|title|subtitle|button|label|caption/i.test(layer.name)) {
+      textContent = layer.name;
+    } else {
+      textContent = "Text Layer";
+    }
   }
   
   return { 

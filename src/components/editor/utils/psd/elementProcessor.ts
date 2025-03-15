@@ -1,6 +1,6 @@
 
 import { EditorElement, BannerSize } from '../../types';
-import { detectLayerType } from './layerDetection';
+import { detectLayerType, isTextLayer } from './layerDetection';
 import { createTextElement, createImageElement, createFallbackElement } from './elementCreation';
 import { PSDFileData, PSDLayerInfo } from './types';
 import { saveImageToStorage } from './storage';
@@ -45,7 +45,39 @@ export const processLayer = async (
       return null;
     }
     
-    // Check layer type
+    // CRITICAL FIX: Directly check for text layers first before any other type detection
+    // This ensures text layers are always detected as text and never as images
+    if (isTextLayer(layer)) {
+      console.log(`Detected text layer "${layer.name}" - processing as text`);
+      const element = await createTextElement(layer, selectedSize);
+      
+      if (element) {
+        console.log(`Created text element from layer: ${layer.name}`);
+        
+        // Add to PSD data
+        const layerInfo: PSDLayerInfo = {
+          id: element.id,
+          name: layer.name || 'Text Layer',
+          type: 'text',
+          position: {
+            x: element.style.x,
+            y: element.style.y,
+            width: element.style.width,
+            height: element.style.height
+          },
+          content: element.content as string
+        };
+        
+        psdData.layers.push(layerInfo);
+        
+        // Ensure the element has the correct sizeId
+        element.sizeId = selectedSize.name;
+        return element;
+      }
+      return null;
+    }
+    
+    // For non-text layers, continue with regular detection
     const layerType = detectLayerType(layer);
     console.log(`Detected layer type for "${layer.name}": ${layerType}`);
     
