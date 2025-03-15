@@ -22,15 +22,6 @@ export const processLayer = async (
   try {
     console.log(`Processing layer: ${layer.name || 'unnamed'}`);
     
-    // Debug layer properties
-    if (layer.debug) {
-      try {
-        console.log("Layer debug info:", layer.debug());
-      } catch (e) {
-        console.log("Could not access layer debug info");
-      }
-    }
-    
     // Skip hidden layers
     if (layer.hidden && typeof layer.hidden !== 'function') return null;
     if (typeof layer.hidden === 'function' && layer.hidden()) return null;
@@ -96,7 +87,14 @@ export const processLayer = async (
         console.log(`Created image element from layer: ${layer.name}`);
         
         // Store image in our application storage
-        const imageKey = saveImageToStorage(element.content as string, layer.name || 'image');
+        let imageKey = '';
+        try {
+          imageKey = saveImageToStorage(element.content as string, layer.name || 'image');
+        } catch (storageError) {
+          console.error("Error saving image to localStorage:", storageError);
+          // Continue with default key
+          imageKey = `psd-image-${Date.now()}-${(layer.name || 'image').replace(/\s+/g, '-').toLowerCase()}`;
+        }
         
         // Add to PSD data
         const layerInfo: PSDLayerInfo = {
@@ -154,11 +152,22 @@ export const processLayer = async (
         
         if (element.type === 'image' && element.content) {
           layerInfo.imageUrl = element.content as string;
-          layerInfo.imageKey = saveImageToStorage(element.content as string, layer.name || 'image');
+          try {
+            layerInfo.imageKey = saveImageToStorage(element.content as string, layer.name || 'image');
+          } catch (storageError) {
+            console.error("Error saving image to localStorage:", storageError);
+            // Continue with default key
+            layerInfo.imageKey = `psd-image-${Date.now()}-${(layer.name || 'image').replace(/\s+/g, '-').toLowerCase()}`;
+          }
         }
         
         psdData.layers.push(layerInfo);
       }
+    }
+    
+    // Ensure the element has the correct sizeId
+    if (element) {
+      element.sizeId = selectedSize.name;
     }
     
     return element;

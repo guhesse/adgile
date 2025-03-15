@@ -1,450 +1,533 @@
+
 import { EditorElement, BannerSize } from "../../types";
 
-// Interface for position and size recommendations
-interface LayoutRecommendation {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  zIndex?: number;
-}
-
-// Interface for element relationship mapping
-interface ElementRelationship {
-  id: string;
-  relatedTo: string[];
-  importance: number; // 1-10 scale with 10 being most important
-  alignmentPreference?: 'left' | 'center' | 'right' | 'top' | 'bottom';
-}
-
 /**
- * Uses AI heuristics to determine optimal layout for elements across different banner sizes
+ * Optimize the layout of elements for different banner sizes
+ * @param sourceElements The source elements to optimize
+ * @param targetSize The target banner size
+ * @param sourceSize The source banner size
+ * @returns Array of optimized elements for the target size
  */
 export const optimizeLayout = (
-  elements: EditorElement[],
+  sourceElements: EditorElement[],
   targetSize: BannerSize,
   sourceSize: BannerSize
 ): EditorElement[] => {
-  console.log("Running AI layout optimization for", targetSize.name);
+  console.log(`Running AI layout optimization for ${targetSize.name}`);
   
-  // Deep clone elements to avoid mutation
-  const optimizedElements = JSON.parse(JSON.stringify(elements));
+  // Clone the source elements first
+  const clonedElements = sourceElements.map(el => ({
+    ...el,
+    id: `${el.id}-${targetSize.name.replace(/\s+/g, '-').toLowerCase()}`,
+    style: { ...el.style },
+    sizeId: targetSize.name
+  }));
   
-  // Get element relationships and importance
-  const relationships = analyzeElementRelationships(optimizedElements);
+  // Calculate scaling factors
+  const scaleX = targetSize.width / sourceSize.width;
+  const scaleY = targetSize.height / sourceSize.height;
   
-  // For each element, determine optimal position and size
-  optimizedElements.forEach(element => {
-    const recommendation = getOptimalPositionAndSize(
-      element, 
-      optimizedElements, 
-      relationships,
-      sourceSize,
-      targetSize
-    );
+  // Step 1: Apply proportional scaling to all elements
+  const scaledElements = clonedElements.map(element => {
+    const scaledElement = { ...element };
     
-    // Apply recommendations to element
-    element.style.x = recommendation.x;
-    element.style.y = recommendation.y;
-    element.style.width = recommendation.width;
-    element.style.height = recommendation.height;
+    // Scale position and size values
+    scaledElement.style.x = Math.round(element.style.x * scaleX);
+    scaledElement.style.y = Math.round(element.style.y * scaleY);
+    scaledElement.style.width = Math.round(element.style.width * scaleX);
+    scaledElement.style.height = Math.round(element.style.height * scaleY);
     
-    // Update percentage-based positioning for responsive handling
-    element.style.xPercent = (recommendation.x / targetSize.width) * 100;
-    element.style.yPercent = (recommendation.y / targetSize.height) * 100;
-    element.style.widthPercent = (recommendation.width / targetSize.width) * 100;
-    element.style.heightPercent = (recommendation.height / targetSize.height) * 100;
+    // Ensure elements are visible and have reasonable sizes
+    ensureMinimumSize(scaledElement);
     
-    if (recommendation.zIndex) {
-      element.style.zIndex = recommendation.zIndex;
-    }
+    return scaledElement;
   });
   
-  // After all elements are positioned, check for overlaps and adjust
-  resolveOverlaps(optimizedElements, targetSize);
+  // Step 2: Analyze element relationships
+  const relationships = analyzeElementRelationships(scaledElements);
   
-  return optimizedElements;
+  // Step 3: Identify and solve layout problems
+  const elementsWithResolvedPosition = solveLayoutProblems(
+    scaledElements, 
+    relationships,
+    targetSize
+  );
+  
+  // Step 4: Ensure no element extends beyond canvas boundaries
+  const boundedElements = ensureElementsWithinBounds(
+    elementsWithResolvedPosition,
+    targetSize
+  );
+  
+  // Step 5: Calculate percentage-based positions for responsive behavior
+  boundedElements.forEach(element => {
+    element.style.xPercent = (element.style.x / targetSize.width) * 100;
+    element.style.yPercent = (element.style.y / targetSize.height) * 100;
+    element.style.widthPercent = (element.style.width / targetSize.width) * 100;
+    element.style.heightPercent = (element.style.height / targetSize.height) * 100;
+  });
+  
+  return boundedElements;
 };
 
 /**
- * Analyzes elements to determine their relationships and importance
+ * Ensure elements have a minimum size for visibility
+ * @param element The element to check and adjust
+ */
+const ensureMinimumSize = (element: EditorElement): void => {
+  const MIN_WIDTH = 10;
+  const MIN_HEIGHT = 10;
+  
+  if (element.style.width < MIN_WIDTH) {
+    element.style.width = MIN_WIDTH;
+  }
+  
+  if (element.style.height < MIN_HEIGHT) {
+    element.style.height = MIN_HEIGHT;
+  }
+};
+
+/**
+ * Define a relationship between elements
+ */
+interface ElementRelationship {
+  element1Id: string;
+  element2Id: string;
+  type: 'overlap' | 'adjacent' | 'contained' | 'aligned';
+  strength: number; // 0-1 indicating how strong the relationship is
+}
+
+/**
+ * Analyze relationships between elements
+ * @param elements The elements to analyze
+ * @returns Array of element relationships
  */
 const analyzeElementRelationships = (elements: EditorElement[]): ElementRelationship[] => {
   const relationships: ElementRelationship[] = [];
   
-  elements.forEach(element => {
-    // Create a relationship entry for this element
-    const relationship: ElementRelationship = {
-      id: element.id,
-      relatedTo: [],
-      importance: calculateElementImportance(element)
-    };
-    
-    // Determine alignment preference
-    if (element.style.textAlign) {
-      relationship.alignmentPreference = element.style.textAlign;
-    } else if (element.type === "text" || element.type === "paragraph") {
-      relationship.alignmentPreference = "left";
-    } else if (element.type === "logo") {
-      relationship.alignmentPreference = "center";
-    }
-    
-    // Find related elements (e.g., text that's near an image, etc.)
-    elements.forEach(otherElement => {
-      if (element.id !== otherElement.id && areElementsRelated(element, otherElement)) {
-        relationship.relatedTo.push(otherElement.id);
+  // Check each pair of elements
+  for (let i = 0; i < elements.length; i++) {
+    for (let j = i + 1; j < elements.length; j++) {
+      const element1 = elements[i];
+      const element2 = elements[j];
+      
+      // Skip elements from different artboards
+      if (element1.sizeId !== element2.sizeId) {
+        continue;
       }
-    });
-    
-    relationships.push(relationship);
-  });
+      
+      // Check for overlaps
+      if (elementsOverlap(element1, element2)) {
+        const overlapArea = calculateOverlapArea(element1, element2);
+        const element1Area = element1.style.width * element1.style.height;
+        const element2Area = element2.style.width * element2.style.height;
+        const smallerArea = Math.min(element1Area, element2Area);
+        
+        const strength = overlapArea / smallerArea;
+        
+        relationships.push({
+          element1Id: element1.id,
+          element2Id: element2.id,
+          type: 'overlap',
+          strength: strength
+        });
+      }
+      
+      // Check for alignment
+      if (elementsAreAligned(element1, element2)) {
+        relationships.push({
+          element1Id: element1.id,
+          element2Id: element2.id,
+          type: 'aligned',
+          strength: 0.7 // Arbitrary strength for alignment
+        });
+      }
+      
+      // Check for adjacency
+      if (elementsAreAdjacent(element1, element2)) {
+        relationships.push({
+          element1Id: element1.id,
+          element2Id: element2.id,
+          type: 'adjacent',
+          strength: 0.5 // Arbitrary strength for adjacency
+        });
+      }
+      
+      // Check for containment
+      if (elementContains(element1, element2)) {
+        relationships.push({
+          element1Id: element1.id,
+          element2Id: element2.id,
+          type: 'contained',
+          strength: 0.9 // Strong relationship for containment
+        });
+      } else if (elementContains(element2, element1)) {
+        relationships.push({
+          element1Id: element2.id,
+          element2Id: element1.id,
+          type: 'contained',
+          strength: 0.9
+        });
+      }
+    }
+  }
   
   return relationships;
 };
 
 /**
- * Calculates importance score for an element based on type, size, content
+ * Solve layout problems based on relationships
+ * @param elements The elements to adjust
+ * @param relationships The relationships between elements
+ * @param targetSize The target banner size
+ * @returns Array of elements with resolved positions
  */
-const calculateElementImportance = (element: EditorElement): number => {
-  let importance = 5; // Default mid-level importance
-  
-  // Logos and large images are typically more important
-  if (element.type === "logo") {
-    importance += 3;
-  }
-  
-  // Headings (large text) are important
-  if (element.type === "text" && element.style.fontSize && element.style.fontSize > 24) {
-    importance += 2;
-  }
-  
-  // CTA buttons are important
-  if (element.type === "button") {
-    importance += 2;
-  }
-  
-  // Larger elements might be more important
-  const area = element.style.width * element.style.height;
-  if (area > 40000) { // arbitrary threshold
-    importance += 1;
-  }
-  
-  // Cap at 10
-  return Math.min(importance, 10);
-};
-
-/**
- * Determines if two elements are related (positioned near each other)
- */
-const areElementsRelated = (element1: EditorElement, element2: EditorElement): boolean => {
-  // Simple distance-based relationship check
-  const center1 = {
-    x: element1.style.x + element1.style.width / 2,
-    y: element1.style.y + element1.style.height / 2
-  };
-  
-  const center2 = {
-    x: element2.style.x + element2.style.width / 2,
-    y: element2.style.y + element2.style.height / 2
-  };
-  
-  const distance = Math.sqrt(
-    Math.pow(center2.x - center1.x, 2) + 
-    Math.pow(center2.y - center1.y, 2)
-  );
-  
-  // If they're close enough, consider them related
-  const proximityThreshold = Math.max(
-    element1.style.width, 
-    element1.style.height, 
-    element2.style.width, 
-    element2.style.height
-  );
-  
-  return distance < proximityThreshold * 1.5;
-};
-
-/**
- * Gets optimal positioning and sizing for an element 
- */
-const getOptimalPositionAndSize = (
-  element: EditorElement,
-  allElements: EditorElement[],
+const solveLayoutProblems = (
+  elements: EditorElement[],
   relationships: ElementRelationship[],
-  sourceSize: BannerSize,
   targetSize: BannerSize
-): LayoutRecommendation => {
-  // Find relationship info for this element
-  const relationship = relationships.find(r => r.id === element.id);
+): EditorElement[] => {
+  const adjustedElements = [...elements];
   
-  // Default to current values (scaled) if no relationship found
-  if (!relationship) {
-    return getScaledPosition(element, sourceSize, targetSize);
+  // First, resolve overlaps between important elements
+  const overlapRelationships = relationships.filter(r => r.type === 'overlap' && r.strength > 0.2);
+  
+  for (const relationship of overlapRelationships) {
+    const element1 = adjustedElements.find(e => e.id === relationship.element1Id);
+    const element2 = adjustedElements.find(e => e.id === relationship.element2Id);
+    
+    if (element1 && element2) {
+      resolveOverlap(element1, element2, targetSize);
+    }
   }
   
-  // Different strategies based on element type
-  if (element.type === "image" || element.type === "logo") {
-    return optimizeImagePosition(element, relationship, allElements, sourceSize, targetSize);
-  } else if (element.type === "text" || element.type === "paragraph") {
-    return optimizeTextPosition(element, relationship, allElements, sourceSize, targetSize);
-  } else if (element.type === "button") {
-    return optimizeButtonPosition(element, relationship, allElements, sourceSize, targetSize);
-  } else {
-    // For other element types, use default scaling
-    return getScaledPosition(element, sourceSize, targetSize);
+  // Then maintain alignment where possible
+  const alignmentRelationships = relationships.filter(r => r.type === 'aligned');
+  
+  for (const relationship of alignmentRelationships) {
+    const element1 = adjustedElements.find(e => e.id === relationship.element1Id);
+    const element2 = adjustedElements.find(e => e.id === relationship.element2Id);
+    
+    if (element1 && element2) {
+      maintainAlignment(element1, element2);
+    }
   }
+  
+  return adjustedElements;
 };
 
 /**
- * Scale element position and size proportionally for target size
+ * Check if elements overlap
+ * @param element1 First element
+ * @param element2 Second element
+ * @returns True if elements overlap
  */
-const getScaledPosition = (
-  element: EditorElement,
-  sourceSize: BannerSize,
-  targetSize: BannerSize
-): LayoutRecommendation => {
-  // Simple proportional scaling
-  const widthRatio = targetSize.width / sourceSize.width;
-  const heightRatio = targetSize.height / sourceSize.height;
-  
-  return {
-    x: element.style.x * widthRatio,
-    y: element.style.y * heightRatio,
-    width: element.style.width * widthRatio,
-    height: element.style.height * heightRatio
+const elementsOverlap = (element1: EditorElement, element2: EditorElement): boolean => {
+  const rect1 = {
+    left: element1.style.x,
+    right: element1.style.x + element1.style.width,
+    top: element1.style.y,
+    bottom: element1.style.y + element1.style.height
   };
+  
+  const rect2 = {
+    left: element2.style.x,
+    right: element2.style.x + element2.style.width,
+    top: element2.style.y,
+    bottom: element2.style.y + element2.style.height
+  };
+  
+  return !(
+    rect1.right < rect2.left ||
+    rect1.left > rect2.right ||
+    rect1.bottom < rect2.top ||
+    rect1.top > rect2.bottom
+  );
 };
 
 /**
- * Optimize image or logo positioning
+ * Calculate the overlap area between two elements
+ * @param element1 First element
+ * @param element2 Second element
+ * @returns The overlap area in square pixels
  */
-const optimizeImagePosition = (
-  element: EditorElement,
-  relationship: ElementRelationship,
-  allElements: EditorElement[],
-  sourceSize: BannerSize,
-  targetSize: BannerSize
-): LayoutRecommendation => {
-  // Start with scaled position
-  const scaledPos = getScaledPosition(element, sourceSize, targetSize);
+const calculateOverlapArea = (element1: EditorElement, element2: EditorElement): number => {
+  const rect1 = {
+    left: element1.style.x,
+    right: element1.style.x + element1.style.width,
+    top: element1.style.y,
+    bottom: element1.style.y + element1.style.height
+  };
   
-  // Maintain aspect ratio for images
-  const aspectRatio = element.style.width / element.style.height;
+  const rect2 = {
+    left: element2.style.x,
+    right: element2.style.x + element2.style.width,
+    top: element2.style.y,
+    bottom: element2.style.y + element2.style.height
+  };
   
-  // For very different aspect ratios (like horizontal to vertical),
-  // we want to adjust the image size more carefully
-  if (targetSize.width / targetSize.height < 0.7 * (sourceSize.width / sourceSize.height)) {
-    // Going from a wide format to a tall one - make image smaller
-    let newWidth = Math.min(targetSize.width * 0.8, scaledPos.width);
-    let newHeight = newWidth / aspectRatio;
-    
-    // Center it
-    const x = (targetSize.width - newWidth) / 2;
-    const y = targetSize.height * 0.2; // Place in the upper portion
-    
-    return { x, y, width: newWidth, height: newHeight };
-  } 
-  else if (targetSize.width / targetSize.height > 1.3 * (sourceSize.width / sourceSize.height)) {
-    // Going from a tall format to a wide one - emphasize width
-    let newHeight = Math.min(targetSize.height * 0.6, scaledPos.height);
-    let newWidth = newHeight * aspectRatio;
-    
-    // Center it
-    const x = (targetSize.width - newWidth) / 2;
-    const y = (targetSize.height - newHeight) / 2;
-    
-    return { x, y, width: newWidth, height: newHeight };
-  } 
-  else {
-    // For logos, try to keep them close to their relative position
-    if (element.type === "logo") {
-      // Often logos should be at the top
-      scaledPos.y = Math.min(scaledPos.y, targetSize.height * 0.15);
-    }
-    
-    return scaledPos;
-  }
+  // Calculate overlap dimensions
+  const overlapWidth = Math.max(0, Math.min(rect1.right, rect2.right) - Math.max(rect1.left, rect2.left));
+  const overlapHeight = Math.max(0, Math.min(rect1.bottom, rect2.bottom) - Math.max(rect1.top, rect2.top));
+  
+  return overlapWidth * overlapHeight;
 };
 
 /**
- * Optimize text positioning
+ * Check if elements are aligned (horizontally or vertically)
+ * @param element1 First element
+ * @param element2 Second element
+ * @returns True if elements are aligned
  */
-const optimizeTextPosition = (
-  element: EditorElement,
-  relationship: ElementRelationship,
-  allElements: EditorElement[],
-  sourceSize: BannerSize,
+const elementsAreAligned = (element1: EditorElement, element2: EditorElement): boolean => {
+  const ALIGNMENT_THRESHOLD = 5; // Pixels tolerance for alignment
+  
+  // Horizontal alignment (tops aligned)
+  const topsAligned = Math.abs(element1.style.y - element2.style.y) <= ALIGNMENT_THRESHOLD;
+  
+  // Horizontal alignment (centers aligned)
+  const element1CenterY = element1.style.y + element1.style.height / 2;
+  const element2CenterY = element2.style.y + element2.style.height / 2;
+  const centersAlignedY = Math.abs(element1CenterY - element2CenterY) <= ALIGNMENT_THRESHOLD;
+  
+  // Horizontal alignment (bottoms aligned)
+  const element1Bottom = element1.style.y + element1.style.height;
+  const element2Bottom = element2.style.y + element2.style.height;
+  const bottomsAligned = Math.abs(element1Bottom - element2Bottom) <= ALIGNMENT_THRESHOLD;
+  
+  // Vertical alignment (lefts aligned)
+  const leftsAligned = Math.abs(element1.style.x - element2.style.x) <= ALIGNMENT_THRESHOLD;
+  
+  // Vertical alignment (centers aligned)
+  const element1CenterX = element1.style.x + element1.style.width / 2;
+  const element2CenterX = element2.style.x + element2.style.width / 2;
+  const centersAlignedX = Math.abs(element1CenterX - element2CenterX) <= ALIGNMENT_THRESHOLD;
+  
+  // Vertical alignment (rights aligned)
+  const element1Right = element1.style.x + element1.style.width;
+  const element2Right = element2.style.x + element2.style.width;
+  const rightsAligned = Math.abs(element1Right - element2Right) <= ALIGNMENT_THRESHOLD;
+  
+  return topsAligned || centersAlignedY || bottomsAligned || leftsAligned || centersAlignedX || rightsAligned;
+};
+
+/**
+ * Check if elements are adjacent (close to each other)
+ * @param element1 First element
+ * @param element2 Second element
+ * @returns True if elements are adjacent
+ */
+const elementsAreAdjacent = (element1: EditorElement, element2: EditorElement): boolean => {
+  const ADJACENCY_THRESHOLD = 20; // Pixels tolerance for adjacency
+  
+  const rect1 = {
+    left: element1.style.x,
+    right: element1.style.x + element1.style.width,
+    top: element1.style.y,
+    bottom: element1.style.y + element1.style.height
+  };
+  
+  const rect2 = {
+    left: element2.style.x,
+    right: element2.style.x + element2.style.width,
+    top: element2.style.y,
+    bottom: element2.style.y + element2.style.height
+  };
+  
+  // Check if rectangles are adjacent horizontally or vertically
+  const horizontallyAdjacent = 
+    (rect1.right <= rect2.left && rect2.left - rect1.right <= ADJACENCY_THRESHOLD) ||
+    (rect2.right <= rect1.left && rect1.left - rect2.right <= ADJACENCY_THRESHOLD);
+  
+  const verticallyAdjacent = 
+    (rect1.bottom <= rect2.top && rect2.top - rect1.bottom <= ADJACENCY_THRESHOLD) ||
+    (rect2.bottom <= rect1.top && rect1.top - rect2.bottom <= ADJACENCY_THRESHOLD);
+  
+  // Check if rectangles overlap either horizontally or vertically
+  const horizontalOverlap = !(rect1.right < rect2.left || rect1.left > rect2.right);
+  const verticalOverlap = !(rect1.bottom < rect2.top || rect1.top > rect2.bottom);
+  
+  // Return true if the rectangles are adjacent in either direction
+  return (horizontallyAdjacent && verticalOverlap) || (verticallyAdjacent && horizontalOverlap);
+};
+
+/**
+ * Check if one element contains another
+ * @param container Potential container element
+ * @param contained Potential contained element
+ * @returns True if container contains contained
+ */
+const elementContains = (container: EditorElement, contained: EditorElement): boolean => {
+  const CONTAINMENT_MARGIN = 5; // Pixels of margin for containment
+  
+  return (
+    container.style.x - CONTAINMENT_MARGIN <= contained.style.x &&
+    container.style.y - CONTAINMENT_MARGIN <= contained.style.y &&
+    container.style.x + container.style.width + CONTAINMENT_MARGIN >= contained.style.x + contained.style.width &&
+    container.style.y + container.style.height + CONTAINMENT_MARGIN >= contained.style.y + contained.style.height
+  );
+};
+
+/**
+ * Resolve overlap between two elements
+ * @param element1 First element
+ * @param element2 Second element
+ * @param targetSize The target banner size
+ */
+const resolveOverlap = (
+  element1: EditorElement,
+  element2: EditorElement,
   targetSize: BannerSize
-): LayoutRecommendation => {
-  // Start with scaled position
-  const scaledPos = getScaledPosition(element, sourceSize, targetSize);
+): void => {
+  // Determine which element is more important
+  const element1Importance = getElementImportance(element1);
+  const element2Importance = getElementImportance(element2);
   
-  // For text, we want to ensure it's not too wide on smaller screens
-  const maxWidth = targetSize.width * 0.9;
-  if (scaledPos.width > maxWidth) {
-    scaledPos.width = maxWidth;
-    // Center it horizontally
-    scaledPos.x = (targetSize.width - scaledPos.width) / 2;
+  let elementToMove: EditorElement;
+  let stationaryElement: EditorElement;
+  
+  if (element1Importance < element2Importance) {
+    elementToMove = element1;
+    stationaryElement = element2;
+  } else {
+    elementToMove = element2;
+    stationaryElement = element1;
   }
   
-  // Adjust position based on alignment preference
-  if (relationship.alignmentPreference) {
-    if (relationship.alignmentPreference === 'center') {
-      scaledPos.x = (targetSize.width - scaledPos.width) / 2;
-    } else if (relationship.alignmentPreference === 'right') {
-      scaledPos.x = targetSize.width - scaledPos.width - 20; // 20px margin
-    } else if (relationship.alignmentPreference === 'left') {
-      scaledPos.x = 20; // 20px margin
-    }
-  }
+  // Determine direction to move (up, down, left, right)
+  const directions = [
+    { dx: 0, dy: -elementToMove.style.height }, // Up
+    { dx: 0, dy: stationaryElement.style.height }, // Down
+    { dx: -elementToMove.style.width, dy: 0 }, // Left
+    { dx: stationaryElement.style.width, dy: 0 } // Right
+  ];
   
-  // Check if this text should be positioned relative to another element
-  if (relationship.relatedTo.length > 0) {
-    // Get related elements
-    const relatedElements = allElements.filter(el => 
-      relationship.relatedTo.includes(el.id)
-    );
+  // Find the best direction to move
+  let bestDirection = { dx: 0, dy: 0 };
+  let minDistanceSquared = Number.MAX_VALUE;
+  
+  for (const direction of directions) {
+    const newX = elementToMove.style.x + direction.dx;
+    const newY = elementToMove.style.y + direction.dy;
     
-    // If related to an image, position below or beside it
-    const relatedImage = relatedElements.find(el => 
-      el.type === "image" || el.type === "logo"
-    );
-    
-    if (relatedImage) {
-      // Find the position of the related image in the target size
-      const relatedImageRel = relationships.find(r => r.id === relatedImage.id);
-      const relatedImagePos = getOptimalPositionAndSize(
-        relatedImage, allElements, relationships, sourceSize, targetSize
-      );
+    // Check if this position is still within bounds
+    if (
+      newX >= 0 && 
+      newY >= 0 && 
+      newX + elementToMove.style.width <= targetSize.width && 
+      newY + elementToMove.style.height <= targetSize.height
+    ) {
+      const distanceSquared = direction.dx * direction.dx + direction.dy * direction.dy;
       
-      // Position below or beside based on layout
-      if (targetSize.width > targetSize.height) {
-        // Landscape - position beside if enough space
-        if (relatedImagePos.width < targetSize.width * 0.5) {
-          scaledPos.x = relatedImagePos.x + relatedImagePos.width + 20;
-          scaledPos.y = relatedImagePos.y + (relatedImagePos.height - scaledPos.height) / 2;
-        } else {
-          // Not enough space beside, position below
-          scaledPos.x = (targetSize.width - scaledPos.width) / 2;
-          scaledPos.y = relatedImagePos.y + relatedImagePos.height + 20;
-        }
+      if (distanceSquared < minDistanceSquared) {
+        minDistanceSquared = distanceSquared;
+        bestDirection = direction;
+      }
+    }
+  }
+  
+  // Apply the movement
+  elementToMove.style.x += bestDirection.dx;
+  elementToMove.style.y += bestDirection.dy;
+  
+  // Ensure the element stays within bounds after moving
+  if (elementToMove.style.x < 0) elementToMove.style.x = 0;
+  if (elementToMove.style.y < 0) elementToMove.style.y = 0;
+  if (elementToMove.style.x + elementToMove.style.width > targetSize.width) {
+    elementToMove.style.x = targetSize.width - elementToMove.style.width;
+  }
+  if (elementToMove.style.y + elementToMove.style.height > targetSize.height) {
+    elementToMove.style.y = targetSize.height - elementToMove.style.height;
+  }
+};
+
+/**
+ * Get the importance of an element for layout decisions
+ * @param element The element to evaluate
+ * @returns Importance score (higher = more important)
+ */
+const getElementImportance = (element: EditorElement): number => {
+  // Simple heuristics for importance:
+  // - Larger elements tend to be more important
+  // - Elements near the center are more important
+  // - Text elements might be more important than images
+  
+  const area = element.style.width * element.style.height;
+  const typeImportance = element.type === 'text' ? 2 : element.type === 'image' ? 1.5 : 1;
+  
+  return area * typeImportance;
+};
+
+/**
+ * Maintain alignment between elements after position adjustments
+ * @param element1 First element
+ * @param element2 Second element
+ */
+const maintainAlignment = (element1: EditorElement, element2: EditorElement): void => {
+  // This is a simplified implementation
+  // In a real application, you'd want more sophisticated alignment preservation
+  
+  const ALIGNMENT_THRESHOLD = 5; // Pixels tolerance for alignment
+  
+  // Horizontal center alignment
+  const element1CenterY = element1.style.y + element1.style.height / 2;
+  const element2CenterY = element2.style.y + element2.style.height / 2;
+  
+  if (Math.abs(element1CenterY - element2CenterY) <= ALIGNMENT_THRESHOLD) {
+    // Align to the average center
+    const avgCenterY = (element1CenterY + element2CenterY) / 2;
+    element1.style.y = avgCenterY - element1.style.height / 2;
+    element2.style.y = avgCenterY - element2.style.height / 2;
+  }
+  
+  // Vertical center alignment
+  const element1CenterX = element1.style.x + element1.style.width / 2;
+  const element2CenterX = element2.style.x + element2.style.width / 2;
+  
+  if (Math.abs(element1CenterX - element2CenterX) <= ALIGNMENT_THRESHOLD) {
+    // Align to the average center
+    const avgCenterX = (element1CenterX + element2CenterX) / 2;
+    element1.style.x = avgCenterX - element1.style.width / 2;
+    element2.style.x = avgCenterX - element2.style.width / 2;
+  }
+};
+
+/**
+ * Ensure all elements are within the canvas boundaries
+ * @param elements The elements to check
+ * @param targetSize The target banner size
+ * @returns Array of elements with positions within bounds
+ */
+const ensureElementsWithinBounds = (
+  elements: EditorElement[],
+  targetSize: BannerSize
+): EditorElement[] => {
+  return elements.map(element => {
+    const boundedElement = { ...element };
+    
+    // Ensure x and y are positive
+    if (boundedElement.style.x < 0) boundedElement.style.x = 0;
+    if (boundedElement.style.y < 0) boundedElement.style.y = 0;
+    
+    // Ensure element doesn't extend beyond canvas width and height
+    if (boundedElement.style.x + boundedElement.style.width > targetSize.width) {
+      if (boundedElement.style.width < targetSize.width) {
+        boundedElement.style.x = targetSize.width - boundedElement.style.width;
       } else {
-        // Portrait - position below
-        scaledPos.x = (targetSize.width - scaledPos.width) / 2;
-        scaledPos.y = relatedImagePos.y + relatedImagePos.height + 20;
-      }
-    }
-  }
-  
-  return scaledPos;
-};
-
-/**
- * Optimize button positioning
- */
-const optimizeButtonPosition = (
-  element: EditorElement,
-  relationship: ElementRelationship,
-  allElements: EditorElement[],
-  sourceSize: BannerSize,
-  targetSize: BannerSize
-): LayoutRecommendation => {
-  // Start with scaled position
-  const scaledPos = getScaledPosition(element, sourceSize, targetSize);
-  
-  // Buttons typically look better centered
-  scaledPos.x = (targetSize.width - scaledPos.width) / 2;
-  
-  // For portrait layouts, buttons are often near the bottom
-  if (targetSize.height > targetSize.width) {
-    scaledPos.y = targetSize.height * 0.7;
-  }
-  
-  // Check if this button should follow content
-  if (relationship.relatedTo.length > 0) {
-    // Find the highest element that this is related to
-    const relatedElements = allElements
-      .filter(el => relationship.relatedTo.includes(el.id))
-      .map(el => {
-        const elPos = getOptimalPositionAndSize(el, allElements, relationships, sourceSize, targetSize);
-        return {
-          element: el,
-          bottom: elPos.y + elPos.height
-        };
-      });
-    
-    // Find the bottom-most related element
-    if (relatedElements.length > 0) {
-      const maxBottom = Math.max(...relatedElements.map(el => el.bottom));
-      scaledPos.y = maxBottom + 30; // Position 30px below the bottom-most element
-    }
-  }
-  
-  return scaledPos;
-};
-
-/**
- * Resolve overlaps between elements by repositioning them
- */
-const resolveOverlaps = (elements: EditorElement[], targetSize: BannerSize): void => {
-  // Simple algorithm to adjust elements vertically if they overlap
-  for (let i = 0; i < elements.length; i++) {
-    const el1 = elements[i];
-    
-    for (let j = i + 1; j < elements.length; j++) {
-      const el2 = elements[j];
-      
-      // Check if they overlap
-      if (
-        el1.style.x < el2.style.x + el2.style.width &&
-        el1.style.x + el1.style.width > el2.style.x &&
-        el1.style.y < el2.style.y + el2.style.height &&
-        el1.style.y + el1.style.height > el2.style.y
-      ) {
-        // Get relationship data to decide how to resolve
-        const rel1 = { 
-          id: el1.id, 
-          importance: calculateElementImportance(el1) 
-        };
-        const rel2 = { 
-          id: el2.id, 
-          importance: calculateElementImportance(el2) 
-        };
-        
-        // If one is more important, move the less important one
-        if (rel1.importance > rel2.importance) {
-          // Move el2 below el1
-          el2.style.y = el1.style.y + el1.style.height + 10;
-        } else if (rel2.importance > rel1.importance) {
-          // Move el1 below el2
-          el1.style.y = el2.style.y + el2.style.height + 10;
-        } else {
-          // Equal importance, move the lower one down further
-          if (el1.style.y > el2.style.y) {
-            el1.style.y = el2.style.y + el2.style.height + 10;
-          } else {
-            el2.style.y = el1.style.y + el1.style.height + 10;
-          }
-        }
-        
-        // Update percentages for the moved element
-        if (rel1.importance <= rel2.importance) {
-          el1.style.yPercent = (el1.style.y / targetSize.height) * 100;
-        } else {
-          el2.style.yPercent = (el2.style.y / targetSize.height) * 100;
-        }
+        boundedElement.style.x = 0;
+        boundedElement.style.width = targetSize.width;
       }
     }
     
-    // Make sure element doesn't exceed canvas bounds
-    if (el1.style.x + el1.style.width > targetSize.width) {
-      el1.style.x = targetSize.width - el1.style.width;
-      el1.style.xPercent = (el1.style.x / targetSize.width) * 100;
+    if (boundedElement.style.y + boundedElement.style.height > targetSize.height) {
+      if (boundedElement.style.height < targetSize.height) {
+        boundedElement.style.y = targetSize.height - boundedElement.style.height;
+      } else {
+        boundedElement.style.y = 0;
+        boundedElement.style.height = targetSize.height;
+      }
     }
     
-    if (el1.style.y + el1.style.height > targetSize.height) {
-      el1.style.y = targetSize.height - el1.style.height;
-      el1.style.yPercent = (el1.style.y / targetSize.height) * 100;
-    }
-  }
+    return boundedElement;
+  });
 };

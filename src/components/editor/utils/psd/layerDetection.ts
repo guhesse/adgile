@@ -84,6 +84,19 @@ export const isTextLayer = (layer: any): boolean => {
       }
     }
     
+    // Check: Has text extraction methods
+    if (layer.get && typeof layer.get === 'function') {
+      try {
+        const textObj = layer.get('text');
+        if (textObj) {
+          console.log(`Layer "${layer.name}" is text - has text via get('text')`);
+          return true;
+        }
+      } catch (err) {
+        console.log(`Error executing get('text') for "${layer.name}":`, err);
+      }
+    }
+    
     console.log(`Layer "${layer.name}" is NOT a text layer - no text indicators found`);
     return false;
   } catch (error) {
@@ -314,16 +327,151 @@ export const extractLayerImageData = async (layer: any, layerName: string): Prom
     }
     
     // Store the image data
-    const imageKey = saveImageToStorage(resultImageData, layerName);
+    let imageKey = '';
+    try {
+      imageKey = saveImageToStorage(resultImageData, layerName);
+    } catch (storageError) {
+      console.error("Error saving image to localStorage:", storageError);
+      // Continue even if localStorage fails - we can still use the image data directly
+      imageKey = `psd-image-${Date.now()}-${layerName.replace(/\s+/g, '-').toLowerCase()}`;
+    }
     
     return { imageData: resultImageData, imageKey };
   } catch (error) {
     console.error(`Error extracting image data:`, error);
     // Create and return a placeholder image
     const placeholder = createPlaceholderImage(layerName, 200, 200);
-    const imageKey = saveImageToStorage(placeholder, layerName);
+    const imageKey = `psd-image-${Date.now()}-${layerName.replace(/\s+/g, '-').toLowerCase()}`;
     return { imageData: placeholder, imageKey };
   }
+};
+
+/**
+ * Extract text content and styling from a text layer
+ * @param layer The text layer
+ * @returns Object containing the extracted text content and style
+ */
+export const extractTextContent = (layer: any): { 
+  text: string; 
+  fontFamily?: string; 
+  fontSize?: number;
+  color?: string;
+  textAlign?: string;
+} => {
+  let textContent = '';
+  let fontFamily = undefined;
+  let fontSize = undefined;
+  let color = undefined;
+  let textAlign = undefined;
+  
+  try {
+    // Try multiple approaches to extract text content
+    if (layer.text && typeof layer.text === 'object' && layer.text.value) {
+      // Direct text.value property
+      textContent = layer.text.value;
+      console.log(`Extracted text from text.value: ${textContent}`);
+      
+      // Try to get style information
+      if (layer.text.font) fontFamily = layer.text.font;
+      if (layer.text.fontSize) fontSize = parseInt(layer.text.fontSize, 10);
+      if (layer.text.color) color = layer.text.color;
+      if (layer.text.justification) textAlign = layer.text.justification;
+    } 
+    else if (layer.text && typeof layer.text === 'function') {
+      // Text function that returns text data
+      try {
+        const textData = layer.text();
+        if (typeof textData === 'string') {
+          textContent = textData;
+          console.log(`Extracted text from text() function (string): ${textContent}`);
+        } else if (textData && textData.value) {
+          textContent = textData.value;
+          console.log(`Extracted text from text().value: ${textContent}`);
+          
+          // Try to get style information
+          if (textData.font) fontFamily = textData.font;
+          if (textData.fontSize) fontSize = parseInt(textData.fontSize, 10);
+          if (textData.color) color = textData.color;
+          if (textData.justification) textAlign = textData.justification;
+        }
+      } catch (e) {
+        console.error("Error getting text content from text() function:", e);
+      }
+    }
+    else if (layer.get && typeof layer.get === 'function') {
+      // Try to get text from typeTool
+      try {
+        const typeTool = layer.get('typeTool');
+        if (typeTool && typeTool.text) {
+          textContent = typeTool.text;
+          console.log(`Extracted text from typeTool: ${textContent}`);
+          
+          // Try to get style information
+          if (typeTool.font) fontFamily = typeTool.font;
+          if (typeTool.fontSize) fontSize = parseInt(typeTool.fontSize, 10);
+          if (typeTool.color) color = typeTool.color;
+          if (typeTool.justification) textAlign = typeTool.justification;
+        }
+      } catch (e) {
+        console.error("Error getting text from typeTool:", e);
+      }
+    }
+    // Try to get text from typeTool function
+    else if (typeof layer.typeTool === 'function') {
+      try {
+        const typeToolData = layer.typeTool();
+        console.log(`TypeTool data for "${layer.name}":`, typeToolData);
+        
+        if (typeToolData) {
+          // Check for various text properties in the typeTool data
+          if (typeToolData.textData && typeToolData.textData.text) {
+            textContent = typeToolData.textData.text;
+            console.log(`Extracted text from typeTool().textData.text: ${textContent}`);
+            
+            // Try to get style information
+            if (typeToolData.textData.fontName) fontFamily = typeToolData.textData.fontName;
+            if (typeToolData.textData.fontSize) fontSize = parseInt(typeToolData.textData.fontSize, 10);
+            if (typeToolData.textData.color) color = typeToolData.textData.color;
+            if (typeToolData.textData.justification) textAlign = typeToolData.textData.justification;
+          } else if (typeToolData.text) {
+            textContent = typeToolData.text;
+            console.log(`Extracted text from typeTool().text: ${textContent}`);
+          } else if (typeToolData.textValue) {
+            textContent = typeToolData.textValue;
+            console.log(`Extracted text from typeTool().textValue: ${textContent}`);
+          }
+        }
+      } catch (e) {
+        console.error("Error extracting data from typeTool function:", e);
+      }
+    }
+    
+    // If we still don't have text content, extract from layer name as fallback
+    if (!textContent || textContent.trim() === '') {
+      // For layers that have text indicators in their name, use the name without the prefix
+      const nameWithoutPrefix = layer.name.replace(/^(heading|h1|h2|h3|paragraph|text|title|subtitle)\s*/i, '');
+      
+      // Check if the layer has a legacyName property which could contain the text
+      if (layer.legacyName && layer.legacyName.trim() !== '') {
+        textContent = layer.legacyName;
+        console.log(`Using layer.legacyName as text content: ${textContent}`);
+      } else {
+        textContent = nameWithoutPrefix || layer.name;
+        console.log(`Using layer name as text content: ${textContent}`);
+      }
+    }
+  } catch (error) {
+    console.error("Error extracting text content:", error);
+    textContent = layer.name || "Text Layer";
+  }
+  
+  return { 
+    text: textContent, 
+    fontFamily, 
+    fontSize, 
+    color, 
+    textAlign 
+  };
 };
 
 /**

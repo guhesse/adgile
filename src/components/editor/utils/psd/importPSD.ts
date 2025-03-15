@@ -71,36 +71,51 @@ export const importPSDFile = async (
     
     // Save PSD data to storage
     psdData.storageKey = `psd-import-${Date.now()}`;
-    savePSDDataToStorage(psdData);
+    
+    try {
+      savePSDDataToStorage(psdData);
+    } catch (storageError) {
+      console.error("Error saving PSD data to localStorage:", storageError);
+      // Continue even if localStorage fails - this is non-critical
+    }
     
     console.log("Elements extracted:", processedElements.length);
     
-    // For each active size, apply AI layout optimization
+    // Make sure all elements have the correct sizeId set to the current selected size
+    processedElements.forEach(element => {
+      element.sizeId = selectedSize.name;
+    });
+    
+    // If no active sizes or only the current size is active, return the processed elements
+    if (activeSizes.length <= 1) {
+      return processedElements;
+    }
+    
+    // For each active size that isn't the current one, apply AI layout optimization
     let allOptimizedElements = [...processedElements];
     
-    if (activeSizes.length > 0) {
-      console.log("Applying AI layout optimization for all active sizes...");
-      
-      // For each active size that isn't the current one
-      activeSizes.forEach(size => {
-        if (size.name !== selectedSize.name) {
-          // Create optimized elements for this size
-          const optimizedElements = optimizeLayout(
-            processedElements, 
-            size, 
-            selectedSize
-          );
-          
-          // Set the correct size ID
-          optimizedElements.forEach(element => {
-            element.id = `${element.id}-${size.name.replace(/\s+/g, '-').toLowerCase()}`;
-            element.sizeId = size.name;
-          });
-          
-          // Add to the collection
-          allOptimizedElements = [...allOptimizedElements, ...optimizedElements];
-        }
-      });
+    console.log("Applying AI layout optimization for all active sizes...");
+    
+    // For each active size that isn't the current one
+    for (const size of activeSizes) {
+      if (size.name !== selectedSize.name) {
+        console.log(`Running AI layout optimization for ${size.name}`);
+        
+        // Create optimized elements for this size
+        const optimizedElements = optimizeLayout(
+          processedElements, 
+          size, 
+          selectedSize
+        );
+        
+        // Each optimized element should have its own sizeId matching the target size
+        optimizedElements.forEach(element => {
+          element.sizeId = size.name;
+        });
+        
+        // Add to the collection
+        allOptimizedElements = [...allOptimizedElements, ...optimizedElements];
+      }
     }
     
     // Log information about imported elements for debugging
