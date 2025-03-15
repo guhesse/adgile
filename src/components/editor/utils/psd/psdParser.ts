@@ -49,6 +49,8 @@ export const parsePSDFile = async (file: File): Promise<{
           fileName: file.name,
           width: psd.header.width,
           height: psd.header.height,
+          uploadDate: new Date().toISOString(),
+          storageKey: '',
           layers: []
         };
 
@@ -56,7 +58,7 @@ export const parsePSDFile = async (file: File): Promise<{
         const extractedImages: Map<string, string> = new Map();
         
         console.log("Processing PSD tree for images...");
-        processImageLayers(psd.tree(), (imageData, nodeName) => {
+        await processImageLayers(psd.tree(), (imageData, nodeName) => {
           console.log(`Extracted image from node: ${nodeName}`);
           extractedImages.set(nodeName, imageData);
         });

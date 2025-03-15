@@ -12,19 +12,9 @@ export interface PSDFileData {
   fileName: string;
   width: number;
   height: number;
-  layers: {
-    id: string;
-    name: string;
-    type: string;
-    position: {
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-    };
-    content?: string; // For text layers
-    imageUrl?: string; // For image layers
-  }[];
+  uploadDate: string; // Add timestamp for when the PSD was uploaded
+  storageKey: string; // Add storage key for referencing this PSD later
+  layers: PSDLayerInfo[];
 }
 
 /**
@@ -40,6 +30,18 @@ export interface PSDLayerInfo {
     width: number;
     height: number;
   };
-  content?: string;
-  imageUrl?: string;
+  content?: string; // For text layers
+  imageUrl?: string; // For image layers
+  imageKey?: string; // Storage key for the image
+}
+
+/**
+ * Type for retrieved PSD metadata from storage
+ */
+export interface PSDMetadata {
+  key: string;
+  fileName: string;
+  uploadDate: string;
+  width: number;
+  height: number;
 }

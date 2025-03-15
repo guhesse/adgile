@@ -1,20 +1,14 @@
 
-// Re-export all PSD-related functionality
-
-// Types
-export { PSDFileData, PSDLayerInfo } from './types';
-
-// Core import functionality
+// Export main functionality
 export { importPSDFile } from './importPSD';
 
-// Layer detection
-export { detectLayerType, isTextLayer, shouldBeImageLayer, extractLayerImageData, processImageLayers } from './layerDetection';
+// Export storage utilities
+export { 
+  getPSDMetadataList,
+  getPSDDataFromStorage,
+  getImageFromStorage,
+  removePSDDataFromStorage
+} from './storage';
 
-// Element creation
-export { createTextElement, createImageElement, createFallbackElement } from './elementCreation';
-
-// Storage utilities
-export { savePSDDataToStorage, getPSDDataFromStorage, getPSDStorageKeys, removePSDDataFromStorage } from './storage';
-
-// Formatters
-export { convertPSDColorToHex, convertPSDAlignmentToCSS } from './formatters';
+// Export types
+export type { PSDFileData, PSDMetadata } from './types';

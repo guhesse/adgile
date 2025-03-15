@@ -267,12 +267,12 @@ export const createImageElement = async (layer: any, selectedSize: BannerSize): 
     imageElement.style.height = height;
     imageElement.alt = layer.name || 'Image Layer';
     
-    // Use the extractLayerImageData function
-    const imageDataUrl = await extractLayerImageData(layer, layer.name || 'image');
+    // Use the enhanced extractLayerImageData function that includes storage
+    const { imageData, imageKey } = await extractLayerImageData(layer, layer.name || 'image');
     
-    if (imageDataUrl) {
-      imageElement.content = imageDataUrl;
-      console.log("Set image content successfully");
+    if (imageData) {
+      imageElement.content = imageData;
+      console.log("Set image content successfully", { imageKey });
     } else {
       console.log("Could not extract image data from layer");
     }

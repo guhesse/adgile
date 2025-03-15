@@ -3,6 +3,7 @@ import { EditorElement, BannerSize } from '../../types';
 import { detectLayerType } from './layerDetection';
 import { createTextElement, createImageElement, createFallbackElement } from './elementCreation';
 import { PSDFileData, PSDLayerInfo } from './types';
+import { saveImageToStorage } from './storage';
 
 /**
  * Process a single PSD layer into an editor element
@@ -56,6 +57,9 @@ export const processLayer = async (
       if (element) {
         console.log(`Created image element from layer: ${layer.name}`);
         
+        // Store image in our application storage
+        const imageKey = saveImageToStorage(element.content as string, layer.name || 'image');
+        
         // Add to PSD data
         const layerInfo: PSDLayerInfo = {
           id: element.id,
@@ -67,7 +71,8 @@ export const processLayer = async (
             width: element.style.width,
             height: element.style.height
           },
-          imageUrl: element.content as string
+          imageUrl: element.content as string,
+          imageKey: imageKey
         };
         
         psdData.layers.push(layerInfo);
