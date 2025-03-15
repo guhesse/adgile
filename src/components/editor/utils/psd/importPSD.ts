@@ -1,3 +1,4 @@
+
 import PSD from 'psd.js';
 import { EditorElement, BannerSize } from '../../types';
 import { toast } from 'sonner';
@@ -39,6 +40,53 @@ export const importPSDFile = (file: File, selectedSize: BannerSize): Promise<Edi
         // More detailed layer debugging
         console.log("=== DETAILED LAYER INFO ===");
         console.log("Layers count:", psd.layers.length);
+        
+        // NEW: Add more detailed text layer detection debug info
+        console.log("=== TEXT LAYER DETECTION DEBUG ===");
+        psd.layers.forEach((layer, index) => {
+          console.log(`\n--- LAYER ${index}: "${layer.name || 'unnamed'}" ---`);
+          
+          // Check for text layer indicators
+          const hasTypeTool = layer.adjustments && layer.adjustments.typeTool;
+          const hasTyShKey = layer.infoKeys && layer.infoKeys.includes('TySh');
+          const hasTypeToolFunction = typeof layer.typeTool === 'function';
+          const isTextType = layer.type === 'text' || layer.type === 'type' || layer.type === 'TextLayer';
+          
+          console.log(`Text layer indicators for "${layer.name || 'unnamed'}":`);
+          console.log(`- Has adjustments.typeTool: ${hasTypeTool ? 'YES' : 'NO'}`);
+          console.log(`- Has 'TySh' in infoKeys: ${hasTyShKey ? 'YES' : 'NO'}`);
+          console.log(`- Has typeTool function: ${hasTypeToolFunction ? 'YES' : 'NO'}`);
+          console.log(`- Is text by type property: ${isTextType ? 'YES' : 'NO'}`);
+          console.log(`- Has legacyName: ${layer.legacyName ? 'YES' : 'NO'}`);
+          
+          if (hasTypeTool) {
+            console.log(`- typeTool details:`, layer.adjustments.typeTool);
+          }
+          
+          if (hasTypeToolFunction) {
+            try {
+              const typeToolData = layer.typeTool();
+              console.log(`- typeTool() result:`, typeToolData);
+              
+              if (typeToolData && typeToolData.textData) {
+                console.log(`- Text content from typeTool:`, typeToolData.textData.text);
+                console.log(`- Text styling:`, {
+                  font: typeToolData.textData.fontName,
+                  fontSize: typeToolData.textData.fontSize,
+                  color: typeToolData.textData.color,
+                  alignment: typeToolData.textData.justification
+                });
+              }
+            } catch (err) {
+              console.log(`- Error calling typeTool():`, err);
+            }
+          }
+          
+          // Check layer type using our detection function
+          const detectedType = detectLayerType(layer);
+          console.log(`- Detected layer type: ${detectedType}`);
+        });
+        
         psd.layers.forEach((layer, index) => {
           console.log(`\n--- LAYER ${index}: "${layer.name}" ---`);
           console.log("Layer object:", layer);

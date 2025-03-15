@@ -72,13 +72,107 @@ export const createTextElement = async (layer: any, selectedSize: BannerSize): P
         console.error("Error getting text from typeTool:", e);
       }
     }
+    // NEW: Try to get text from typeTool function
+    else if (typeof layer.typeTool === 'function') {
+      try {
+        const typeToolData = layer.typeTool();
+        console.log(`TypeTool data for "${layer.name}":`, typeToolData);
+        
+        if (typeToolData) {
+          // Check for various text properties in the typeTool data
+          if (typeToolData.textData && typeToolData.textData.text) {
+            textContent = typeToolData.textData.text;
+            console.log(`Extracted text from typeTool().textData.text: ${textContent}`);
+          } else if (typeToolData.text) {
+            textContent = typeToolData.text;
+            console.log(`Extracted text from typeTool().text: ${textContent}`);
+          } else if (typeToolData.textValue) {
+            textContent = typeToolData.textValue;
+            console.log(`Extracted text from typeTool().textValue: ${textContent}`);
+          }
+          
+          // Also try to extract style information
+          if (typeToolData.textData) {
+            console.log(`Text style data:`, typeToolData.textData);
+            
+            // Font information
+            if (typeToolData.textData.fontName) {
+              textElement.style.fontFamily = typeToolData.textData.fontName;
+              console.log(`Set font family to: ${typeToolData.textData.fontName}`);
+            }
+            
+            // Font size
+            if (typeToolData.textData.fontSize) {
+              textElement.style.fontSize = parseInt(typeToolData.textData.fontSize, 10);
+              console.log(`Set font size to: ${typeToolData.textData.fontSize}`);
+            }
+            
+            // Text color
+            if (typeToolData.textData.color) {
+              textElement.style.color = convertPSDColorToHex(typeToolData.textData.color);
+              console.log(`Set text color to: ${textElement.style.color}`);
+            }
+            
+            // Text alignment
+            if (typeToolData.textData.justification) {
+              textElement.style.textAlign = convertPSDAlignmentToCSS(typeToolData.textData.justification);
+              console.log(`Set text alignment to: ${textElement.style.textAlign}`);
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error extracting data from typeTool function:", e);
+      }
+    }
+    // NEW: Try to get text from adjustments.typeTool
+    else if (layer.adjustments && layer.adjustments.typeTool) {
+      try {
+        if (typeof layer.adjustments.typeTool === 'function') {
+          const typeToolData = layer.adjustments.typeTool();
+          console.log(`TypeTool data from adjustments for "${layer.name}":`, typeToolData);
+          
+          if (typeToolData && typeToolData.textData && typeToolData.textData.text) {
+            textContent = typeToolData.textData.text;
+            console.log(`Extracted text from adjustments.typeTool().textData.text: ${textContent}`);
+          } else if (typeToolData && typeToolData.text) {
+            textContent = typeToolData.text;
+            console.log(`Extracted text from adjustments.typeTool().text: ${textContent}`);
+          }
+        } else if (layer.adjustments.typeTool.obj) {
+          console.log(`TypeTool object from adjustments for "${layer.name}":`, layer.adjustments.typeTool.obj);
+          // Try to force load the lazy object
+          if (layer.adjustments.typeTool.loaded === false && layer.adjustments.typeTool.load) {
+            try {
+              layer.adjustments.typeTool.load();
+              console.log(`Loaded typeTool LazyExecute object`);
+              
+              if (layer.adjustments.typeTool.obj && layer.adjustments.typeTool.obj.textData) {
+                textContent = layer.adjustments.typeTool.obj.textData.text;
+                console.log(`Extracted text from loaded typeTool object: ${textContent}`);
+              }
+            } catch (loadErr) {
+              console.error("Error loading typeTool LazyExecute object:", loadErr);
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error extracting data from adjustments.typeTool:", e);
+      }
+    }
     
     // If we still don't have text content, extract from layer name as fallback
     if (!textContent || textContent.trim() === '') {
       // For layers that have text indicators in their name, use the name without the prefix
       const nameWithoutPrefix = layer.name.replace(/^(heading|h1|h2|h3|paragraph|text|title|subtitle)\s*/i, '');
-      textContent = nameWithoutPrefix || layer.name;
-      console.log(`Using layer name as text content: ${textContent}`);
+      
+      // NEW: Check if the layer has a legacyName property which could contain the text
+      if (layer.legacyName && layer.legacyName.trim() !== '') {
+        textContent = layer.legacyName;
+        console.log(`Using layer.legacyName as text content: ${textContent}`);
+      } else {
+        textContent = nameWithoutPrefix || layer.name;
+        console.log(`Using layer name as text content: ${textContent}`);
+      }
     }
     
     textElement.content = textContent;

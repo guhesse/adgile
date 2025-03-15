@@ -96,6 +96,32 @@ export const isTextLayer = (layer: any): boolean => {
       }
     }
     
+    // NEW Check 7: Look for TySh in infoKeys (PSD marker for text layers)
+    if (layer.infoKeys && Array.isArray(layer.infoKeys) && layer.infoKeys.includes('TySh')) {
+      console.log(`Layer "${layer.name}" is text - has TySh in infoKeys`);
+      return true;
+    }
+    
+    // NEW Check 8: Check if typeTool exists as a function or LazyExecute object in adjustments
+    if (layer.adjustments && layer.adjustments.typeTool) {
+      console.log(`Layer "${layer.name}" is text - has typeTool in adjustments`);
+      return true;
+    }
+    
+    // NEW Check 9: Try to execute the typeTool function if available
+    if (typeof layer.typeTool === 'function') {
+      try {
+        const typeToolData = layer.typeTool();
+        console.log(`Layer "${layer.name}" typeTool data:`, typeToolData);
+        if (typeToolData) {
+          console.log(`Layer "${layer.name}" is text - has valid typeTool function`);
+          return true;
+        }
+      } catch (err) {
+        console.log(`Error executing typeTool function for "${layer.name}":`, err);
+      }
+    }
+    
     console.log(`Layer "${layer.name}" is NOT a text layer - no text indicators found`);
     return false;
   } catch (error) {
