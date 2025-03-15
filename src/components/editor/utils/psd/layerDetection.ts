@@ -179,27 +179,27 @@ export const extractLayerImageData = async (layer: any, layerName: string): Prom
     const exportData = layer.export();
     const { width, height } = exportData;
     
-    let imageData = '';
+    let resultImageData = '';
     
     // Method 1: Use canvas() function if available
     if (typeof layer.canvas === 'function') {
       try {
         const canvas = layer.canvas();
         console.log("Successfully created canvas for layer");
-        imageData = canvas.toDataURL('image/png');
+        resultImageData = canvas.toDataURL('image/png');
       } catch (canvasError) {
         console.error("Error using canvas method:", canvasError);
       }
     }
     
     // Method 2: Use toPng() function if available
-    if (!imageData && layer.toPng && typeof layer.toPng === 'function') {
+    if (!resultImageData && layer.toPng && typeof layer.toPng === 'function') {
       try {
         console.log("Trying toPng method");
         const pngData = layer.toPng();
         if (pngData) {
           const blob = new Blob([pngData], { type: 'image/png' });
-          imageData = URL.createObjectURL(blob);
+          resultImageData = URL.createObjectURL(blob);
         }
       } catch (pngError) {
         console.error("Error using toPng method:", pngError);
@@ -207,21 +207,21 @@ export const extractLayerImageData = async (layer: any, layerName: string): Prom
     }
     
     // Method 3: Manual pixel extraction if available
-    if (!imageData && layer.pixelData && Array.isArray(layer.pixelData)) {
+    if (!resultImageData && layer.pixelData && Array.isArray(layer.pixelData)) {
       try {
         console.log("Trying manual pixel extraction");
         const canvas = createTempCanvas(width, height);
         const ctx = canvas.getContext('2d');
         
         if (ctx) {
-          const imageData = ctx.createImageData(width, height);
+          const canvasImageData = ctx.createImageData(width, height);
           // Copy pixel data
-          for (let i = 0; i < layer.pixelData.length && i < imageData.data.length; i++) {
-            imageData.data[i] = layer.pixelData[i];
+          for (let i = 0; i < layer.pixelData.length && i < canvasImageData.data.length; i++) {
+            canvasImageData.data[i] = layer.pixelData[i];
           }
           
-          ctx.putImageData(imageData, 0, 0);
-          imageData = canvas.toDataURL('image/png');
+          ctx.putImageData(canvasImageData, 0, 0);
+          resultImageData = canvas.toDataURL('image/png');
         }
       } catch (pixelError) {
         console.error("Error during manual pixel extraction:", pixelError);
@@ -229,7 +229,7 @@ export const extractLayerImageData = async (layer: any, layerName: string): Prom
     }
     
     // Method 4: Try to extract from layer.image property
-    if (!imageData && layer.image) {
+    if (!resultImageData && layer.image) {
       try {
         console.log("Layer has image property");
         if (typeof layer.image === 'function') {
@@ -239,7 +239,7 @@ export const extractLayerImageData = async (layer: any, layerName: string): Prom
           // Try to convert the image object to data URL
           if (imageObj) {
             if (imageObj.toDataURL) {
-              imageData = imageObj.toDataURL('image/png');
+              resultImageData = imageObj.toDataURL('image/png');
             } else if (imageObj.data && imageObj.width && imageObj.height) {
               // Create canvas and put image data
               const canvas = createTempCanvas(imageObj.width, imageObj.height);
@@ -253,7 +253,7 @@ export const extractLayerImageData = async (layer: any, layerName: string): Prom
                 }
                 
                 ctx.putImageData(imgData, 0, 0);
-                imageData = canvas.toDataURL('image/png');
+                resultImageData = canvas.toDataURL('image/png');
               }
             }
           }
@@ -264,15 +264,15 @@ export const extractLayerImageData = async (layer: any, layerName: string): Prom
     }
     
     // Method 5: Create placeholder image if all other methods fail
-    if (!imageData) {
+    if (!resultImageData) {
       console.log("Using placeholder image as fallback");
-      imageData = createPlaceholderImage(layerName, width, height);
+      resultImageData = createPlaceholderImage(layerName, width, height);
     }
     
     // Store the image data
-    const imageKey = saveImageToStorage(imageData, layerName);
+    const imageKey = saveImageToStorage(resultImageData, layerName);
     
-    return { imageData, imageKey };
+    return { imageData: resultImageData, imageKey };
   } catch (error) {
     console.error(`Error extracting image data:`, error);
     // Create and return a placeholder image
