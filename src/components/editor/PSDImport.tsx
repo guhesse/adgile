@@ -1,7 +1,7 @@
 
 import { UploadIcon } from "lucide-react";
 import { useCanvas } from "./CanvasContext";
-import { importPSDFile } from "./utils/psdImport";
+import { importPSDFile } from "./utils/psd";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
 import { useState } from "react";
