@@ -32,11 +32,6 @@ export const parsePSDFile = async (file: File): Promise<{
         console.log("====== PSD PARSING DEBUG INFO ======");
         console.log("PSD parsed successfully");
         
-        // Log full PSD structure in raw format
-        console.log("=== FULL RAW PSD TREE STRUCTURE ===");
-        const rawTree = psd.tree().export();
-        console.log("Raw PSD Tree:", rawTree);
-        
         // Log detailed information about the PSD file
         console.log("PSD Width:", psd.header.width);
         console.log("PSD Height:", psd.header.height);
@@ -58,10 +53,51 @@ export const parsePSDFile = async (file: File): Promise<{
         const extractedImages: Map<string, string> = new Map();
         
         console.log("Processing PSD tree for images...");
-        await processImageLayers(psd.tree(), (imageData, nodeName) => {
-          console.log(`Extracted image from node: ${nodeName}`);
-          extractedImages.set(nodeName, imageData);
-        });
+        
+        // First try the direct approach similar to the example code
+        if (psd.tree && typeof psd.tree === 'function') {
+          const tree = psd.tree();
+          console.log("PSD tree obtained:", tree);
+          
+          if (tree.descendants && typeof tree.descendants === 'function') {
+            console.log("Processing tree descendants");
+            const descendants = tree.descendants();
+            
+            for (const node of descendants) {
+              try {
+                if (!node.isGroup()) {
+                  console.log(`Processing node: ${node.name}`);
+                  
+                  if (node.layer && node.layer.image) {
+                    try {
+                      console.log(`Extracting image from node: ${node.name}`);
+                      const png = node.layer.image.toPng();
+                      
+                      if (png) {
+                        const imageData = png.src || png;
+                        console.log(`Successfully extracted image from node: ${node.name}`);
+                        extractedImages.set(node.name, imageData);
+                      }
+                    } catch (nodeError) {
+                      console.error(`Error processing direct extraction for node ${node.name}:`, nodeError);
+                    }
+                  }
+                }
+              } catch (error) {
+                console.error(`Error processing node:`, error);
+              }
+            }
+          }
+          
+          // If no images were extracted using the direct approach, use our fallback
+          if (extractedImages.size === 0) {
+            console.log("No images extracted with direct approach, using fallback method");
+            await processImageLayers(tree, (imageData, nodeName) => {
+              console.log(`Extracted image from node: ${nodeName}`);
+              extractedImages.set(nodeName, imageData);
+            });
+          }
+        }
         
         console.log(`Extracted ${extractedImages.size} images from PSD tree`);
         

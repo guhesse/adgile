@@ -26,12 +26,57 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
     const elements: EditorElement[] = [];
     console.log("=== PROCESSING LAYERS ===");
     console.log("Layers count:", psd.layers.length);
+    console.log("Pre-extracted images:", extractedImages.size);
     
     // Now process all layers
     for (const layer of psd.layers) {
-      const element = await processLayer(layer, selectedSize, psdData);
+      const element = await processLayer(layer, selectedSize, psdData, extractedImages);
       if (element) {
         elements.push(element);
+      }
+    }
+    
+    // If no elements were processed directly from psd.layers,
+    // try to use the tree() to get layers
+    if (elements.length === 0 && psd.tree && typeof psd.tree === 'function') {
+      console.log("No elements found in direct layers array, trying tree approach");
+      const tree = psd.tree();
+      
+      // Check if the tree has descendants method (similar to the example)
+      if (tree.descendants && typeof tree.descendants === 'function') {
+        const descendants = tree.descendants();
+        console.log("Processing descendants:", descendants.length);
+        
+        for (const node of descendants) {
+          if (!node.isGroup || (typeof node.isGroup === 'function' && !node.isGroup())) {
+            console.log(`Processing descendant: ${node.name}`);
+            
+            // Process this node with pre-extracted images
+            const element = await processLayer(node.layer || node, selectedSize, psdData, extractedImages);
+            if (element) {
+              elements.push(element);
+            }
+          }
+        }
+      } else if (tree.children && Array.isArray(tree.children)) {
+        // If tree has children property, process them recursively
+        console.log("Processing tree children");
+        const processChildrenRecursively = async (children: any[]) => {
+          for (const child of children) {
+            if (!child.isGroup || (typeof child.isGroup === 'function' && !child.isGroup())) {
+              const element = await processLayer(child.layer || child, selectedSize, psdData, extractedImages);
+              if (element) {
+                elements.push(element);
+              }
+            }
+            
+            if (child.children && Array.isArray(child.children)) {
+              await processChildrenRecursively(child.children);
+            }
+          }
+        };
+        
+        await processChildrenRecursively(tree.children);
       }
     }
     

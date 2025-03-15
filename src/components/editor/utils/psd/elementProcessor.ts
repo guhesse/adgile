@@ -10,12 +10,14 @@ import { saveImageToStorage } from './storage';
  * @param layer The PSD layer
  * @param selectedSize The selected banner size
  * @param psdData The PSD data to update with layer info
+ * @param extractedImages Optional map of pre-extracted images
  * @returns The created element, or null if creation failed
  */
 export const processLayer = async (
   layer: any, 
   selectedSize: BannerSize, 
-  psdData: PSDFileData
+  psdData: PSDFileData,
+  extractedImages?: Map<string, string>
 ): Promise<EditorElement | null> => {
   try {
     console.log(`Processing layer: ${layer.name || 'unnamed'}`);
@@ -81,7 +83,15 @@ export const processLayer = async (
         psdData.layers.push(layerInfo);
       }
     } else if (layerType === 'image') {
-      element = await createImageElement(layer, selectedSize);
+      // Check if we already have this image pre-extracted
+      let preExtractedImage: string | undefined;
+      if (extractedImages && layer.name) {
+        preExtractedImage = extractedImages.get(layer.name);
+      }
+      
+      // Create image element using pre-extracted image data if available
+      element = await createImageElement(layer, selectedSize, preExtractedImage);
+      
       if (element) {
         console.log(`Created image element from layer: ${layer.name}`);
         
@@ -107,12 +117,23 @@ export const processLayer = async (
       }
     } else {
       // For generic layers that might contain images or other content
-      // First check if it could be treated as an image
-      element = await createImageElement(layer, selectedSize);
+      // Check if we have a pre-extracted image for this layer
+      let preExtractedImage: string | undefined;
+      if (extractedImages && layer.name) {
+        preExtractedImage = extractedImages.get(layer.name);
+      }
       
-      // If image creation failed, create a fallback element
-      if (!element) {
-        element = createFallbackElement(layer, selectedSize);
+      // If we found a pre-extracted image, treat as image layer
+      if (preExtractedImage) {
+        element = await createImageElement(layer, selectedSize, preExtractedImage);
+      } else {
+        // First check if it could be treated as an image
+        element = await createImageElement(layer, selectedSize);
+        
+        // If image creation failed, create a fallback element
+        if (!element) {
+          element = createFallbackElement(layer, selectedSize);
+        }
       }
       
       if (element) {

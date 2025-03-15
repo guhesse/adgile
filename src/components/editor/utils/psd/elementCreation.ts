@@ -238,9 +238,14 @@ const extractAndApplyTextStyling = (layer: any, textElement: EditorElement): voi
  * Create an image element from a PSD layer
  * @param layer The PSD layer
  * @param selectedSize The selected banner size
+ * @param preExtractedImage Optional pre-extracted image data
  * @returns An image element for the canvas
  */
-export const createImageElement = async (layer: any, selectedSize: BannerSize): Promise<EditorElement | null> => {
+export const createImageElement = async (
+  layer: any, 
+  selectedSize: BannerSize,
+  preExtractedImage?: string
+): Promise<EditorElement | null> => {
   try {
     console.log(`Creating image element for layer: ${layer.name || 'unnamed'}`);
     
@@ -267,14 +272,21 @@ export const createImageElement = async (layer: any, selectedSize: BannerSize): 
     imageElement.style.height = height;
     imageElement.alt = layer.name || 'Image Layer';
     
-    // Use the enhanced extractLayerImageData function that includes storage
-    const { imageData, imageKey } = await extractLayerImageData(layer, layer.name || 'image');
-    
-    if (imageData) {
-      imageElement.content = imageData;
-      console.log("Set image content successfully", { imageKey });
+    // Use pre-extracted image if available
+    if (preExtractedImage) {
+      console.log(`Using pre-extracted image for layer: ${layer.name}`);
+      imageElement.content = preExtractedImage;
     } else {
-      console.log("Could not extract image data from layer");
+      // Use the enhanced extractLayerImageData function that includes storage
+      const { imageData, imageKey } = await extractLayerImageData(layer, layer.name || 'image');
+      
+      if (imageData) {
+        imageElement.content = imageData;
+        console.log("Set image content successfully", { imageKey });
+      } else {
+        console.log("Could not extract image data from layer");
+        return null;
+      }
     }
     
     return imageElement;
