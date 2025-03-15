@@ -1,4 +1,3 @@
-
 import { EditorElement, BannerSize } from '../../types';
 import { detectLayerType, isTextLayer } from './layerDetection';
 import { createTextElement, createImageElement, createFallbackElement } from './elementCreation';
@@ -45,8 +44,7 @@ export const processLayer = async (
       return null;
     }
     
-    // CRITICAL FIX: Directly check for text layers first before any other type detection
-    // This ensures text layers are always detected as text and never as images
+    // CRITICAL: First check if this is a text layer using our improved detection
     if (isTextLayer(layer)) {
       console.log(`Detected text layer "${layer.name}" - processing as text`);
       const element = await createTextElement(layer, selectedSize);
