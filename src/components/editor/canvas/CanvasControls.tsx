@@ -73,7 +73,7 @@ export const CanvasControls = ({
             value={[zoomLevel * 100]} 
             min={20} 
             max={300}
-            step={5}
+            step={1}
             onValueChange={handleZoomSliderChange}
             className="w-24"
           />
