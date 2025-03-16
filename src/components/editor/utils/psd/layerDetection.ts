@@ -1,4 +1,3 @@
-
 // Layer type detection utility functions
 import { saveImageToStorage } from './storage';
 

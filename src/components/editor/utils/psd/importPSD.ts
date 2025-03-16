@@ -3,7 +3,7 @@ import { EditorElement, BannerSize } from '../../types';
 import { toast } from 'sonner';
 import { parsePSDFile } from './psdParser';
 import { processLayer, calculatePercentageValues } from './elementProcessor';
-import { savePSDDataToStorage, getPSDStorageKeys } from './storage';
+import { savePSDDataToStorage, getPSDMetadata } from './storage';
 import { PSDFileData } from './types';
 import { convertPSDColorToHex } from './formatters';
 
@@ -158,10 +158,10 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
     
     // Try to save PSD data to localStorage
     try {
-      const storageKey = savePSDDataToStorage(psdData);
+      const storageKey = savePSDDataToStorage(file.name, psdData);
       
       // Display information about saved PSD data
-      const psdDataKeys = getPSDStorageKeys();
+      const psdDataKeys = getPSDMetadata();
       if (psdDataKeys.length > 0) {
         console.log(`PSD data disponíveis no localStorage: ${psdDataKeys.length}`);
       }

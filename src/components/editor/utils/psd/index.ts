@@ -9,4 +9,5 @@ export {
   savePSDMetadata,
   removePSDData
 } from './storage';
-export { PSDFileData, PSDLayerInfo } from './types';
+export type { PSDFileData, PSDLayerInfo } from './types';
+
