@@ -1,192 +1,178 @@
 
-import { useState } from 'react';
-import { Button } from '../ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Label } from '../ui/label';
-import { Input } from '../ui/input';
-import { useCanvas } from './CanvasContext';
-import { importPSDFile } from './utils/psd/importPSD';
-import { BannerSize } from './types';
-import { toast } from 'sonner';
+import { UploadIcon } from "lucide-react";
+import { useCanvas } from "./CanvasContext";
+import { importPSDFile } from "./utils/psd/importPSD";
+import { Button } from "../ui/button";
+import { toast } from "sonner";
+import { useState } from "react";
+import { BannerSize } from "./types";
 
 export const PSDImport = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  const [customSize, setCustomSize] = useState<BannerSize>({
-    name: '',
-    width: 0,
-    height: 0
-  });
-  const [isLoading, setIsLoading] = useState(false);
+  const { selectedSize, setElements, addCustomSize, setSelectedSize } = useCanvas();
+  const [isImporting, setIsImporting] = useState(false);
+  const [fileName, setFileName] = useState<string | null>(null);
 
-  const { 
-    setElements, 
-    setSelectedSize, 
-    setActiveSizes, 
-    activeSizes, 
-    addCustomSize 
-  } = useCanvas();
+  const handlePSDUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      setFile(files[0]);
-    }
-  };
+    // Store file name for display
+    setFileName(file.name);
 
-  const handleCustomSizeChange = (field: keyof BannerSize, value: string) => {
-    setCustomSize(prev => ({
-      ...prev,
-      [field]: field === 'name' ? value : parseInt(value) || 0
-    }));
-  };
-
-  const handleImport = async () => {
-    if (!file) {
-      toast.error("Selecione um arquivo PSD para importar");
+    // Validate file type
+    if (!file.name.toLowerCase().endsWith('.psd')) {
+      toast.error("Por favor, carregue um arquivo PSD válido.");
+      setFileName(null);
       return;
     }
-
-    if (!customSize.name || customSize.width <= 0 || customSize.height <= 0) {
-      toast.error("Nome e dimensões são obrigatórios");
-      return;
-    }
-
-    setIsLoading(true);
-    const loadingToast = toast.loading("Importando PSD...");
 
     try {
-      // Import PSD file with the new custom size
-      const elements = await importPSDFile(file, customSize);
+      // Set importing state
+      setIsImporting(true);
       
-      // Ensure ALL elements have global sizeId to appear in all formats
-      const globalElements = elements.map(element => ({
-        ...element,
-        sizeId: 'global'
-      }));
+      // Show loading toast
+      const loadingToast = toast.loading(`Importando ${file.name}... Este processo pode levar alguns segundos.`);
       
-      // Update canvas elements
-      setElements(globalElements);
+      // Log file information
+      console.log("=== PSD IMPORT STARTED ===");
+      console.log("Importando arquivo PSD:", file.name, "Tamanho:", Math.round(file.size / 1024), "KB");
       
-      // Add the custom size to active sizes if not already there
-      if (!activeSizes.some(size => size.name === customSize.name)) {
+      // Get PSD file dimensions first
+      const { width, height } = await getPSDDimensions(file);
+      
+      if (width && height) {
+        // Create a custom size based on the PSD dimensions
+        const customSizeName = `PSD - ${file.name.replace('.psd', '')}`;
+        const customSize: BannerSize = {
+          name: customSizeName,
+          width,
+          height
+        };
+        
+        // Add the custom size to active sizes and select it
         addCustomSize(customSize);
-      }
-      
-      // Set the custom size as selected
-      setSelectedSize(customSize);
-      
-      // Log information about imported elements
-      const textElements = globalElements.filter(el => el.type === 'text').length;
-      const imageElements = globalElements.filter(el => el.type === 'image').length;
-      const containerElements = globalElements.filter(el => el.type === 'container').length;
-      
-      console.log("=== PSD IMPORT COMPLETED ===");
-      console.log("Resumo da importação:", {
-        total: globalElements.length,
-        textos: textElements,
-        imagens: imageElements,
-        containers: containerElements
-      });
-      
-      if (globalElements.length === 0) {
-        toast.warning("Nenhum elemento foi importado do arquivo PSD. Verifique os logs para mais detalhes.");
+        
+        // Import PSD file with the new custom size
+        const elements = await importPSDFile(file, customSize);
+        
+        // Ensure ALL elements have global sizeId to appear in all formats
+        const globalElements = elements.map(element => ({
+          ...element,
+          sizeId: 'global'
+        }));
+        
+        // Update canvas elements
+        setElements(globalElements);
+        
+        // Set the custom size as selected
+        setSelectedSize(customSize);
+        
+        // Close loading toast
+        toast.dismiss(loadingToast);
+        
+        // Log information about imported elements
+        const textElements = globalElements.filter(el => el.type === 'text').length;
+        const imageElements = globalElements.filter(el => el.type === 'image').length;
+        const containerElements = globalElements.filter(el => el.type === 'container').length;
+        
+        console.log("=== PSD IMPORT COMPLETED ===");
+        console.log("Resumo da importação:", {
+          total: globalElements.length,
+          textos: textElements,
+          imagens: imageElements,
+          containers: containerElements
+        });
+        
+        if (globalElements.length === 0) {
+          toast.warning("Nenhum elemento foi importado do arquivo PSD. Verifique os logs para mais detalhes.");
+        } else {
+          toast.success(`Importados ${globalElements.length} elementos do arquivo PSD. (${textElements} textos, ${imageElements} imagens, ${containerElements} containers)`);
+        }
       } else {
-        toast.success(`Importados ${globalElements.length} elementos do arquivo PSD. (${textElements} textos, ${imageElements} imagens, ${containerElements} containers)`);
+        toast.dismiss(loadingToast);
+        toast.error("Não foi possível determinar as dimensões do arquivo PSD.");
       }
     } catch (error) {
-      console.error("Erro ao importar PSD:", error);
-      toast.error("Erro ao importar o arquivo PSD. Verifique o console para mais detalhes.");
+      console.error("=== PSD IMPORT ERROR ===");
+      console.error("Erro ao importar arquivo PSD:", error);
+      toast.error("Falha ao importar arquivo PSD. Verifique o console para detalhes.");
     } finally {
-      setIsLoading(false);
-      toast.dismiss(loadingToast);
-      setIsOpen(false);
-      setFile(null);
-      setCustomSize({
-        name: '',
-        width: 0,
-        height: 0
-      });
+      // Reset importing state
+      setIsImporting(false);
+      
+      // Reset the input value to allow selecting the same file again
+      event.target.value = '';
     }
+  };
+
+  // Function to get PSD dimensions before importing
+  const getPSDDimensions = async (file: File): Promise<{width: number, height: number}> => {
+    return new Promise((resolve) => {
+      // Create a FileReader
+      const reader = new FileReader();
+      
+      reader.onload = async () => {
+        try {
+          // Import psd.js dynamically (it's already installed)
+          const PSD = await import('psd.js');
+          
+          // Parse the PSD file 
+          // Fixed: Use PSD's constructor directly instead of fromBuffer
+          const psd = new PSD(new Uint8Array(reader.result as ArrayBuffer));
+          await psd.parse();
+          
+          // Get dimensions
+          const width = psd.header.width;
+          const height = psd.header.height;
+          
+          resolve({ width, height });
+        } catch (error) {
+          console.error("Error reading PSD dimensions:", error);
+          // If dimensions can't be determined, use default values
+          resolve({ width: 1200, height: 600 });
+        }
+      };
+      
+      reader.onerror = () => {
+        console.error("Error reading file");
+        resolve({ width: 1200, height: 600 });
+      };
+      
+      // Read the file as ArrayBuffer
+      reader.readAsArrayBuffer(file);
+    });
   };
 
   return (
-    <>
-      <Button 
-        variant="outline" 
-        size="sm" 
-        className="mr-1" 
-        onClick={() => setIsOpen(true)}
-      >
-        Importar PSD
-      </Button>
-
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Importar arquivo PSD</DialogTitle>
-          </DialogHeader>
-          
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-1 gap-2">
-              <Label htmlFor="psd-file">Arquivo PSD</Label>
-              <Input
-                id="psd-file"
-                type="file"
-                accept=".psd"
-                onChange={handleFileChange}
-                disabled={isLoading}
-              />
-            </div>
-            
-            <div className="grid grid-cols-1 gap-2">
-              <Label htmlFor="custom-name">Nome do formato</Label>
-              <Input
-                id="custom-name"
-                type="text"
-                placeholder="Ex: Banner Homepage"
-                value={customSize.name}
-                onChange={(e) => handleCustomSizeChange('name', e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="custom-width">Largura (px)</Label>
-                <Input
-                  id="custom-width"
-                  type="number"
-                  placeholder="Ex: 1200"
-                  value={customSize.width || ''}
-                  onChange={(e) => handleCustomSizeChange('width', e.target.value)}
-                  disabled={isLoading}
-                />
-              </div>
-              <div>
-                <Label htmlFor="custom-height">Altura (px)</Label>
-                <Input
-                  id="custom-height"
-                  type="number"
-                  placeholder="Ex: 628"
-                  value={customSize.height || ''}
-                  onChange={(e) => handleCustomSizeChange('height', e.target.value)}
-                  disabled={isLoading}
-                />
-              </div>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isLoading}>
-              Cancelar
-            </Button>
-            <Button onClick={handleImport} disabled={isLoading}>
-              {isLoading ? "Importando..." : "Importar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+    <div className="flex items-center">
+      <input
+        type="file"
+        id="psd-upload"
+        accept=".psd"
+        onChange={handlePSDUpload}
+        className="hidden"
+        disabled={isImporting}
+      />
+      <label htmlFor="psd-upload" className="flex gap-2 items-center">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="flex items-center gap-2" 
+          asChild
+          disabled={isImporting}
+        >
+          <span>
+            <UploadIcon size={14} />
+            {isImporting ? "Importando..." : "Importar PSD"}
+          </span>
+        </Button>
+        
+        {fileName && !isImporting && (
+          <span className="text-xs text-gray-500 whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px] ml-1">
+            {fileName}
+          </span>
+        )}
+      </label>
+    </div>
   );
 };
