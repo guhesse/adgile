@@ -20,24 +20,12 @@ export const processLayer = async (
   extractedImages?: Map<string, string>
 ): Promise<EditorElement | null> => {
   try {
-    console.log(`Processing layer: ${layer.name || 'unnamed'}`);
-    
-    // Debug layer properties
-    if (layer.debug) {
-      try {
-        console.log("Layer debug info:", layer.debug());
-      } catch (e) {
-        console.log("Could not access layer debug info");
-      }
-    }
-    
     // Skip hidden layers
     if (layer.hidden && typeof layer.hidden !== 'function') return null;
     if (typeof layer.hidden === 'function' && layer.hidden()) return null;
     
     // Check if this is a group layer with no dimensions
     if (layer.isGroup && typeof layer.isGroup === 'function' && layer.isGroup()) {
-      console.log(`Layer "${layer.name}" is a group layer - skipping`);
       return null;
     }
     
@@ -46,17 +34,14 @@ export const processLayer = async (
     try {
       exportData = layer.export();
       if (!exportData.width || !exportData.height || exportData.width <= 0 || exportData.height <= 0) {
-        console.log(`Layer "${layer.name}" has invalid dimensions - skipping`);
         return null;
       }
     } catch (exportError) {
-      console.error(`Could not export layer data for "${layer.name}":`, exportError);
       return null;
     }
     
     // Check layer type
     const layerType = detectLayerType(layer);
-    console.log(`Detected layer type for "${layer.name}": ${layerType}`);
     
     // Create element based on type
     let element: EditorElement | null = null;
@@ -64,23 +49,71 @@ export const processLayer = async (
     if (layerType === 'text') {
       element = await createTextElement(layer, selectedSize);
       if (element) {
-        console.log(`Created text element from layer: ${layer.name}`);
-        
-        // Add to PSD data
-        const layerInfo: PSDLayerInfo = {
-          id: element.id,
-          name: layer.name || 'Text Layer',
-          type: 'text',
-          position: {
-            x: element.style.x,
-            y: element.style.y,
-            width: element.style.width,
-            height: element.style.height
-          },
-          content: element.content as string
-        };
-        
-        psdData.layers.push(layerInfo);
+        // Extract text styling
+        try {
+          // Get text styling information if available
+          if (layer.text && layer.text.font) {
+            const textStyle = {
+              fontSize: layer.text.fontSize || layer.text.size,
+              fontFamily: layer.text.font,
+              fontWeight: layer.text.fontWeight,
+              color: layer.text.color,
+              textAlign: layer.text.alignment,
+              lineHeight: layer.text.leading,
+              letterSpacing: layer.text.tracking
+            };
+            
+            // Apply text styles to the element
+            if (textStyle.fontSize) element.style.fontSize = textStyle.fontSize;
+            if (textStyle.fontFamily) element.style.fontFamily = textStyle.fontFamily;
+            if (textStyle.fontWeight) element.style.fontWeight = textStyle.fontWeight;
+            if (textStyle.color) element.style.color = textStyle.color;
+            if (textStyle.textAlign) {
+              // Convert PSD alignment to editor alignment
+              const alignment = textStyle.textAlign.toString().toLowerCase();
+              if (alignment.includes('left')) element.style.textAlign = 'left';
+              else if (alignment.includes('right')) element.style.textAlign = 'right';
+              else if (alignment.includes('center')) element.style.textAlign = 'center';
+            }
+            if (textStyle.lineHeight) element.style.lineHeight = textStyle.lineHeight;
+            if (textStyle.letterSpacing) element.style.letterSpacing = textStyle.letterSpacing;
+            
+            // Store text style info in PSD data
+            const layerInfo: PSDLayerInfo = {
+              id: element.id,
+              name: layer.name || 'Text Layer',
+              type: 'text',
+              position: {
+                x: element.style.x,
+                y: element.style.y,
+                width: element.style.width,
+                height: element.style.height
+              },
+              content: element.content as string,
+              textStyle: textStyle
+            };
+            
+            psdData.layers.push(layerInfo);
+          }
+        } catch (textStyleError) {
+          console.error('Error extracting text styles:', textStyleError);
+          
+          // Still add basic layer info to PSD data
+          const layerInfo: PSDLayerInfo = {
+            id: element.id,
+            name: layer.name || 'Text Layer',
+            type: 'text',
+            position: {
+              x: element.style.x,
+              y: element.style.y,
+              width: element.style.width,
+              height: element.style.height
+            },
+            content: element.content as string
+          };
+          
+          psdData.layers.push(layerInfo);
+        }
       }
     } else if (layerType === 'image') {
       // Check if we already have this image pre-extracted
@@ -93,8 +126,6 @@ export const processLayer = async (
       element = await createImageElement(layer, selectedSize, preExtractedImage);
       
       if (element) {
-        console.log(`Created image element from layer: ${layer.name}`);
-        
         // Store image in our application storage
         const imageKey = saveImageToStorage(element.content as string, layer.name || 'image');
         
@@ -137,8 +168,6 @@ export const processLayer = async (
       }
       
       if (element) {
-        console.log(`Created ${element.type} element from layer: ${layer.name}`);
-        
         // Add to PSD data
         const layerInfo: PSDLayerInfo = {
           id: element.id,

@@ -6,7 +6,9 @@ import {
   TextIcon, 
   ImageIcon,
   Square,
-  LayoutGrid
+  LayoutGrid,
+  ArrowUpIcon,
+  ArrowDownIcon
 } from "lucide-react";
 import { useState } from "react";
 import { useCanvas } from "./CanvasContext";
@@ -33,11 +35,13 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
   };
 
   // Find all container/layout elements
-  const containers = elements.filter(el => el.type === "layout");
+  const containers = elements.filter(el => el.type === "layout" || el.type === "container");
   
-  // Find elements not inside any container
+  // Find elements not inside any container, excluding artboard backgrounds
   const standaloneElements = elements.filter(el => 
     el.type !== "layout" && 
+    el.type !== "container" &&
+    el.type !== "artboard-background" &&
     !containers.some(container => 
       container.childElements?.some(child => child.id === el.id)
     )
@@ -47,8 +51,10 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
   const renderElementIcon = (type: string) => {
     switch (type) {
       case 'text':
+      case 'paragraph':
         return <TextIcon className="h-4 w-4 text-[#414651]" />;
       case 'image':
+      case 'logo':
         return <ImageIcon className="h-4 w-4 text-[#414651]" />;
       case 'button':
         return <Square className="h-4 w-4 text-[#414651]" />;
@@ -169,6 +175,34 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
     }
   };
 
+  // Move element up in the layers panel (increase z-index)
+  const moveElementUp = (elementId: string) => {
+    const updatedElements = [...elements];
+    const elementIndex = updatedElements.findIndex(el => el.id === elementId);
+    
+    if (elementIndex > 0) {
+      // Swap with the element above
+      [updatedElements[elementIndex], updatedElements[elementIndex - 1]] = 
+      [updatedElements[elementIndex - 1], updatedElements[elementIndex]];
+      
+      setElements(updatedElements);
+    }
+  };
+  
+  // Move element down in the layers panel (decrease z-index)
+  const moveElementDown = (elementId: string) => {
+    const updatedElements = [...elements];
+    const elementIndex = updatedElements.findIndex(el => el.id === elementId);
+    
+    if (elementIndex < updatedElements.length - 1 && elementIndex !== -1) {
+      // Swap with the element below
+      [updatedElements[elementIndex], updatedElements[elementIndex + 1]] = 
+      [updatedElements[elementIndex + 1], updatedElements[elementIndex]];
+      
+      setElements(updatedElements);
+    }
+  };
+
   // Truncate layer name for display
   const truncateName = (name: string, maxLength: number = 20) => {
     if (!name) return '';
@@ -214,15 +248,38 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
               {truncateName(container.content) || `Container ${container.columns || 1}×`}
             </span>
           </div>
-          <button 
-            className="ml-auto text-gray-400 hover:text-gray-600 p-1"
-            onClick={(e) => {
-              e.stopPropagation();
-              removeElement(container.id);
-            }}
-          >
-            ×
-          </button>
+          <div className="flex items-center">
+            <button 
+              className="p-1 text-gray-400 hover:text-gray-600"
+              onClick={(e) => {
+                e.stopPropagation();
+                moveElementUp(container.id);
+              }}
+              title="Mover para cima"
+            >
+              <ArrowUpIcon className="h-3 w-3" />
+            </button>
+            <button 
+              className="p-1 text-gray-400 hover:text-gray-600"
+              onClick={(e) => {
+                e.stopPropagation();
+                moveElementDown(container.id);
+              }}
+              title="Mover para baixo"
+            >
+              <ArrowDownIcon className="h-3 w-3" />
+            </button>
+            <button 
+              className="ml-1 text-gray-400 hover:text-gray-600 p-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                removeElement(container.id);
+              }}
+              title="Remover"
+            >
+              ×
+            </button>
+          </div>
         </div>
         
         {!isCollapsed && (
@@ -239,15 +296,74 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
                 <span className="truncate min-w-0 flex-1">
                   {truncateName(child.content) || child.type}
                 </span>
-                <button 
-                  className="ml-auto text-gray-400 hover:text-gray-600 p-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeElement(child.id);
-                  }}
-                >
-                  ×
-                </button>
+                <div className="flex items-center">
+                  <button 
+                    className="p-1 text-gray-400 hover:text-gray-600"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Handle z-index within container
+                      const updatedElements = [...elements];
+                      const containerIndex = updatedElements.findIndex(el => el.id === container.id);
+                      if (containerIndex !== -1 && updatedElements[containerIndex].childElements) {
+                        const childIndex = updatedElements[containerIndex].childElements!.findIndex(c => c.id === child.id);
+                        if (childIndex > 0) {
+                          const childElements = [...updatedElements[containerIndex].childElements!];
+                          [childElements[childIndex], childElements[childIndex - 1]] = 
+                          [childElements[childIndex - 1], childElements[childIndex]];
+                          
+                          updatedElements[containerIndex] = {
+                            ...updatedElements[containerIndex],
+                            childElements: childElements
+                          };
+                          
+                          setElements(updatedElements);
+                        }
+                      }
+                    }}
+                    title="Mover para cima"
+                  >
+                    <ArrowUpIcon className="h-3 w-3" />
+                  </button>
+                  <button 
+                    className="p-1 text-gray-400 hover:text-gray-600"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Handle z-index within container
+                      const updatedElements = [...elements];
+                      const containerIndex = updatedElements.findIndex(el => el.id === container.id);
+                      if (containerIndex !== -1 && updatedElements[containerIndex].childElements) {
+                        const childElements = updatedElements[containerIndex].childElements!;
+                        const childIndex = childElements.findIndex(c => c.id === child.id);
+                        
+                        if (childIndex < childElements.length - 1) {
+                          const newChildElements = [...childElements];
+                          [newChildElements[childIndex], newChildElements[childIndex + 1]] = 
+                          [newChildElements[childIndex + 1], newChildElements[childIndex]];
+                          
+                          updatedElements[containerIndex] = {
+                            ...updatedElements[containerIndex],
+                            childElements: newChildElements
+                          };
+                          
+                          setElements(updatedElements);
+                        }
+                      }
+                    }}
+                    title="Mover para baixo"
+                  >
+                    <ArrowDownIcon className="h-3 w-3" />
+                  </button>
+                  <button 
+                    className="ml-1 text-gray-400 hover:text-gray-600 p-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeElement(child.id);
+                    }}
+                    title="Remover"
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
             ))}
             {childElements.length === 0 && (
@@ -298,7 +414,7 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
         >
           <div className="text-sm font-medium mb-2 text-gray-500">Elementos sem container</div>
           
-          {standaloneElements.map((element) => (
+          {standaloneElements.map((element, index) => (
             <div 
               key={element.id}
               className={`flex items-center gap-2 px-2 py-1 text-sm rounded-md cursor-pointer my-1 ${selectedElement?.id === element.id ? 'bg-purple-100' : 'hover:bg-gray-50'} ${draggedElement?.id === element.id ? 'opacity-50' : ''}`}
@@ -310,15 +426,38 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
               <span className="truncate min-w-0 flex-1">
                 {truncateName(element.content) || element.type}
               </span>
-              <button 
-                className="ml-auto text-gray-400 hover:text-gray-600 p-1"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removeElement(element.id);
-                }}
-              >
-                ×
-              </button>
+              <div className="flex items-center">
+                <button 
+                  className="p-1 text-gray-400 hover:text-gray-600"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    moveElementUp(element.id);
+                  }}
+                  title="Mover para cima"
+                >
+                  <ArrowUpIcon className="h-3 w-3" />
+                </button>
+                <button 
+                  className="p-1 text-gray-400 hover:text-gray-600"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    moveElementDown(element.id);
+                  }}
+                  title="Mover para baixo"
+                >
+                  <ArrowDownIcon className="h-3 w-3" />
+                </button>
+                <button 
+                  className="ml-1 text-gray-400 hover:text-gray-600 p-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeElement(element.id);
+                  }}
+                  title="Remover"
+                >
+                  ×
+                </button>
+              </div>
             </div>
           ))}
           

@@ -65,4 +65,15 @@ export interface PSDLayerInfo {
   
   /** For image layers, the storage key of the image */
   imageKey?: string;
+  
+  /** Text styling information */
+  textStyle?: {
+    fontSize?: number;
+    fontFamily?: string;
+    fontWeight?: string;
+    color?: string;
+    textAlign?: string;
+    lineHeight?: number;
+    letterSpacing?: number;
+  };
 }

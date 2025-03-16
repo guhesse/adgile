@@ -17,6 +17,7 @@ interface CanvasElementProps {
   handleContainerHoverEnd: () => void;
   hoveredContainer: string | null;
   canvasNavMode: CanvasNavigationMode;
+  zIndex?: number; // Added zIndex prop
 }
 
 export const CanvasElement = ({
@@ -31,18 +32,13 @@ export const CanvasElement = ({
   handleContainerHover,
   handleContainerHoverEnd,
   hoveredContainer,
-  canvasNavMode
+  canvasNavMode,
+  zIndex = 1 // Default zIndex
 }: CanvasElementProps) => {
   const isHovered = hoveredContainer === element.id;
   const isContainer = element.type === "container" || element.type === "layout";
   const isExiting = isElementOutsideContainer && selectedElement?.id === element.id;
   const isImage = element.type === "image" || element.type === "logo";
-  const isArtboardBackground = element.type === "artboard-background";
-
-  // Don't render background elements here if they're artboard backgrounds
-  if (isArtboardBackground) {
-    return null;
-  }
 
   // Choose the appropriate position calculation method
   let position;
@@ -70,21 +66,13 @@ export const CanvasElement = ({
     position = findOptimalPosition(element, canvasSize.width, canvasSize.height);
   }
 
-  // Ensure the element stays within canvas boundaries
-  const constrainedPosition = {
-    x: Math.max(0, Math.min(position.x, canvasSize.width - Math.min(position.width, 20))),
-    y: Math.max(0, Math.min(position.y, canvasSize.height - Math.min(position.height, 20))),
-    width: Math.min(position.width, canvasSize.width),
-    height: Math.min(position.height, canvasSize.height)
-  };
-
   // Apply the final position style
   let positionStyle: React.CSSProperties = {
     position: "absolute",
-    left: constrainedPosition.x,
-    top: constrainedPosition.y,
-    width: constrainedPosition.width,
-    height: constrainedPosition.height
+    left: position.x,
+    top: position.y,
+    width: position.width,
+    height: position.height
   };
 
   // If this element doesn't belong to this canvas size, don't render it
@@ -93,7 +81,7 @@ export const CanvasElement = ({
     return null;
   }
 
-  // Função para prevenir o comportamento padrão de arrastar imagens do navegador
+  // Function to prevent default browser image dragging
   const handleDragStart = (e: React.DragEvent) => {
     e.preventDefault();
     return false;
@@ -112,12 +100,12 @@ export const CanvasElement = ({
         border: isContainer
           ? isHovered ? "1px dashed #4080ff" : "1px dashed #aaa"
           : undefined,
-        zIndex: isDragging && selectedElement?.id === element.id ? 1000 : 1,
+        zIndex: isDragging && selectedElement?.id === element.id ? 1000 : zIndex,
         transition: isExiting ? "none" : "background-color 0.3s, border-color 0.3s",
         overflow: isContainer ? "hidden" : "visible",
         cursor: canvasNavMode === 'pan' ? 'grab' : 'move',
         userSelect: "none",
-        opacity: isExiting ? 0.6 : 1,
+        opacity: element.style.opacity !== undefined ? element.style.opacity : 1,
         boxShadow: isExiting ? "0 0 0 2px #ff4040" : undefined
       }}
       className={`${selectedElement?.id === element.id ? "outline outline-2 outline-blue-500" : ""} ${element.style.animation || ""}`}
@@ -145,7 +133,7 @@ export const CanvasElement = ({
 
       {isContainer && element.childElements && (
         <div className="absolute top-0 left-0 w-full h-full" draggable={false}>
-          {element.childElements.map((child: EditorElement) => (
+          {element.childElements.map((child: EditorElement, childIndex: number) => (
             <CanvasElement
               key={child.id}
               element={child}
@@ -160,6 +148,7 @@ export const CanvasElement = ({
               handleContainerHoverEnd={handleContainerHoverEnd}
               hoveredContainer={hoveredContainer}
               canvasNavMode={canvasNavMode}
+              zIndex={childIndex + 1} // Ensure child elements have higher z-index
             />
           ))}
         </div>

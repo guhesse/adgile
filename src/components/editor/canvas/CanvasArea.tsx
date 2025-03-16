@@ -2,6 +2,7 @@
 import { Card } from "@/components/ui/card";
 import { BannerSize, CanvasNavigationMode, EditorElement } from "../types";
 import { CanvasElement } from "./CanvasElement";
+import { useCanvas } from "../CanvasContext";
 
 interface CanvasAreaProps {
   size: BannerSize;
@@ -40,21 +41,21 @@ export const CanvasArea = ({
   handleMouseMove,
   handleMouseUp
 }: CanvasAreaProps) => {
-  // Find artboard background element
-  const artboardBackgroundElement = elements.find(el => 
-    el.type === 'artboard-background' && 
-    (!el.sizeId || el.sizeId === size.name || el.sizeId === 'global')
-  );
+  const { artboardBackgroundColor = '#ffffff' } = useCanvas();
   
-  // Get the background color, default to white if not found
-  const backgroundColor = artboardBackgroundElement?.style?.backgroundColor || 'white';
+  // Use provided background color directly, no need to search for an element
+  const backgroundColor = artboardBackgroundColor;
 
   // Filter elements that should appear in this specific size or globally
-  const elementsToShow = elements.filter(element => 
-    !element.sizeId || // Elements without sizeId
-    element.sizeId === size.name || // Elements specific to this size
-    element.sizeId === 'global' // Global elements that should appear in all sizes
-  );
+  // Sort elements by z-index (order in the array)
+  const elementsToShow = elements
+    .filter(element => 
+      !element.sizeId || // Elements without sizeId
+      element.sizeId === size.name || // Elements specific to this size
+      element.sizeId === 'global' // Global elements that should appear in all sizes
+    )
+    // Filter out artboard-background elements as we handle them separately
+    .filter(element => element.type !== 'artboard-background');
 
   return (
     <div className="relative">
@@ -71,7 +72,7 @@ export const CanvasArea = ({
         style={{
           width: size.width,
           height: size.height,
-          backgroundColor: backgroundColor,
+          backgroundColor: backgroundColor === 'transparent' ? undefined : backgroundColor,
           backgroundImage: backgroundColor === 'transparent' ? 
             "linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc), linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc)" : 
             "none",
@@ -89,7 +90,7 @@ export const CanvasArea = ({
         onMouseLeave={handleMouseUp}
       >
         {elementsToShow
-          .filter(el => !el.inContainer && el.type !== 'artboard-background')
+          .filter(el => !el.inContainer)
           .map((element, index) => (
             <CanvasElement
               key={`${element.id}-${index}`}
@@ -104,6 +105,7 @@ export const CanvasArea = ({
               handleContainerHoverEnd={handleContainerHoverEnd}
               hoveredContainer={hoveredContainer}
               canvasNavMode={canvasNavMode}
+              zIndex={index} // Pass the index to control z-index
             />
           ))}
       </Card>

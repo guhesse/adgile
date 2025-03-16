@@ -1,183 +1,183 @@
-
 import { PSDFileData, PSDMetadata } from './types';
 
-const PSD_STORAGE_PREFIX = 'psd-import-';
-const PSD_IMAGE_PREFIX = 'psd-image-';
+// Storage keys
+const PSD_METADATA_KEY = 'psd_metadata';
+const PSD_DATA_PREFIX = 'psd_data_';
+const IMAGE_DATA_PREFIX = 'psd_image_';
 
 /**
- * Save PSD data to localStorage
+ * Save PSD data to local storage
  * @param psdData The PSD data to save
- * @returns The key under which the data was saved
+ * @returns The storage key used
  */
 export const savePSDDataToStorage = (psdData: PSDFileData): string => {
   try {
-    const timestamp = Date.now();
-    const storageKey = `${PSD_STORAGE_PREFIX}${timestamp}`;
+    // Generate a unique storage key
+    const timestamp = new Date().getTime();
+    const storageKey = `${PSD_DATA_PREFIX}${timestamp}`;
     
-    // Update the PSD data with storage information
-    psdData.uploadDate = new Date(timestamp).toISOString();
-    psdData.storageKey = storageKey;
-    
-    // Store the PSD data
+    // Save the PSD data to local storage
     localStorage.setItem(storageKey, JSON.stringify(psdData));
-    console.log("PSD data saved to localStorage under key:", storageKey);
     
-    // Also update the PSD index for quick retrieval
-    updatePSDIndex(psdData, storageKey);
+    // Update metadata
+    const metadata = getPSDMetadata();
+    metadata.storageKeys.push(storageKey);
+    metadata.lastUpdated = new Date().toISOString();
+    
+    // Save updated metadata
+    localStorage.setItem(PSD_METADATA_KEY, JSON.stringify(metadata));
     
     return storageKey;
-  } catch (storageError) {
-    console.error("Error saving PSD data to localStorage:", storageError);
-    return '';
+  } catch (error) {
+    console.error('Error saving PSD data to storage:', error);
+    throw error;
   }
 };
 
 /**
- * Update the PSD index with metadata for quick listing
- * @param psdData The PSD data 
+ * Get PSD metadata from local storage
+ * @returns The PSD metadata
+ */
+export const getPSDMetadata = (): PSDMetadata => {
+  try {
+    // Get metadata from local storage
+    const metadataString = localStorage.getItem(PSD_METADATA_KEY);
+    
+    // If metadata exists, parse and return it
+    if (metadataString) {
+      return JSON.parse(metadataString) as PSDMetadata;
+    }
+    
+    // Otherwise, return default metadata
+    return {
+      storageKeys: [],
+      lastUpdated: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error getting PSD metadata from storage:', error);
+    
+    // Return default metadata on error
+    return {
+      storageKeys: [],
+      lastUpdated: new Date().toISOString()
+    };
+  }
+};
+
+/**
+ * Get PSD data from local storage
  * @param storageKey The storage key
+ * @returns The PSD data, or null if not found
  */
-const updatePSDIndex = (psdData: PSDFileData, storageKey: string): void => {
+export const getPSDDataFromStorage = (storageKey: string): PSDFileData | null => {
   try {
-    // Get existing index
-    const indexKey = 'psd-index';
-    const existingIndex = localStorage.getItem(indexKey);
-    const index: PSDMetadata[] = existingIndex ? JSON.parse(existingIndex) : [];
+    // Get PSD data from local storage
+    const psdDataString = localStorage.getItem(storageKey);
     
-    // Add new entry
-    index.push({
-      key: storageKey,
-      fileName: psdData.fileName,
-      uploadDate: psdData.uploadDate,
-      width: psdData.width,
-      height: psdData.height
-    });
+    // If data exists, parse and return it
+    if (psdDataString) {
+      return JSON.parse(psdDataString) as PSDFileData;
+    }
     
-    // Save updated index
-    localStorage.setItem(indexKey, JSON.stringify(index));
-    console.log("PSD index updated with new entry");
+    return null;
   } catch (error) {
-    console.error("Error updating PSD index:", error);
+    console.error('Error getting PSD data from storage:', error);
+    return null;
   }
 };
 
 /**
- * Save an image extracted from a PSD to localStorage
- * @param imageData The image data URL
- * @param layerName The name of the layer for reference
- * @returns The key under which the image was saved
+ * Save image data to local storage
+ * @param imageData The image data (base64 string)
+ * @param name Optional name for the image
+ * @returns The storage key used
  */
-export const saveImageToStorage = (imageData: string, layerName: string): string => {
+export const saveImageToStorage = (imageData: string, name?: string): string => {
   try {
-    const imageKey = `${PSD_IMAGE_PREFIX}${Date.now()}-${layerName.replace(/\s+/g, '-').toLowerCase()}`;
-    localStorage.setItem(imageKey, imageData);
-    console.log(`Image saved to localStorage: ${imageKey}`);
-    return imageKey;
+    // Generate a unique storage key
+    const timestamp = new Date().getTime();
+    const safeName = name ? name.replace(/[^a-z0-9]/gi, '_').toLowerCase() : 'img';
+    const storageKey = `${IMAGE_DATA_PREFIX}${safeName}_${timestamp}`;
+    
+    // Save the image data to local storage
+    localStorage.setItem(storageKey, imageData);
+    
+    return storageKey;
   } catch (error) {
-    console.error("Error saving image to localStorage:", error);
-    return '';
+    console.error('Error saving image data to storage:', error);
+    throw error;
   }
 };
 
 /**
- * Get list of all stored PSD data keys
- * @returns Array of storage keys for PSD data
+ * Get image data from local storage
+ * @param storageKey The storage key
+ * @returns The image data, or null if not found
+ */
+export const getImageFromStorage = (storageKey: string): string | null => {
+  try {
+    // Get image data from local storage
+    return localStorage.getItem(storageKey);
+  } catch (error) {
+    console.error('Error getting image data from storage:', error);
+    return null;
+  }
+};
+
+/**
+ * Get all PSD storage keys
+ * @returns Array of storage keys
  */
 export const getPSDStorageKeys = (): string[] => {
-  return Object.keys(localStorage).filter(key => key.startsWith(PSD_STORAGE_PREFIX));
-};
-
-/**
- * Get PSD metadata from index
- * @returns Array of PSD metadata
- */
-export const getPSDMetadataList = (): PSDMetadata[] => {
   try {
-    const indexKey = 'psd-index';
-    const indexData = localStorage.getItem(indexKey);
-    if (!indexData) return [];
-    return JSON.parse(indexData) as PSDMetadata[];
+    const metadata = getPSDMetadata();
+    return metadata.storageKeys;
   } catch (error) {
-    console.error("Error retrieving PSD index:", error);
+    console.error('Error getting PSD storage keys:', error);
     return [];
   }
 };
 
 /**
- * Get PSD data from localStorage by key
- * @param key The storage key
- * @returns The PSD data, or null if not found
+ * Delete PSD data from local storage
+ * @param storageKey The storage key
  */
-export const getPSDDataFromStorage = (key: string): PSDFileData | null => {
+export const deletePSDDataFromStorage = (storageKey: string): void => {
   try {
-    const data = localStorage.getItem(key);
-    if (!data) return null;
-    return JSON.parse(data) as PSDFileData;
+    // Remove the PSD data
+    localStorage.removeItem(storageKey);
+    
+    // Update metadata
+    const metadata = getPSDMetadata();
+    metadata.storageKeys = metadata.storageKeys.filter(key => key !== storageKey);
+    metadata.lastUpdated = new Date().toISOString();
+    
+    // Save updated metadata
+    localStorage.setItem(PSD_METADATA_KEY, JSON.stringify(metadata));
   } catch (error) {
-    console.error("Error retrieving PSD data from localStorage:", error);
-    return null;
+    console.error('Error deleting PSD data from storage:', error);
   }
 };
 
 /**
- * Get image data from localStorage
- * @param imageKey The image storage key
- * @returns The image data URL, or null if not found
+ * Clear all PSD data from local storage
  */
-export const getImageFromStorage = (imageKey: string): string | null => {
+export const clearAllPSDDataFromStorage = (): void => {
   try {
-    return localStorage.getItem(imageKey);
+    // Get metadata
+    const metadata = getPSDMetadata();
+    
+    // Remove all PSD data
+    metadata.storageKeys.forEach(key => {
+      localStorage.removeItem(key);
+    });
+    
+    // Reset metadata
+    localStorage.setItem(PSD_METADATA_KEY, JSON.stringify({
+      storageKeys: [],
+      lastUpdated: new Date().toISOString()
+    }));
   } catch (error) {
-    console.error("Error retrieving image from localStorage:", error);
-    return null;
-  }
-};
-
-/**
- * Remove PSD data from localStorage by key
- * @param key The storage key to remove
- */
-export const removePSDDataFromStorage = (key: string): void => {
-  try {
-    // Get the PSD data to find associated images
-    const psdData = getPSDDataFromStorage(key);
-    if (psdData) {
-      // Remove any associated images
-      psdData.layers.forEach(layer => {
-        if (layer.imageKey) {
-          localStorage.removeItem(layer.imageKey);
-          console.log(`Removed associated image: ${layer.imageKey}`);
-        }
-      });
-    }
-    
-    // Remove the PSD data itself
-    localStorage.removeItem(key);
-    console.log("Removed PSD data with key:", key);
-    
-    // Update the index
-    updatePSDIndexAfterRemoval(key);
-  } catch (error) {
-    console.error("Error removing PSD data from localStorage:", error);
-  }
-};
-
-/**
- * Update the PSD index after removal
- * @param removedKey The key that was removed
- */
-const updatePSDIndexAfterRemoval = (removedKey: string): void => {
-  try {
-    const indexKey = 'psd-index';
-    const existingIndex = localStorage.getItem(indexKey);
-    if (!existingIndex) return;
-    
-    const index: PSDMetadata[] = JSON.parse(existingIndex);
-    const updatedIndex = index.filter(item => item.key !== removedKey);
-    
-    localStorage.setItem(indexKey, JSON.stringify(updatedIndex));
-    console.log("PSD index updated after removal");
-  } catch (error) {
-    console.error("Error updating PSD index after removal:", error);
+    console.error('Error clearing all PSD data from storage:', error);
   }
 };

@@ -46,11 +46,25 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
       console.error("Error extracting background color:", bgError);
     }
     
+    // Log raw PSD data for debugging (complete structure in one place)
+    console.log("=== RAW PSD DATA ===");
+    try {
+      // Get comprehensive PSD data
+      const rawData = {
+        header: psd.header,
+        resources: psd.resources,
+        layersCount: psd.layers.length,
+        dimensions: { width: psd.header.width, height: psd.header.height },
+        extractedImages: Array.from(extractedImages.keys()),
+        treeStructure: psd.tree && typeof psd.tree === 'function' ? psd.tree() : null
+      };
+      console.log(rawData);
+    } catch (logError) {
+      console.error("Error logging full PSD structure:", logError);
+    }
+    
     // Process layers
     const elements: EditorElement[] = [];
-    console.log("=== PROCESSING LAYERS ===");
-    console.log("Layers count:", psd.layers.length);
-    console.log("Pre-extracted images:", extractedImages.size);
     
     // Now process all layers
     for (const layer of psd.layers) {
@@ -65,19 +79,14 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
     // If no elements were processed directly from psd.layers,
     // try to use the tree() to get layers
     if (elements.length === 0 && psd.tree && typeof psd.tree === 'function') {
-      console.log("No elements found in direct layers array, trying tree approach");
       const tree = psd.tree();
       
-      // Check if the tree has descendants method (similar to the example)
+      // Check if the tree has descendants method
       if (tree.descendants && typeof tree.descendants === 'function') {
         const descendants = tree.descendants();
-        console.log("Processing descendants:", descendants.length);
         
         for (const node of descendants) {
           if (!node.isGroup || (typeof node.isGroup === 'function' && !node.isGroup())) {
-            console.log(`Processing descendant: ${node.name}`);
-            
-            // Process this node with pre-extracted images
             const element = await processLayer(node.layer || node, selectedSize, psdData, extractedImages);
             if (element) {
               // Assign 'global' sizeId for visibility in all artboards
@@ -88,7 +97,6 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
         }
       } else if (tree.children && Array.isArray(tree.children)) {
         // If tree has children property, process them recursively
-        console.log("Processing tree children");
         const processChildrenRecursively = async (children: any[]) => {
           for (const child of children) {
             if (!child.isGroup || (typeof child.isGroup === 'function' && !child.isGroup())) {
@@ -113,33 +121,30 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
     // Calculate percentage values - important for responsive behavior
     calculatePercentageValues(elements, selectedSize);
     
-    // Make sure elements stay within the boundaries
+    // Allow elements to extend slightly beyond artboard boundaries
+    // but still ensure they're connected to the artboard
     elements.forEach(element => {
       // Ensure all elements have the 'global' sizeId
       element.sizeId = 'global';
       
-      // If element extends beyond right edge
-      if (element.style.x + element.style.width > selectedSize.width) {
-        // If wider than canvas, resize it
-        if (element.style.width > selectedSize.width) {
-          element.style.width = selectedSize.width - 20; // Leave some margin
-          element.style.x = 10; // Position with margin
-        } else {
-          // Otherwise just position it within bounds
-          element.style.x = selectedSize.width - element.style.width - 10;
-        }
+      // If element extends beyond right edge by more than 50%
+      if (element.style.x > selectedSize.width * 1.5) {
+        element.style.x = selectedSize.width - element.style.width / 2;
       }
       
-      // If element extends beyond bottom edge
-      if (element.style.y + element.style.height > selectedSize.height) {
-        // If taller than canvas, resize it
-        if (element.style.height > selectedSize.height) {
-          element.style.height = selectedSize.height - 20; // Leave some margin
-          element.style.y = 10; // Position with margin
-        } else {
-          // Otherwise just position it within bounds
-          element.style.y = selectedSize.height - element.style.height - 10;
-        }
+      // If element extends beyond bottom edge by more than 50%
+      if (element.style.y > selectedSize.height * 1.5) {
+        element.style.y = selectedSize.height - element.style.height / 2;
+      }
+      
+      // If element is completely off-screen to the left
+      if (element.style.x + element.style.width < -element.style.width * 0.5) {
+        element.style.x = -element.style.width / 2;
+      }
+      
+      // If element is completely off-screen to the top
+      if (element.style.y + element.style.height < -element.style.height * 0.5) {
+        element.style.y = -element.style.height / 2;
       }
       
       // Recalculate percentages after adjustments
@@ -149,27 +154,7 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
       element.style.heightPercent = (element.style.height / selectedSize.height) * 100;
     });
     
-    // Create a special artboard background element
-    const artboardBackgroundElement: EditorElement = {
-      id: `artboard-bg-${new Date().getTime()}`,
-      type: 'artboard-background',
-      content: backgroundColor,
-      sizeId: 'global',
-      style: {
-        backgroundColor,
-        x: 0,
-        y: 0,
-        width: selectedSize.width,
-        height: selectedSize.height,
-        xPercent: 0,
-        yPercent: 0,
-        widthPercent: 100,
-        heightPercent: 100
-      }
-    };
-    
-    // Add the background element at the beginning
-    elements.unshift(artboardBackgroundElement);
+    // Don't create the artboard background element as it will be managed separately
     
     // Try to save PSD data to localStorage
     try {
@@ -179,7 +164,6 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
       const psdDataKeys = getPSDStorageKeys();
       if (psdDataKeys.length > 0) {
         console.log(`PSD data disponíveis no localStorage: ${psdDataKeys.length}`);
-        console.log(`Último PSD salvo: ${psdDataKeys[psdDataKeys.length - 1]}`);
       }
     } catch (error) {
       console.error("Error saving PSD data to localStorage:", error);
@@ -189,21 +173,14 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
     // Log summary of imported elements
     const textElements = elements.filter(el => el.type === 'text').length;
     const imageElements = elements.filter(el => el.type === 'image').length;
-    const containerElements = elements.filter(el => el.type === 'container').length;
-    
-    console.log("FINAL IMPORT SUMMARY:");
-    console.log("Total elements:", elements.length);
-    console.log("Text elements:", textElements);
-    console.log("Image elements:", imageElements);
-    console.log("Container elements:", containerElements);
-    console.log("Background color:", backgroundColor);
     
     if (elements.length === 0) {
       toast.warning("Nenhuma camada visível encontrada no arquivo PSD.");
     } else {
-      toast.success(`Importados ${elements.length} elementos do arquivo PSD. (${textElements} textos, ${imageElements} imagens, ${containerElements} containers)`);
+      toast.success(`Importados ${elements.length} elementos do arquivo PSD.`);
     }
     
+    // Return just the elements - artboard background will be managed separately
     return elements;
   } catch (error) {
     console.error("Error importing PSD file:", error);

@@ -1,11 +1,11 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BannerSize } from "../types";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { InfoIcon, RefreshCwIcon } from "lucide-react";
+import { InfoIcon } from "lucide-react";
 
 interface ArtboardPanelProps {
   selectedSize: BannerSize;
@@ -20,19 +20,17 @@ export const ArtboardPanel = ({
 }: ArtboardPanelProps) => {
   const [backgroundValue, setBackgroundValue] = useState<string>(artboardBackgroundColor);
 
+  // Update local state when artboardBackgroundColor changes
+  useEffect(() => {
+    setBackgroundValue(artboardBackgroundColor);
+  }, [artboardBackgroundColor]);
+
   const handleBackgroundChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setBackgroundValue(e.target.value);
   };
 
   const handleBackgroundApply = () => {
     updateArtboardBackground(backgroundValue);
-  };
-
-  // Function to generate a random color
-  const generateRandomColor = () => {
-    const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
-    setBackgroundValue(randomColor);
-    updateArtboardBackground(randomColor);
   };
 
   // Predefined common background colors
@@ -47,7 +45,7 @@ export const ArtboardPanel = ({
     "#8B5CF6", // Purple
     "#EC4899", // Pink
     "#6B7280", // Gray
-    "#transparent" // Transparent
+    "transparent" // Transparent
   ];
 
   return (
@@ -78,7 +76,7 @@ export const ArtboardPanel = ({
                 <InfoIcon size={16} className="text-gray-400 hover:text-gray-600" />
               </TooltipTrigger>
               <TooltipContent>
-                <p className="max-w-xs">Define a cor de fundo da prancheta. Você pode usar cores em hexadecimal, RGBA ou nomes como "transparent".</p>
+                <p className="max-w-xs">Define a cor de fundo da prancheta. Você pode usar cores em hexadecimal, RGBA ou "transparent".</p>
               </TooltipContent>
             </Tooltip>
           </div>
@@ -99,14 +97,6 @@ export const ArtboardPanel = ({
                 className="w-10 h-10 p-1 border rounded cursor-pointer"
               />
             </div>
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={generateRandomColor}
-              title="Gerar cor aleatória"
-            >
-              <RefreshCwIcon size={16} />
-            </Button>
           </div>
           
           <Button
@@ -125,17 +115,16 @@ export const ArtboardPanel = ({
                   key={index}
                   className="w-8 h-8 rounded border border-gray-300 cursor-pointer hover:scale-110 transition-transform"
                   style={{
-                    backgroundColor: color === "#transparent" ? "transparent" : color,
-                    backgroundImage: color === "#transparent" ? "linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc), linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc)" : "none",
-                    backgroundSize: color === "#transparent" ? "8px 8px" : "auto",
-                    backgroundPosition: color === "#transparent" ? "0 0, 4px 4px" : "auto"
+                    backgroundColor: color === "transparent" ? "transparent" : color,
+                    backgroundImage: color === "transparent" ? "linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc), linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc)" : "none",
+                    backgroundSize: color === "transparent" ? "8px 8px" : "auto",
+                    backgroundPosition: color === "transparent" ? "0 0, 4px 4px" : "auto"
                   }}
                   onClick={() => {
-                    const newColor = color === "#transparent" ? "transparent" : color;
-                    setBackgroundValue(newColor);
-                    updateArtboardBackground(newColor);
+                    setBackgroundValue(color);
+                    updateArtboardBackground(color);
                   }}
-                  title={color === "#transparent" ? "Transparent" : color}
+                  title={color === "transparent" ? "Transparent" : color}
                 />
               ))}
             </div>
