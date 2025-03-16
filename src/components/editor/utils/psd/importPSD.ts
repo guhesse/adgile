@@ -1,4 +1,3 @@
-
 import { EditorElement, BannerSize } from '../../types';
 import { toast } from 'sonner';
 import { parsePSDFile } from './psdParser';
@@ -91,6 +90,9 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
     
     // Make sure elements stay within the boundaries
     elements.forEach(element => {
+      // Ensure all elements have the 'global' sizeId
+      element.sizeId = 'global';
+      
       // If element extends beyond right edge
       if (element.style.x + element.style.width > selectedSize.width) {
         // If wider than canvas, resize it

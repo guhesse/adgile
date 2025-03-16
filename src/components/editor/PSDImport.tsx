@@ -55,8 +55,14 @@ export const PSDImport = () => {
         // Import PSD file with the new custom size
         const elements = await importPSDFile(file, customSize);
         
+        // Ensure ALL elements have global sizeId to appear in all formats
+        const globalElements = elements.map(element => ({
+          ...element,
+          sizeId: 'global'
+        }));
+        
         // Update canvas elements
-        setElements(elements);
+        setElements(globalElements);
         
         // Set the custom size as selected
         setSelectedSize(customSize);
@@ -65,22 +71,22 @@ export const PSDImport = () => {
         toast.dismiss(loadingToast);
         
         // Log information about imported elements
-        const textElements = elements.filter(el => el.type === 'text').length;
-        const imageElements = elements.filter(el => el.type === 'image').length;
-        const containerElements = elements.filter(el => el.type === 'container').length;
+        const textElements = globalElements.filter(el => el.type === 'text').length;
+        const imageElements = globalElements.filter(el => el.type === 'image').length;
+        const containerElements = globalElements.filter(el => el.type === 'container').length;
         
         console.log("=== PSD IMPORT COMPLETED ===");
         console.log("Resumo da importação:", {
-          total: elements.length,
+          total: globalElements.length,
           textos: textElements,
           imagens: imageElements,
           containers: containerElements
         });
         
-        if (elements.length === 0) {
+        if (globalElements.length === 0) {
           toast.warning("Nenhum elemento foi importado do arquivo PSD. Verifique os logs para mais detalhes.");
         } else {
-          toast.success(`Importados ${elements.length} elementos do arquivo PSD. (${textElements} textos, ${imageElements} imagens, ${containerElements} containers)`);
+          toast.success(`Importados ${globalElements.length} elementos do arquivo PSD. (${textElements} textos, ${imageElements} imagens, ${containerElements} containers)`);
         }
       } else {
         toast.dismiss(loadingToast);

@@ -40,9 +40,11 @@ export const CanvasArea = ({
   handleMouseMove,
   handleMouseUp
 }: CanvasAreaProps) => {
-  // Filtra elementos que devem aparecer neste tamanho específico ou globalmente
+  // Filter elements that should appear in this specific size or globally
   const elementsToShow = elements.filter(element => 
-    !element.sizeId || element.sizeId === size.name || element.sizeId === 'global'
+    !element.sizeId || // Elements without sizeId
+    element.sizeId === size.name || // Elements specific to this size
+    element.sizeId === 'global' // Global elements that should appear in all sizes
   );
 
   return (
@@ -63,7 +65,7 @@ export const CanvasArea = ({
           backgroundColor: "white"
         }}
         onMouseDown={(e) => {
-          // Verificar se clicou diretamente no Card (canvas) e não em um elemento
+          // Check if clicked directly on the Card (canvas) and not on an element
           if (e.currentTarget === e.target) {
             handleCanvasMouseDown(e);
           }

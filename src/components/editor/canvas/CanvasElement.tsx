@@ -81,7 +81,8 @@ export const CanvasElement = ({
   };
 
   // If this element doesn't belong to this canvas size, don't render it
-  if (element.sizeId && element.sizeId !== canvasSize.name) {
+  // Global elements (sizeId = 'global') should appear in all canvases
+  if (element.sizeId && element.sizeId !== canvasSize.name && element.sizeId !== 'global') {
     return null;
   }
 
