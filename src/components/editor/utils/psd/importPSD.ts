@@ -1,7 +1,6 @@
 
 import { BannerSize, EditorElement } from "../../types";
 import { parsePSDFile } from "./psdParser";
-import { processLayer } from "./elementProcessor";
 import { toast } from "sonner";
 
 export const importPSDFile = async (
@@ -10,33 +9,7 @@ export const importPSDFile = async (
 ): Promise<EditorElement[]> => {
   try {
     // Parse the PSD file
-    const parsedData = await parsePSDFile(file);
-    
-    const elements: EditorElement[] = [];
-    
-    // Extract layers from the PSD file
-    if (parsedData.psd && parsedData.psd.tree && typeof parsedData.psd.tree === 'function') {
-      const tree = parsedData.psd.tree();
-      
-      // Process regular layers
-      if (tree.children && tree.children.length > 0) {
-        for (const layer of tree.children) {
-          try {
-            // Skip if layer is a group or is hidden
-            if ((layer.isGroup && layer.isGroup()) || (layer.hidden && layer.hidden())) {
-              continue;
-            }
-            
-            const element = await processLayer(layer, selectedSize, parsedData.psdData, parsedData.extractedImages);
-            if (element) {
-              elements.push(element);
-            }
-          } catch (layerError) {
-            console.error(`Error processing layer ${layer?.name || 'unnamed'}:`, layerError);
-          }
-        }
-      }
-    }
+    const elements = await parsePSDFile(file, selectedSize);
     
     // Make sure elements stay within the boundaries
     elements.forEach(element => {
