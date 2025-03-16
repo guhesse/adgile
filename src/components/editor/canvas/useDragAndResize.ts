@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { snapToGrid } from '../utils/gridUtils';
 import { BannerSize, CanvasNavigationMode, EditingMode, EditorElement } from '../types';
-import { moveElementOutOfContainer, moveElementToContainer } from '../utils/containerUtils';
+import { moveElementOutOfContainer, moveElementToContainer, constrainElementToArtboard, isElementOutOfBounds } from '../utils/containerUtils';
 
 interface UseDragAndResizeProps {
   elements: EditorElement[];
@@ -43,8 +43,12 @@ export const useDragAndResize = ({
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
   const [isElementOutsideContainer, setIsElementOutsideContainer] = useState(false);
+  const isDraggingRef = useRef(false);
 
   const handleMouseDown = (e: React.MouseEvent, element: EditorElement) => {
+    // Prevent the normal browser image dragging behavior
+    e.preventDefault();
+    
     if (canvasNavMode === 'pan') {
       setIsPanning(true);
       setPanStart({
@@ -58,6 +62,7 @@ export const useDragAndResize = ({
 
     setSelectedElement(element);
     setIsDragging(true);
+    isDraggingRef.current = true;
 
     const rect = e.currentTarget.getBoundingClientRect();
     setDragStart({
@@ -78,6 +83,8 @@ export const useDragAndResize = ({
 
   const handleResizeStart = (e: React.MouseEvent, direction: string, element: EditorElement) => {
     e.stopPropagation();
+    e.preventDefault();
+    
     setIsResizing(true);
     setResizeDirection(direction);
     setSelectedElement(element);
@@ -178,6 +185,7 @@ export const useDragAndResize = ({
           newY = Math.max(0, Math.min(newY, parentElement.style.height - selectedElement.style.height));
         }
       } else {
+        // Garantir que o elemento fique dentro dos limites da artboard
         newX = Math.max(0, Math.min(newX, selectedSize.width - selectedElement.style.width));
         newY = Math.max(0, Math.min(newY, selectedSize.height - selectedElement.style.height));
       }
@@ -301,6 +309,22 @@ export const useDragAndResize = ({
             newHeight = parentElement.style.height - newY;
           }
         }
+      } else {
+        // Garantir que o elemento não exceda os limites da artboard durante o redimensionamento
+        if (newX < 0) {
+          newX = 0;
+          newWidth = selectedElement.style.width;
+        }
+        if (newY < 0) {
+          newY = 0;
+          newHeight = selectedElement.style.height;
+        }
+        if (newX + newWidth > selectedSize.width) {
+          newWidth = selectedSize.width - newX;
+        }
+        if (newY + newHeight > selectedSize.height) {
+          newHeight = selectedSize.height - newY;
+        }
       }
 
       const widthPercent = (newWidth / selectedSize.width) * 100;
@@ -398,9 +422,39 @@ export const useDragAndResize = ({
     }
 
     if (isDragging || isResizing) {
+      // Aplicar restrições de contêiner, se necessário
       if (hoveredContainer && selectedElement && selectedElement.type !== 'container' && selectedElement.type !== 'layout') {
         moveElementToContainer(selectedElement, hoveredContainer, elements, setElements, setSelectedElement);
       } else {
+        // Verificar se algum elemento está fora dos limites da artboard
+        let updatedElements = [...elements];
+        let needsUpdate = false;
+        
+        updatedElements = updatedElements.map(element => {
+          // Para elementos em container, não aplicamos restrições diretamente
+          if (element.inContainer) return element;
+          
+          // Verifique se o elemento está fora dos limites
+          if (isElementOutOfBounds(element, selectedSize.width, selectedSize.height)) {
+            needsUpdate = true;
+            return constrainElementToArtboard(element, selectedSize.width, selectedSize.height);
+          }
+          
+          return element;
+        });
+        
+        if (needsUpdate) {
+          setElements(updatedElements);
+          
+          // Atualizar o elemento selecionado se ele foi modificado
+          if (selectedElement && !selectedElement.inContainer) {
+            const updatedSelectedElement = updatedElements.find(el => el.id === selectedElement.id);
+            if (updatedSelectedElement) {
+              setSelectedElement(updatedSelectedElement);
+            }
+          }
+        }
+        
         organizeElements();
       }
     }
@@ -412,9 +466,25 @@ export const useDragAndResize = ({
     }
 
     setIsDragging(false);
+    isDraggingRef.current = false;
     setIsResizing(false);
     handleContainerHoverEnd();
   };
+
+  // Adicione um manipulador de eventos global para lidar com o mouse up fora da área do canvas
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isDraggingRef.current) {
+        handleMouseUp();
+      }
+    };
+
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    
+    return () => {
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, []);  // Dependência vazia para adicionar o evento apenas uma vez
 
   return {
     isDragging,

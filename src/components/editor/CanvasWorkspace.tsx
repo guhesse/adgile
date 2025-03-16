@@ -1,11 +1,12 @@
 
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { CanvasWorkspaceContent } from "./canvas/CanvasWorkspaceContent";
 import { useDragAndResize } from "./canvas/useDragAndResize";
 import { useCanvas } from "./CanvasContext";
 import { useCanvasKeyboardShortcuts } from "./canvas/hooks/useCanvasKeyboardShortcuts";
 import { useCanvasZoomAndPan } from "./canvas/hooks/useCanvasZoomAndPan";
 import { useCanvasInitialization } from "./canvas/hooks/useCanvasInitialization";
+import { constrainAllElements } from "./utils/containerUtils";
 
 export const CanvasWorkspace = () => {
   const {
@@ -81,8 +82,19 @@ export const CanvasWorkspace = () => {
     canvasNavMode
   });
 
+  // Efeito para garantir que todos os elementos permaneçam dentro dos limites da artboard
+  useEffect(() => {
+    if (elements.length > 0) {
+      const constrainedElements = constrainAllElements(elements, selectedSize.width, selectedSize.height);
+      setElements(constrainedElements);
+    }
+  }, [selectedSize]);
+
   // Modificar o handleCanvasMouseDown para limpar a seleção quando clicar no canvas
   const handleCanvasClick = (e: React.MouseEvent) => {
+    // Prevenir comportamento padrão do navegador
+    e.preventDefault();
+    
     // Chama o comportamento original
     handleCanvasMouseDown(e);
     

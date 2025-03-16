@@ -36,6 +36,7 @@ export const CanvasElement = ({
   const isHovered = hoveredContainer === element.id;
   const isContainer = element.type === "container" || element.type === "layout";
   const isExiting = isElementOutsideContainer && selectedElement?.id === element.id;
+  const isImage = element.type === "image" || element.type === "logo";
 
   // Choose the appropriate position calculation method
   let position;
@@ -86,6 +87,12 @@ export const CanvasElement = ({
     return null;
   }
 
+  // Função para prevenir o comportamento padrão de arrastar imagens do navegador
+  const handleDragStart = (e: React.DragEvent) => {
+    e.preventDefault();
+    return false;
+  };
+
   return (
     <div
       style={{
@@ -109,6 +116,8 @@ export const CanvasElement = ({
       }}
       className={`${selectedElement?.id === element.id ? "outline outline-2 outline-blue-500" : ""} ${element.style.animation || ""}`}
       onMouseDown={(e) => handleMouseDown(e, element)}
+      onDragStart={handleDragStart}
+      draggable={false}
       onMouseEnter={(e) => {
         if (isContainer) {
           handleContainerHover(e, element.id);
@@ -120,10 +129,16 @@ export const CanvasElement = ({
         }
       }}
     >
-      <ElementRenderer element={element} />
+      <div 
+        className="w-full h-full"
+        draggable={false}
+        onDragStart={handleDragStart}
+      >
+        <ElementRenderer element={element} />
+      </div>
 
       {isContainer && element.childElements && (
-        <div className="absolute top-0 left-0 w-full h-full">
+        <div className="absolute top-0 left-0 w-full h-full" draggable={false}>
           {element.childElements.map((child: EditorElement) => (
             <CanvasElement
               key={child.id}

@@ -104,6 +104,7 @@ export const useCanvasZoomAndPan = ({
     const container = containerRef.current;
     
     const handleMouseDown = (e: MouseEvent) => {
+      // Fix: comparing string literals with === instead of comparison
       if (canvasNavMode === 'pan' || e.buttons === 2 || e.buttons === 4 || e.altKey || e.getModifierState('Space')) {
         setIsPanning(true);
         setPanStart({ x: e.clientX, y: e.clientY });
