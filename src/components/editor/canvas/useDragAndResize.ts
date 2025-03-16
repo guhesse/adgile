@@ -1,8 +1,7 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { snapToGrid } from '../utils/gridUtils';
 import { BannerSize, CanvasNavigationMode, EditingMode, EditorElement } from '../types';
-import { moveElementOutOfContainer, moveElementToContainer } from '../utils/containerUtils';
+import { moveElementOutOfContainer, constrainElementToCanvas } from '../utils/containerUtils';
 
 interface UseDragAndResizeProps {
   elements: EditorElement[];
@@ -401,6 +400,23 @@ export const useDragAndResize = ({
       if (hoveredContainer && selectedElement && selectedElement.type !== 'container' && selectedElement.type !== 'layout') {
         moveElementToContainer(selectedElement, hoveredContainer, elements, setElements, setSelectedElement);
       } else {
+        const updatedElements = elements.map(el => 
+          !el.inContainer ? constrainElementToCanvas(el, selectedSize.width, selectedSize.height) : el
+        );
+        setElements(updatedElements);
+        
+        if (selectedElement && !selectedElement.inContainer) {
+          const constrainedElement = constrainElementToCanvas(
+            selectedElement, 
+            selectedSize.width, 
+            selectedSize.height
+          );
+          
+          if (constrainedElement !== selectedElement) {
+            setSelectedElement(constrainedElement);
+          }
+        }
+        
         organizeElements();
       }
     }

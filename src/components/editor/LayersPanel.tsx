@@ -22,7 +22,7 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
   const [collapsedContainers, setCollapsedContainers] = useState<Record<string, boolean>>({});
   const [draggedElement, setDraggedElement] = useState<EditorElement | null>(null);
   const [dragTargetId, setDragTargetId] = useState<string | null>(null);
-  const { setElements } = useCanvas();
+  const { setElements, selectedSize, activeSizes } = useCanvas();
 
   // Toggle container collapse state
   const toggleCollapse = (containerId: string) => {
@@ -32,12 +32,17 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
     }));
   };
 
-  // Find all container/layout elements
-  const containers = elements.filter(el => el.type === "layout");
+  // Find all container/layout elements for the current format
+  const containers = elements.filter(el => 
+    (el.type === "layout" || el.type === "container") && 
+    (!el.sizeId || el.sizeId === selectedSize.name || el.sizeId === 'global')
+  );
   
-  // Find elements not inside any container
+  // Find elements not inside any container for the current format
   const standaloneElements = elements.filter(el => 
+    (!el.sizeId || el.sizeId === selectedSize.name || el.sizeId === 'global') &&
     el.type !== "layout" && 
+    el.type !== "container" && 
     !containers.some(container => 
       container.childElements?.some(child => child.id === el.id)
     )
@@ -169,6 +174,9 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
     }
   };
 
+  // Show format label if multiple sizes are active
+  const showFormatLabel = activeSizes.length > 1;
+
   // Truncate layer name for display
   const truncateName = (name: string, maxLength: number = 20) => {
     if (!name) return '';
@@ -181,6 +189,11 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
     const isSelected = selectedElement?.id === container.id;
     const isDropTarget = dragTargetId === container.id;
     const childElements = container.childElements || [];
+
+    // Filter child elements to show only those for the current format
+    const visibleChildElements = childElements.filter(child => 
+      !child.sizeId || child.sizeId === selectedSize.name || child.sizeId === 'global'
+    );
 
     return (
       <div 
@@ -209,7 +222,7 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
             }
           </button>
           <div className="flex items-center gap-2 min-w-0 flex-1">
-            <LayoutGrid className="h-4 w-4 flex-shrink-0 text-[#414651]" />
+            {renderElementIcon(container.type)}
             <span className="text-sm font-medium truncate">
               {truncateName(container.content) || `Container ${container.columns || 1}×`}
             </span>
@@ -227,7 +240,7 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
         
         {!isCollapsed && (
           <div className="ml-6 pl-2 border-l border-gray-200 py-1">
-            {childElements.map((child) => (
+            {visibleChildElements.map((child) => (
               <div 
                 key={child.id}
                 className={`flex items-center gap-2 px-2 py-1 text-sm rounded-md cursor-pointer my-1 ${selectedElement?.id === child.id ? 'bg-purple-100 text-purple-700' : 'hover:bg-gray-50'} ${draggedElement?.id === child.id ? 'opacity-50' : ''}`}
@@ -250,7 +263,7 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
                 </button>
               </div>
             ))}
-            {childElements.length === 0 && (
+            {visibleChildElements.length === 0 && (
               <div className="text-xs text-gray-400 py-1 px-2">
                 Arraste elementos para aqui
               </div>
@@ -282,6 +295,13 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
 
       {/* Layer content */}
       <div className="flex-1 overflow-y-auto px-4 py-2">
+        {showFormatLabel && (
+          <div className="mb-3 bg-purple-50 rounded-md p-2 text-purple-800 text-sm flex items-center justify-between">
+            <span>Formato: {selectedSize.name}</span>
+            <span className="text-xs text-purple-600">{selectedSize.width}×{selectedSize.height}</span>
+          </div>
+        )}
+        
         <h3 className="font-medium text-sm mb-2">Camadas</h3>
         
         {/* Container elements */}

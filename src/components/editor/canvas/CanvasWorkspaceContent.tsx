@@ -1,7 +1,7 @@
 
+import React from "react";
 import { CanvasArea } from "./CanvasArea";
-import { BannerSize, CanvasNavigationMode, EditingMode, EditorElement } from "../types";
-import { CanvasControls } from "./CanvasControls";
+import { BannerSize, CanvasNavigationMode, EditorElement } from "../types";
 
 interface CanvasWorkspaceContentProps {
   containerRef: React.RefObject<HTMLDivElement>;
@@ -13,7 +13,7 @@ interface CanvasWorkspaceContentProps {
   shouldShowAllSizes: boolean;
   selectedSize: BannerSize;
   zoomLevel: number;
-  setZoomLevel: (zoomLevel: number) => void;
+  setZoomLevel: (level: number) => void;
   elements: EditorElement[];
   selectedElement: EditorElement | null;
   isDragging: boolean;
@@ -28,11 +28,11 @@ interface CanvasWorkspaceContentProps {
   handleMouseMove: (e: React.MouseEvent) => void;
   handleMouseUp: () => void;
   editorKey: string;
-  editingMode: EditingMode;
-  setEditingMode: (mode: EditingMode) => void;
+  editingMode: 'global' | 'individual';
+  setEditingMode: (mode: 'global' | 'individual') => void;
 }
 
-export const CanvasWorkspaceContent = ({
+export const CanvasWorkspaceContent: React.FC<CanvasWorkspaceContentProps> = ({
   containerRef,
   canvasRef,
   canvasNavMode,
@@ -42,7 +42,6 @@ export const CanvasWorkspaceContent = ({
   shouldShowAllSizes,
   selectedSize,
   zoomLevel,
-  setZoomLevel,
   elements,
   selectedElement,
   isDragging,
@@ -58,111 +57,144 @@ export const CanvasWorkspaceContent = ({
   handleMouseUp,
   editorKey,
   editingMode,
-  setEditingMode
-}: CanvasWorkspaceContentProps) => {
+  setEditingMode,
+}) => {
+  // Calculate spaces between artboards
+  const calculateArtboardSpacing = () => {
+    // Base gap between artboards (px)
+    const baseGap = 100;
+    
+    // Calculate total width needed
+    let maxHeight = 0;
+    let currentX = 0;
+    let currentY = 0;
+    let rowMaxHeight = 0;
+    const positions: {size: BannerSize, x: number, y: number}[] = [];
+    
+    // Sort by height for better arrangement
+    const sortedSizes = [...activeSizes].sort((a, b) => b.height - a.height);
+    
+    // Maximum width to start a new row
+    const maxWidth = 2000;
+    
+    // Position each artboard
+    sortedSizes.forEach((size) => {
+      // Check if we need to start a new row
+      if (currentX + size.width > maxWidth) {
+        currentX = 0;
+        currentY += rowMaxHeight + baseGap;
+        rowMaxHeight = 0;
+      }
+      
+      positions.push({
+        size,
+        x: currentX,
+        y: currentY
+      });
+      
+      // Update position for next artboard
+      currentX += size.width + baseGap;
+      rowMaxHeight = Math.max(rowMaxHeight, size.height);
+      maxHeight = Math.max(maxHeight, currentY + size.height);
+    });
+    
+    return { positions, maxHeight: maxHeight + baseGap };
+  };
+  
+  const { positions, maxHeight } = calculateArtboardSpacing();
+  
+  // If showing a single canvas (not "All")
+  if (!shouldShowAllSizes) {
+    return (
+      <div
+        ref={containerRef}
+        className="flex-1 overflow-hidden bg-neutral-800 flex items-center justify-center relative"
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        style={{
+          cursor: canvasNavMode === "pan" ? (isPanning ? "grabbing" : "grab") : "default",
+        }}
+      >
+        <div
+          className="transform-gpu transition-transform duration-100"
+          style={{
+            transform: `scale(${zoomLevel}) translate(${panPosition.x}px, ${panPosition.y}px)`,
+            transformOrigin: "center center",
+          }}
+        >
+          <CanvasArea
+            size={selectedSize}
+            elements={elements}
+            selectedElement={selectedElement}
+            isDragging={isDragging}
+            isElementOutsideContainer={isElementOutsideContainer}
+            zoomLevel={zoomLevel}
+            canvasRef={canvasRef}
+            hoveredContainer={hoveredContainer}
+            handleMouseDown={handleMouseDown}
+            handleCanvasMouseDown={handleCanvasMouseDown}
+            handleResizeStart={handleResizeStart}
+            handleContainerHover={handleContainerHover}
+            handleContainerHoverEnd={handleContainerHoverEnd}
+            canvasNavMode={canvasNavMode}
+            handleMouseMove={handleMouseMove}
+            handleMouseUp={handleMouseUp}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // For "All" view with multiple canvases
   return (
     <div
       ref={containerRef}
-      className={`flex-1 p-8 overflow-hidden ${canvasNavMode === 'pan' ? 'canvas-pan-mode' : ''}`}
+      className="flex-1 overflow-auto bg-neutral-800 relative"
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
       style={{
-        cursor: isPanning ? 'grabbing' : canvasNavMode === 'pan' ? 'grab' : 'default',
-        position: 'relative',
+        cursor: canvasNavMode === "pan" ? (isPanning ? "grabbing" : "grab") : "default",
       }}
     >
-      {/* Canvas workspace with fixed size and scrollable content */}
-      <div 
-        className="h-full w-full overflow-auto"
+      <div
+        className="transform-gpu min-h-full"
         style={{
-          position: 'relative',
+          transform: `scale(${zoomLevel}) translate(${panPosition.x}px, ${panPosition.y}px)`,
+          transformOrigin: "0 0",
+          width: 2000,
+          height: maxHeight,
         }}
       >
-        {/* Infinite canvas area that can be zoomed and panned */}
-        <div
-          style={{
-            transform: `scale(${zoomLevel})`,
-            transformOrigin: '0 0',
-            transition: isPanning ? 'none' : 'transform 0.1s ease-out',
-            position: 'absolute',
-            left: `${panPosition.x}px`,
-            top: `${panPosition.y}px`,
-          }}
-        >
-          {shouldShowAllSizes ? (
-            <div className="relative">
-              {activeSizes.map((size, index) => {
-                // Calculate position for each artboard to avoid overlapping
-                const rowSize = Math.ceil(Math.sqrt(activeSizes.length));
-                const row = Math.floor(index / rowSize);
-                const col = index % rowSize;
-                
-                // Calculate positions with artboard dimensions taken into account
-                // Add extra gap (100px) to ensure no overlapping
-                const leftPosition = col * (Math.max(...activeSizes.map(s => s.width)) + 200);
-                const topPosition = row * (Math.max(...activeSizes.map(s => s.height)) + 200);
-                
-                return (
-                  <div 
-                    key={`canvas-wrapper-${size.name}-${index}`}
-                    style={{ 
-                      position: 'absolute',
-                      left: `${leftPosition}px`,
-                      top: `${topPosition}px`,
-                    }}
-                  >
-                    <CanvasArea
-                      key={`canvas-${size.name}-${editorKey}-${index}`}
-                      size={size}
-                      elements={elements}
-                      selectedElement={selectedElement}
-                      isDragging={isDragging}
-                      isElementOutsideContainer={isElementOutsideContainer}
-                      zoomLevel={1} // Fixed at 1 as we're scaling the entire workspace now
-                      hoveredContainer={hoveredContainer}
-                      handleMouseDown={handleMouseDown}
-                      handleCanvasMouseDown={handleCanvasMouseDown}
-                      handleResizeStart={handleResizeStart}
-                      handleContainerHover={handleContainerHover}
-                      handleContainerHoverEnd={handleContainerHoverEnd}
-                      canvasNavMode={canvasNavMode}
-                      handleMouseMove={handleMouseMove}
-                      handleMouseUp={handleMouseUp}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div>
-              <CanvasArea
-                key={`single-canvas-${editorKey}`}
-                size={selectedSize}
-                elements={elements}
-                selectedElement={selectedElement}
-                isDragging={isDragging}
-                isElementOutsideContainer={isElementOutsideContainer}
-                zoomLevel={1} // Fixed at 1 as we're scaling the entire workspace now
-                canvasRef={canvasRef}
-                hoveredContainer={hoveredContainer}
-                handleMouseDown={handleMouseDown}
-                handleCanvasMouseDown={handleCanvasMouseDown}
-                handleResizeStart={handleResizeStart}
-                handleContainerHover={handleContainerHover}
-                handleContainerHoverEnd={handleContainerHoverEnd}
-                canvasNavMode={canvasNavMode}
-                handleMouseMove={handleMouseMove}
-                handleMouseUp={handleMouseUp}
-              />
-            </div>
-          )}
-        </div>
+        {/* Position each canvas based on the calculated layout */}
+        {positions.map(({ size, x, y }) => (
+          <div 
+            key={`${size.name}-${editorKey}`} 
+            className="absolute"
+            style={{ 
+              left: x, 
+              top: y,
+            }}
+          >
+            <CanvasArea
+              size={size}
+              elements={elements}
+              selectedElement={selectedElement}
+              isDragging={isDragging}
+              isElementOutsideContainer={isElementOutsideContainer}
+              zoomLevel={zoomLevel}
+              hoveredContainer={hoveredContainer}
+              handleMouseDown={handleMouseDown}
+              handleCanvasMouseDown={handleCanvasMouseDown}
+              handleResizeStart={handleResizeStart}
+              handleContainerHover={handleContainerHover}
+              handleContainerHoverEnd={handleContainerHoverEnd}
+              canvasNavMode={canvasNavMode}
+              handleMouseMove={handleMouseMove}
+              handleMouseUp={handleMouseUp}
+            />
+          </div>
+        ))}
       </div>
-
-      <CanvasControls 
-        zoomLevel={zoomLevel}
-        setZoomLevel={setZoomLevel}
-        editingMode={editingMode}
-        setEditingMode={setEditingMode}
-      />
     </div>
   );
 };
