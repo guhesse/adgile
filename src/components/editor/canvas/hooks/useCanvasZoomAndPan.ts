@@ -30,8 +30,8 @@ export const useCanvasZoomAndPan = ({
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         
-        // Calculate zoom factor
-        const delta = -e.deltaY * 0.01;
+        // Calculate zoom factor - mais suave, 5% por nível
+        const delta = -e.deltaY * 0.005;
         const newZoomLevel = Math.max(0.2, Math.min(3, zoomLevel + delta));
         
         // Get mouse position relative to container
@@ -63,14 +63,19 @@ export const useCanvasZoomAndPan = ({
       if (e.ctrlKey || e.metaKey) {
         if (e.key === '=') {
           e.preventDefault();
-          setZoomLevel(prev => Math.min(prev + 0.1, 3));
+          setZoomLevel(prev => Math.min(prev + 0.05, 3));
         } else if (e.key === '-') {
           e.preventDefault();
-          setZoomLevel(prev => Math.max(prev - 0.1, 0.2));
+          setZoomLevel(prev => Math.max(prev - 0.05, 0.2));
         } else if (e.key === '0') {
           e.preventDefault();
           setZoomLevel(1);
         }
+      }
+
+      // Prevenir comportamento padrão do espaço
+      if (e.code === 'Space') {
+        e.preventDefault();
       }
 
       // Handle arrow keys for panning

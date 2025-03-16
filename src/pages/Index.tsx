@@ -20,6 +20,14 @@ const Index = () => {
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
         document.dispatchEvent(new CustomEvent('canvas-spacebar-up'));
+        e.preventDefault();
+      }
+    };
+    
+    // Prevent default browser behavior for Space key (page scroll)
+    const preventSpacebarScroll = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
       }
     };
     
@@ -32,11 +40,13 @@ const Index = () => {
     
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('keydown', preventSpacebarScroll);
     window.addEventListener('wheel', preventBrowserZoom, { passive: false });
     
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('keydown', preventSpacebarScroll);
       window.removeEventListener('wheel', preventBrowserZoom);
     };
   }, []);

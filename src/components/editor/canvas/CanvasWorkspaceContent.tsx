@@ -89,7 +89,7 @@ export const CanvasWorkspaceContent = ({
         >
           {shouldShowAllSizes ? (
             <div 
-              className="grid gap-10"
+              className="grid gap-24"
               style={{
                 gridTemplateColumns: `repeat(auto-fill, minmax(300px, 1fr))`,
                 width: 'max-content',
@@ -100,7 +100,7 @@ export const CanvasWorkspaceContent = ({
                   <CanvasArea
                     key={`canvas-${size.name}-${editorKey}-${index}`}
                     size={size}
-                    elements={elements.filter(el => !el.sizeId || el.sizeId === size.name)}
+                    elements={elements}
                     selectedElement={selectedElement}
                     isDragging={isDragging}
                     isElementOutsideContainer={isElementOutsideContainer}
@@ -123,7 +123,7 @@ export const CanvasWorkspaceContent = ({
               <CanvasArea
                 key={`single-canvas-${editorKey}`}
                 size={selectedSize}
-                elements={elements.filter(el => !el.sizeId || el.sizeId === selectedSize.name)}
+                elements={elements}
                 selectedElement={selectedElement}
                 isDragging={isDragging}
                 isElementOutsideContainer={isElementOutsideContainer}
