@@ -1,4 +1,3 @@
-
 import { EditorElement, BannerSize } from '../../types';
 import { toast } from 'sonner';
 import { parsePSDFile } from './psdParser';
@@ -32,8 +31,8 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
     for (const layer of psd.layers) {
       const element = await processLayer(layer, selectedSize, psdData, extractedImages);
       if (element) {
-        // Assign the sizeId as 'global' to ensure elements are visible in all artboards
-        element.sizeId = 'global';
+        // Assign the sizeId to ensure elements are bound to this specific canvas size
+        element.sizeId = selectedSize.name;
         elements.push(element);
       }
     }
@@ -56,8 +55,8 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
             // Process this node with pre-extracted images
             const element = await processLayer(node.layer || node, selectedSize, psdData, extractedImages);
             if (element) {
-              // Assign 'global' sizeId for visibility in all artboards
-              element.sizeId = 'global';
+              // Assign the sizeId for proper artboard association
+              element.sizeId = selectedSize.name;
               elements.push(element);
             }
           }
@@ -70,8 +69,8 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
             if (!child.isGroup || (typeof child.isGroup === 'function' && !child.isGroup())) {
               const element = await processLayer(child.layer || child, selectedSize, psdData, extractedImages);
               if (element) {
-                // Assign 'global' sizeId for visibility in all artboards
-                element.sizeId = 'global';
+                // Assign the sizeId for proper artboard association
+                element.sizeId = selectedSize.name;
                 elements.push(element);
               }
             }

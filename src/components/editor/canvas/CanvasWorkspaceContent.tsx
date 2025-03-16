@@ -88,48 +88,35 @@ export const CanvasWorkspaceContent = ({
           }}
         >
           {shouldShowAllSizes ? (
-            <div className="relative">
-              {activeSizes.map((size, index) => {
-                // Calculate position for each artboard to avoid overlapping
-                const rowSize = Math.ceil(Math.sqrt(activeSizes.length));
-                const row = Math.floor(index / rowSize);
-                const col = index % rowSize;
-                
-                // Calculate positions with artboard dimensions taken into account
-                // Add extra gap (100px) to ensure no overlapping
-                const leftPosition = col * (Math.max(...activeSizes.map(s => s.width)) + 200);
-                const topPosition = row * (Math.max(...activeSizes.map(s => s.height)) + 200);
-                
-                return (
-                  <div 
-                    key={`canvas-wrapper-${size.name}-${index}`}
-                    style={{ 
-                      position: 'absolute',
-                      left: `${leftPosition}px`,
-                      top: `${topPosition}px`,
-                    }}
-                  >
-                    <CanvasArea
-                      key={`canvas-${size.name}-${editorKey}-${index}`}
-                      size={size}
-                      elements={elements}
-                      selectedElement={selectedElement}
-                      isDragging={isDragging}
-                      isElementOutsideContainer={isElementOutsideContainer}
-                      zoomLevel={1} // Fixed at 1 as we're scaling the entire workspace now
-                      hoveredContainer={hoveredContainer}
-                      handleMouseDown={handleMouseDown}
-                      handleCanvasMouseDown={handleCanvasMouseDown}
-                      handleResizeStart={handleResizeStart}
-                      handleContainerHover={handleContainerHover}
-                      handleContainerHoverEnd={handleContainerHoverEnd}
-                      canvasNavMode={canvasNavMode}
-                      handleMouseMove={handleMouseMove}
-                      handleMouseUp={handleMouseUp}
-                    />
-                  </div>
-                );
-              })}
+            <div 
+              className="grid gap-24"
+              style={{
+                gridTemplateColumns: `repeat(auto-fill, minmax(300px, 1fr))`,
+                width: 'max-content',
+              }}
+            >
+              {activeSizes.map((size, index) => (
+                <div key={`canvas-wrapper-${size.name}-${index}`}>
+                  <CanvasArea
+                    key={`canvas-${size.name}-${editorKey}-${index}`}
+                    size={size}
+                    elements={elements}
+                    selectedElement={selectedElement}
+                    isDragging={isDragging}
+                    isElementOutsideContainer={isElementOutsideContainer}
+                    zoomLevel={1} // Fixed at 1 as we're scaling the entire workspace now
+                    hoveredContainer={hoveredContainer}
+                    handleMouseDown={handleMouseDown}
+                    handleCanvasMouseDown={handleCanvasMouseDown}
+                    handleResizeStart={handleResizeStart}
+                    handleContainerHover={handleContainerHover}
+                    handleContainerHoverEnd={handleContainerHoverEnd}
+                    canvasNavMode={canvasNavMode}
+                    handleMouseMove={handleMouseMove}
+                    handleMouseUp={handleMouseUp}
+                  />
+                </div>
+              ))}
             </div>
           ) : (
             <div>

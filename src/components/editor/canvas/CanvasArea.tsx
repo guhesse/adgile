@@ -42,25 +42,19 @@ export const CanvasArea = ({
 }: CanvasAreaProps) => {
   // Filtra elementos que devem aparecer neste tamanho específico ou globalmente
   const elementsToShow = elements.filter(element => 
-    !element.sizeId || element.sizeId === size.name || element.sizeId === 'global'
+    !element.sizeId || element.sizeId === size.name
   );
 
   return (
     <div className="relative">
-      {/* Canvas label positioned at the top */}
-      <div 
-        className="absolute -top-6 left-0 right-0 text-sm text-gray-600 font-medium text-center"
-      >
-        {size.name} ({size.width}×{size.height})
-      </div>
-      
       <Card
         ref={canvasRef}
         className="relative bg-white shadow-lg"
         style={{
           width: size.width,
           height: size.height,
-          backgroundColor: "white"
+          backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px)",
+          backgroundSize: "20px 20px"
         }}
         onMouseDown={(e) => {
           // Verificar se clicou diretamente no Card (canvas) e não em um elemento
@@ -72,6 +66,13 @@ export const CanvasArea = ({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
+        {/* Canvas label positioned at the top */}
+        <div 
+          className="absolute -top-6 left-0 right-0 text-sm text-gray-600 font-medium text-center"
+        >
+          {size.name} ({size.width}×{size.height})
+        </div>
+
         {elementsToShow
           .filter(el => !el.inContainer)
           .map((element, index) => (
