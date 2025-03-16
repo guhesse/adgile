@@ -40,6 +40,15 @@ export const CanvasArea = ({
   handleMouseMove,
   handleMouseUp
 }: CanvasAreaProps) => {
+  // Find artboard background element
+  const artboardBackgroundElement = elements.find(el => 
+    el.type === 'artboard-background' && 
+    (!el.sizeId || el.sizeId === size.name || el.sizeId === 'global')
+  );
+  
+  // Get the background color, default to white if not found
+  const backgroundColor = artboardBackgroundElement?.style?.backgroundColor || 'white';
+
   // Filter elements that should appear in this specific size or globally
   const elementsToShow = elements.filter(element => 
     !element.sizeId || // Elements without sizeId
@@ -58,11 +67,16 @@ export const CanvasArea = ({
       
       <Card
         ref={canvasRef}
-        className="relative bg-white shadow-lg"
+        className="relative shadow-lg"
         style={{
           width: size.width,
           height: size.height,
-          backgroundColor: "white"
+          backgroundColor: backgroundColor,
+          backgroundImage: backgroundColor === 'transparent' ? 
+            "linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc), linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc)" : 
+            "none",
+          backgroundSize: backgroundColor === 'transparent' ? "20px 20px" : "auto",
+          backgroundPosition: backgroundColor === 'transparent' ? "0 0, 10px 10px" : "auto"
         }}
         onMouseDown={(e) => {
           // Check if clicked directly on the Card (canvas) and not on an element
@@ -75,7 +89,7 @@ export const CanvasArea = ({
         onMouseLeave={handleMouseUp}
       >
         {elementsToShow
-          .filter(el => !el.inContainer)
+          .filter(el => !el.inContainer && el.type !== 'artboard-background')
           .map((element, index) => (
             <CanvasElement
               key={`${element.id}-${index}`}

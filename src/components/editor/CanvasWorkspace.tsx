@@ -82,23 +82,27 @@ export const CanvasWorkspace = () => {
     canvasNavMode
   });
 
-  // Efeito para garantir que todos os elementos permaneçam dentro dos limites da artboard
+  // Effect to ensure all elements stay within the bounds of the artboard
   useEffect(() => {
     if (elements.length > 0) {
       const constrainedElements = constrainAllElements(elements, selectedSize.width, selectedSize.height);
-      setElements(constrainedElements);
+      
+      // Only update if elements changed to avoid re-renders
+      if (JSON.stringify(elements) !== JSON.stringify(constrainedElements)) {
+        setElements(constrainedElements);
+      }
     }
-  }, [selectedSize]);
+  }, [selectedSize, elements.length]);
 
-  // Modificar o handleCanvasMouseDown para limpar a seleção quando clicar no canvas
+  // Modify the handleCanvasMouseDown to clear the selection when clicking on the canvas
   const handleCanvasClick = (e: React.MouseEvent) => {
-    // Prevenir comportamento padrão do navegador
+    // Prevent default browser behavior
     e.preventDefault();
     
-    // Chama o comportamento original
+    // Call the original behavior
     handleCanvasMouseDown(e);
     
-    // Limpa a seleção se não estiver no modo de pan
+    // Clear selection if not in pan mode
     if (canvasNavMode !== 'pan') {
       setSelectedElement(null);
     }

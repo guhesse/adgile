@@ -1,47 +1,57 @@
 
 /**
- * Type definitions for PSD import functionality
- */
-
-import { BannerSize } from "../../types";
-
-/**
- * Structure for storing PSD file data
+ * Interface for storing information about a PSD file
  */
 export interface PSDFileData {
+  /** The original filename of the PSD */
   fileName: string;
+  
+  /** The width of the PSD in pixels */
   width: number;
+  
+  /** The height of the PSD in pixels */
   height: number;
-  uploadDate: string; // Add timestamp for when the PSD was uploaded
-  storageKey: string; // Add storage key for referencing this PSD later
+  
+  /** The date when the PSD was uploaded */
+  uploadDate: string;
+  
+  /** Key used to store the PSD data */
+  storageKey: string;
+  
+  /** Background color extracted from the PSD */
+  backgroundColor?: string;
+  
+  /** Information about layers in the PSD */
   layers: PSDLayerInfo[];
 }
 
 /**
- * Interface for PSD layer information
+ * Interface for storing information about a layer in a PSD file
  */
 export interface PSDLayerInfo {
+  /** The ID assigned to this layer in the editor */
   id: string;
+  
+  /** The name of the layer in the PSD */
   name: string;
+  
+  /** The type of the layer (text, image, etc.) */
   type: string;
+  
+  /** The position and dimensions of the layer */
   position: {
     x: number;
     y: number;
     width: number;
     height: number;
   };
-  content?: string; // For text layers
-  imageUrl?: string; // For image layers
-  imageKey?: string; // Storage key for the image
-}
-
-/**
- * Type for retrieved PSD metadata from storage
- */
-export interface PSDMetadata {
-  key: string;
-  fileName: string;
-  uploadDate: string;
-  width: number;
-  height: number;
+  
+  /** For text layers, the text content */
+  content?: string;
+  
+  /** For image layers, the URL of the image */
+  imageUrl?: string;
+  
+  /** For image layers, the storage key of the image */
+  imageKey?: string;
 }

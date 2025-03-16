@@ -6,6 +6,8 @@ import { ImagePanel } from "./panels/ImagePanel";
 import { ButtonPanel } from "./panels/ButtonPanel";
 import { AnimationPanel } from "./panels/AnimationPanel";
 import { GenericPanel } from "./panels/GenericPanel";
+import { ArtboardPanel } from "./panels/ArtboardPanel";
+import { useCanvas } from "./CanvasContext";
 
 interface PropertyPanelProps {
   selectedElement: EditorElement | null;
@@ -15,12 +17,63 @@ interface PropertyPanelProps {
 
 export const PropertyPanel = ({ selectedElement, updateElementStyle, updateElementContent }: PropertyPanelProps) => {
   const [activeTab, setActiveTab] = useState("content");
+  const { selectedSize, elements, setElements } = useCanvas();
+
+  // Find artboard background element
+  const artboardBackgroundElement = elements.find(el => el.type === 'artboard-background');
+  const artboardBackgroundColor = artboardBackgroundElement?.content as string || "#ffffff";
+
+  // Update artboard background
+  const updateArtboardBackground = (color: string) => {
+    if (artboardBackgroundElement) {
+      // If background element exists, update it
+      const updatedElements = elements.map(el => {
+        if (el.type === 'artboard-background') {
+          return {
+            ...el,
+            content: color,
+            style: {
+              ...el.style,
+              backgroundColor: color
+            }
+          };
+        }
+        return el;
+      });
+      setElements(updatedElements);
+    } else {
+      // If no background element exists, create one
+      const newBackgroundElement: EditorElement = {
+        id: `artboard-bg-${new Date().getTime()}`,
+        type: 'artboard-background',
+        content: color,
+        sizeId: 'global',
+        style: {
+          backgroundColor: color,
+          x: 0,
+          y: 0,
+          width: selectedSize.width,
+          height: selectedSize.height,
+          xPercent: 0,
+          yPercent: 0,
+          widthPercent: 100,
+          heightPercent: 100
+        }
+      };
+      
+      // Add to beginning of elements array
+      setElements([newBackgroundElement, ...elements]);
+    }
+  };
 
   if (!selectedElement) {
+    // If no element is selected, show artboard properties
     return (
-      <div className="flex items-center justify-center h-full text-gray-400">
-        Selecione um elemento para editar suas propriedades
-      </div>
+      <ArtboardPanel 
+        selectedSize={selectedSize} 
+        updateArtboardBackground={updateArtboardBackground}
+        artboardBackgroundColor={artboardBackgroundColor}
+      />
     );
   }
 
@@ -36,6 +89,7 @@ export const PropertyPanel = ({ selectedElement, updateElementStyle, updateEleme
     if (selectedElement.type === 'spacer') return 'Espaçador';
     if (selectedElement.type === 'logo') return 'Logo';
     if (selectedElement.type === 'video') return 'Vídeo';
+    if (selectedElement.type === 'artboard-background') return 'Fundo da Prancheta';
     return 'Elemento';
   };
 
@@ -46,7 +100,15 @@ export const PropertyPanel = ({ selectedElement, updateElementStyle, updateEleme
 
   // Render the appropriate panel based on element type and active tab
   const renderElementPanel = () => {
-    if (selectedElement.type === 'text' || selectedElement.type === 'paragraph') {
+    if (selectedElement.type === 'artboard-background') {
+      return (
+        <ArtboardPanel 
+          selectedSize={selectedSize} 
+          updateArtboardBackground={updateArtboardBackground}
+          artboardBackgroundColor={selectedElement.content as string}
+        />
+      );
+    } else if (selectedElement.type === 'text' || selectedElement.type === 'paragraph') {
       return (
         <TextPanel
           element={selectedElement}
@@ -99,7 +161,8 @@ export const PropertyPanel = ({ selectedElement, updateElementStyle, updateEleme
 
       {/* Tab Selector at the top for non-Animation panels */}
       {selectedElement.type !== 'layout' && selectedElement.type !== 'container' && 
-       selectedElement.type !== 'divider' && selectedElement.type !== 'spacer' && (
+       selectedElement.type !== 'divider' && selectedElement.type !== 'spacer' && 
+       selectedElement.type !== 'artboard-background' && (
         <div className="mx-4 mb-4">
           <div className="flex h-[39px] p-1 justify-center items-center gap-0 rounded bg-[#E9EAEB]">
             <div

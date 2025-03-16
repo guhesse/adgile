@@ -1,4 +1,3 @@
-
 import { EditorElement, BannerSize } from '../../types';
 import { createNewElement } from '../../context/elements';
 import { convertPSDColorToHex, convertPSDAlignmentToCSS } from './formatters';
@@ -42,7 +41,7 @@ export const createTextElement = async (layer: any, selectedSize: BannerSize): P
     textElement.content = textContent;
     
     // Extract and apply text styling
-    extractAndApplyTextStyling(layer, textElement);
+    await extractAndApplyTextStyling(layer, textElement);
     
     return textElement;
   } catch (error) {
@@ -174,23 +173,93 @@ const extractTextContent = (layer: any): string => {
  * @param layer The PSD layer
  * @param textElement The text element to style
  */
-const extractAndApplyTextStyling = (layer: any, textElement: EditorElement): void => {
+const extractAndApplyTextStyling = async (layer: any, textElement: EditorElement): Promise<void> => {
   try {
+    console.log(`Extracting text styles for layer: ${layer.name || 'unnamed'}`);
+    
     // First try to extract style from layer.text
     if (layer.text && layer.text.font) {
       textElement.style.fontFamily = layer.text.font;
+      console.log(`Found font: ${layer.text.font}`);
     }
     
     if (layer.text && layer.text.fontSize) {
       textElement.style.fontSize = parseInt(layer.text.fontSize, 10);
+      console.log(`Found fontSize: ${layer.text.fontSize}`);
     }
     
     if (layer.text && layer.text.color) {
       textElement.style.color = convertPSDColorToHex(layer.text.color);
+      console.log(`Found color: ${textElement.style.color}`);
     }
     
     if (layer.text && layer.text.justification) {
       textElement.style.textAlign = convertPSDAlignmentToCSS(layer.text.justification);
+      console.log(`Found textAlign: ${textElement.style.textAlign}`);
+    }
+    
+    if (layer.text && layer.text.bold !== undefined) {
+      textElement.style.fontWeight = layer.text.bold ? 'bold' : 'normal';
+      console.log(`Found fontWeight: ${textElement.style.fontWeight}`);
+    }
+    
+    if (layer.text && layer.text.italic !== undefined) {
+      textElement.style.fontStyle = layer.text.italic ? 'italic' : 'normal';
+      console.log(`Found fontStyle: ${textElement.style.fontStyle}`);
+    }
+    
+    if (layer.text && layer.text.underline !== undefined) {
+      textElement.style.textDecoration = layer.text.underline ? 'underline' : 'none';
+      console.log(`Found textDecoration: ${textElement.style.textDecoration}`);
+    }
+    
+    if (layer.text && layer.text.lineHeight) {
+      textElement.style.lineHeight = layer.text.lineHeight;
+      console.log(`Found lineHeight: ${textElement.style.lineHeight}`);
+    }
+    
+    // Try to extract styling from layer.textInfo if available
+    if (layer.textInfo) {
+      // Font family
+      if (layer.textInfo.fontName && !textElement.style.fontFamily) {
+        textElement.style.fontFamily = layer.textInfo.fontName;
+        console.log(`Found fontFamily from textInfo: ${textElement.style.fontFamily}`);
+      }
+      
+      // Font size
+      if (layer.textInfo.size && !textElement.style.fontSize) {
+        textElement.style.fontSize = Math.round(layer.textInfo.size);
+        console.log(`Found fontSize from textInfo: ${textElement.style.fontSize}`);
+      }
+      
+      // Font color
+      if (layer.textInfo.color && !textElement.style.color) {
+        const colorArray = [
+          layer.textInfo.color.r,
+          layer.textInfo.color.g,
+          layer.textInfo.color.b,
+        ];
+        textElement.style.color = convertPSDColorToHex(colorArray);
+        console.log(`Found color from textInfo: ${textElement.style.color}`);
+      }
+      
+      // Font weight
+      if (layer.textInfo.bold !== undefined && textElement.style.fontWeight === undefined) {
+        textElement.style.fontWeight = layer.textInfo.bold ? 'bold' : 'normal';
+        console.log(`Found fontWeight from textInfo: ${textElement.style.fontWeight}`);
+      }
+      
+      // Font style
+      if (layer.textInfo.italic !== undefined && textElement.style.fontStyle === undefined) {
+        textElement.style.fontStyle = layer.textInfo.italic ? 'italic' : 'normal';
+        console.log(`Found fontStyle from textInfo: ${textElement.style.fontStyle}`);
+      }
+      
+      // Text align
+      if (layer.textInfo.align && textElement.style.textAlign === undefined) {
+        textElement.style.textAlign = convertPSDAlignmentToCSS(layer.textInfo.align);
+        console.log(`Found textAlign from textInfo: ${textElement.style.textAlign}`);
+      }
     }
     
     // Try to extract from typeTool data if available
@@ -202,21 +271,37 @@ const extractAndApplyTextStyling = (layer: any, textElement: EditorElement): voi
           // Font information
           if (typeToolData.textData.fontName && !textElement.style.fontFamily) {
             textElement.style.fontFamily = typeToolData.textData.fontName;
+            console.log(`Found fontFamily from typeTool: ${textElement.style.fontFamily}`);
           }
           
           // Font size
           if (typeToolData.textData.fontSize && !textElement.style.fontSize) {
             textElement.style.fontSize = parseInt(typeToolData.textData.fontSize, 10);
+            console.log(`Found fontSize from typeTool: ${textElement.style.fontSize}`);
           }
           
           // Text color
           if (typeToolData.textData.color && !textElement.style.color) {
             textElement.style.color = convertPSDColorToHex(typeToolData.textData.color);
+            console.log(`Found color from typeTool: ${textElement.style.color}`);
           }
           
           // Text alignment
           if (typeToolData.textData.justification && !textElement.style.textAlign) {
             textElement.style.textAlign = convertPSDAlignmentToCSS(typeToolData.textData.justification);
+            console.log(`Found textAlign from typeTool: ${textElement.style.textAlign}`);
+          }
+          
+          // Font weight
+          if (typeToolData.textData.bold !== undefined && textElement.style.fontWeight === undefined) {
+            textElement.style.fontWeight = typeToolData.textData.bold ? 'bold' : 'normal';
+            console.log(`Found fontWeight from typeTool: ${textElement.style.fontWeight}`);
+          }
+          
+          // Font style
+          if (typeToolData.textData.italic !== undefined && textElement.style.fontStyle === undefined) {
+            textElement.style.fontStyle = typeToolData.textData.italic ? 'italic' : 'normal';
+            console.log(`Found fontStyle from typeTool: ${textElement.style.fontStyle}`);
           }
         }
       } catch (e) {
@@ -232,6 +317,16 @@ const extractAndApplyTextStyling = (layer: any, textElement: EditorElement): voi
   if (!textElement.style.fontFamily) textElement.style.fontFamily = 'Arial';
   if (!textElement.style.color) textElement.style.color = '#000000';
   if (!textElement.style.textAlign) textElement.style.textAlign = 'left';
+  if (!textElement.style.fontWeight) textElement.style.fontWeight = 'normal';
+  
+  console.log(`Final text styles for ${layer.name}:`, {
+    fontSize: textElement.style.fontSize,
+    fontFamily: textElement.style.fontFamily,
+    color: textElement.style.color,
+    textAlign: textElement.style.textAlign,
+    fontWeight: textElement.style.fontWeight,
+    fontStyle: textElement.style.fontStyle
+  });
 };
 
 /**

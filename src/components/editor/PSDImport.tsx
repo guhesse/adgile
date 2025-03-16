@@ -111,31 +111,31 @@ export const PSDImport = () => {
       // Create a FileReader
       const reader = new FileReader();
       
-      reader.onload = async () => {
+      reader.onload = async (e) => {
         try {
-          // Import psd.js dynamically (it's already installed)
-          const PSD = await import('psd.js');
+          // Import psd.js dynamically
+          const PSD = (await import('psd.js')).default;
           
-          // Parse the PSD file 
-          // Fixed: Use PSD's constructor directly instead of fromBuffer
+          // Parse the PSD file
           const psd = new PSD(new Uint8Array(reader.result as ArrayBuffer));
           await psd.parse();
           
-          // Get dimensions
+          // Get dimensions directly from the header
           const width = psd.header.width;
           const height = psd.header.height;
           
+          console.log(`PSD dimensions detected: ${width}x${height}`);
           resolve({ width, height });
         } catch (error) {
           console.error("Error reading PSD dimensions:", error);
           // If dimensions can't be determined, use default values
-          resolve({ width: 1200, height: 600 });
+          resolve({ width: 1440, height: 1660 });
         }
       };
       
       reader.onerror = () => {
         console.error("Error reading file");
-        resolve({ width: 1200, height: 600 });
+        resolve({ width: 1440, height: 1660 });
       };
       
       // Read the file as ArrayBuffer

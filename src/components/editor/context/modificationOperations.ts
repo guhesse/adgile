@@ -50,7 +50,7 @@ export const updateElementStyle = (
   let updatedElements = [...elements];
   let updatedSelectedElement: EditorElement | null = null;
 
-  // If in global mode, update all linked elements
+  // If in global mode AND the element has a linkedElementId, update all linked elements
   if (editingMode === 'global' && selectedElement.linkedElementId) {
     updatedElements = elements.map(el => {
       if (el.linkedElementId === selectedElement.linkedElementId) {
@@ -72,7 +72,7 @@ export const updateElementStyle = (
       return el;
     });
   } else {
-    // Only update the selected element
+    // In individual mode or if element doesn't have linkedElementId, only update the selected element
     updatedElements = elements.map(el => {
       if (el.id === selectedElement.id) {
         const updatedElement = {
@@ -110,7 +110,7 @@ export const updateElementContent = (
   let updatedElements = [...elements];
   let updatedSelectedElement: EditorElement | null = null;
 
-  // If in global mode, update all linked elements
+  // If in global mode AND the element has a linkedElementId, update all linked elements
   if (editingMode === 'global' && selectedElement.linkedElementId) {
     updatedElements = elements.map(el => {
       if (el.linkedElementId === selectedElement.linkedElementId) {
@@ -129,7 +129,7 @@ export const updateElementContent = (
       return el;
     });
   } else {
-    // Only update the selected element
+    // In individual mode or if element doesn't have linkedElementId, only update the selected element
     updatedElements = elements.map(el => {
       if (el.id === selectedElement.id) {
         const updatedElement = {

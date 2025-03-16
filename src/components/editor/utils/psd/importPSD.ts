@@ -1,9 +1,11 @@
+
 import { EditorElement, BannerSize } from '../../types';
 import { toast } from 'sonner';
 import { parsePSDFile } from './psdParser';
 import { processLayer, calculatePercentageValues } from './elementProcessor';
 import { savePSDDataToStorage, getPSDStorageKeys } from './storage';
 import { PSDFileData } from './types';
+import { convertPSDColorToHex } from './formatters';
 
 /**
  * Re-export the PSDFileData type for backward compatibility
@@ -20,6 +22,29 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
   try {
     // Parse the PSD file
     const { psd, psdData, extractedImages } = await parsePSDFile(file);
+    
+    // Extract background color if available
+    let backgroundColor = '#ffffff'; // Default white
+    try {
+      if (psd.tree) {
+        const tree = psd.tree();
+        // Try to find a background layer
+        const bgLayer = tree.children?.find((child: any) => 
+          child.name?.toLowerCase().includes('background') || 
+          child.name?.toLowerCase().includes('bg')
+        );
+        
+        if (bgLayer && bgLayer.fill && bgLayer.fill.color) {
+          backgroundColor = convertPSDColorToHex(bgLayer.fill.color);
+          console.log(`Extracted background color: ${backgroundColor}`);
+        }
+        
+        // Store in psdData
+        psdData.backgroundColor = backgroundColor;
+      }
+    } catch (bgError) {
+      console.error("Error extracting background color:", bgError);
+    }
     
     // Process layers
     const elements: EditorElement[] = [];
@@ -124,6 +149,28 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
       element.style.heightPercent = (element.style.height / selectedSize.height) * 100;
     });
     
+    // Create a special artboard background element
+    const artboardBackgroundElement: EditorElement = {
+      id: `artboard-bg-${new Date().getTime()}`,
+      type: 'artboard-background',
+      content: backgroundColor,
+      sizeId: 'global',
+      style: {
+        backgroundColor,
+        x: 0,
+        y: 0,
+        width: selectedSize.width,
+        height: selectedSize.height,
+        xPercent: 0,
+        yPercent: 0,
+        widthPercent: 100,
+        heightPercent: 100
+      }
+    };
+    
+    // Add the background element at the beginning
+    elements.unshift(artboardBackgroundElement);
+    
     // Try to save PSD data to localStorage
     try {
       const storageKey = savePSDDataToStorage(psdData);
@@ -149,6 +196,7 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
     console.log("Text elements:", textElements);
     console.log("Image elements:", imageElements);
     console.log("Container elements:", containerElements);
+    console.log("Background color:", backgroundColor);
     
     if (elements.length === 0) {
       toast.warning("Nenhuma camada visível encontrada no arquivo PSD.");

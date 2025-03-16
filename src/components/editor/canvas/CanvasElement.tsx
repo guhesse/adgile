@@ -37,6 +37,12 @@ export const CanvasElement = ({
   const isContainer = element.type === "container" || element.type === "layout";
   const isExiting = isElementOutsideContainer && selectedElement?.id === element.id;
   const isImage = element.type === "image" || element.type === "logo";
+  const isArtboardBackground = element.type === "artboard-background";
+
+  // Don't render background elements here if they're artboard backgrounds
+  if (isArtboardBackground) {
+    return null;
+  }
 
   // Choose the appropriate position calculation method
   let position;
