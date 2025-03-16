@@ -51,5 +51,8 @@ export interface CanvasContextType {
   linkElementsAcrossSizes: (element: EditorElement) => void;
   unlinkElement: (element: EditorElement) => void;
   addCustomSize: (size: BannerSize) => void;
+  removeCustomSize: (size: BannerSize) => void;
   undo: () => void;
+  artboardBackgroundColor: string;
+  updateArtboardBackground: (color: string) => void;
 }
