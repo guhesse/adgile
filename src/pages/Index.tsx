@@ -1,4 +1,3 @@
-
 import { Canvas } from "@/components/editor/Canvas";
 import { Helmet } from "react-helmet";
 import { useState, useEffect } from "react";
@@ -38,9 +37,9 @@ const Index = () => {
       }
     };
     
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    window.addEventListener('keydown', preventSpacebarScroll);
+    window.addEventListener('keydown', handleKeyDown, { passive: false });
+    window.addEventListener('keyup', handleKeyUp, { passive: false });
+    window.addEventListener('keydown', preventSpacebarScroll, { passive: false });
     window.addEventListener('wheel', preventBrowserZoom, { passive: false });
     
     return () => {
@@ -52,7 +51,7 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen overflow-hidden">
       <Helmet>
         <link 
           rel="stylesheet" 
@@ -128,7 +127,7 @@ const Index = () => {
         />
       </Helmet>
       
-      <div className="flex flex-col flex-1 ml-0">
+      <div className="flex flex-col flex-1 ml-0 overflow-hidden">
         <div className="flex items-center border-b h-12 px-4">
           <div className="font-bold mr-6">AdSile</div>
           <nav className="flex space-x-4">
@@ -287,3 +286,4 @@ const Index = () => {
 };
 
 export default Index;
+
