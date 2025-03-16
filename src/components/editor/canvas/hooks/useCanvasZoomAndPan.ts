@@ -99,7 +99,7 @@ export const useCanvasZoomAndPan = ({
     const container = containerRef.current;
     
     const handleMouseDown = (e: MouseEvent) => {
-      if (canvasNavMode === 'pan' || e.buttons === 2 || e.buttons === 4 || e.altKey || e.spaceKey) {
+      if (canvasNavMode === 'pan' || e.buttons === 2 || e.buttons === 4 || e.altKey || e.getModifierState('Space')) {
         setIsPanning(true);
         setPanStart({ x: e.clientX, y: e.clientY });
         setPanOffset({ x: panPosition.x, y: panPosition.y });

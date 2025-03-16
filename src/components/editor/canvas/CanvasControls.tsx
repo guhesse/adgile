@@ -19,11 +19,13 @@ export const CanvasControls = ({
   setEditingMode 
 }: CanvasControlsProps) => {
   const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(prev + 0.1, 3));
+    const newZoomLevel = Math.min(zoomLevel + 0.1, 3);
+    setZoomLevel(newZoomLevel);
   };
 
   const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev - 0.1, 0.2));
+    const newZoomLevel = Math.max(zoomLevel - 0.1, 0.2);
+    setZoomLevel(newZoomLevel);
   };
 
   const handleResetZoom = () => {
