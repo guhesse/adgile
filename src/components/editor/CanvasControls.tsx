@@ -1,3 +1,4 @@
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { BANNER_SIZES } from "./types";
@@ -10,7 +11,8 @@ import {
   Maximize, 
   Hand, 
   MinusCircle, 
-  PlusCircle
+  PlusCircle,
+  LayoutGrid
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 
@@ -25,7 +27,9 @@ export const CanvasControls = () => {
     setZoomLevel,
     activeSizes,
     setCanvasNavMode,
-    canvasNavMode
+    canvasNavMode,
+    gridLayout,
+    toggleGridLayout
   } = useCanvas();
 
   const exportEmail = () => {
@@ -61,12 +65,12 @@ export const CanvasControls = () => {
           if (value === 'All') {
             setSelectedSize({ ...selectedSize, name: 'All' });
           } else {
-            const size = BANNER_SIZES.find(s => s.name === value);
+            const size = [...BANNER_SIZES, ...activeSizes.filter(s => !BANNER_SIZES.some(bs => bs.name === s.name))].find(s => s.name === value);
             if (size) setSelectedSize(size);
           }
         }}
       >
-        <SelectTrigger className="w-[200px]">
+        <SelectTrigger className="w-[220px]">
           <SelectValue placeholder="Select size" />
         </SelectTrigger>
         <SelectContent>
@@ -96,6 +100,21 @@ export const CanvasControls = () => {
               {canvasNavMode === 'pan' ? 'Panning' : 'Hand Tool'}
             </span>
           </Button>
+          
+          {selectedSize.name === 'All' && toggleGridLayout && (
+            <Button 
+              variant={gridLayout ? "default" : "outline"} 
+              size="sm" 
+              onClick={toggleGridLayout} 
+              className="px-2 mr-2"
+              title="Toggle grid layout for artboards"
+            >
+              <LayoutGrid size={16} className={gridLayout ? "text-white" : ""} />
+              <span className="ml-1 text-xs">
+                {gridLayout ? 'Grid On' : 'Grid Off'}
+              </span>
+            </Button>
+          )}
           
           <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded mr-2">
             <Button 

@@ -5,9 +5,10 @@ import { importPSDFile } from "./utils/psd/importPSD";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
 import { useState } from "react";
+import { BannerSize } from "./types";
 
 export const PSDImport = () => {
-  const { selectedSize, setElements } = useCanvas();
+  const { selectedSize, setElements, addCustomSize, setSelectedSize } = useCanvas();
   const [isImporting, setIsImporting] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
 
@@ -36,32 +37,54 @@ export const PSDImport = () => {
       console.log("=== PSD IMPORT STARTED ===");
       console.log("Importando arquivo PSD:", file.name, "Tamanho:", Math.round(file.size / 1024), "KB");
       
-      // Import PSD file
-      const elements = await importPSDFile(file, selectedSize);
+      // Get PSD file dimensions first
+      const { width, height } = await getPSDDimensions(file);
       
-      // Update canvas elements
-      setElements(elements);
-      
-      // Close loading toast
-      toast.dismiss(loadingToast);
-      
-      // Log information about imported elements
-      const textElements = elements.filter(el => el.type === 'text').length;
-      const imageElements = elements.filter(el => el.type === 'image').length;
-      const containerElements = elements.filter(el => el.type === 'container').length;
-      
-      console.log("=== PSD IMPORT COMPLETED ===");
-      console.log("Resumo da importação:", {
-        total: elements.length,
-        textos: textElements,
-        imagens: imageElements,
-        containers: containerElements
-      });
-      
-      if (elements.length === 0) {
-        toast.warning("Nenhum elemento foi importado do arquivo PSD. Verifique os logs para mais detalhes.");
+      if (width && height) {
+        // Create a custom size based on the PSD dimensions
+        const customSizeName = `PSD - ${file.name.replace('.psd', '')}`;
+        const customSize: BannerSize = {
+          name: customSizeName,
+          width,
+          height
+        };
+        
+        // Add the custom size to active sizes and select it
+        addCustomSize(customSize);
+        
+        // Import PSD file with the new custom size
+        const elements = await importPSDFile(file, customSize);
+        
+        // Update canvas elements
+        setElements(elements);
+        
+        // Set the custom size as selected
+        setSelectedSize(customSize);
+        
+        // Close loading toast
+        toast.dismiss(loadingToast);
+        
+        // Log information about imported elements
+        const textElements = elements.filter(el => el.type === 'text').length;
+        const imageElements = elements.filter(el => el.type === 'image').length;
+        const containerElements = elements.filter(el => el.type === 'container').length;
+        
+        console.log("=== PSD IMPORT COMPLETED ===");
+        console.log("Resumo da importação:", {
+          total: elements.length,
+          textos: textElements,
+          imagens: imageElements,
+          containers: containerElements
+        });
+        
+        if (elements.length === 0) {
+          toast.warning("Nenhum elemento foi importado do arquivo PSD. Verifique os logs para mais detalhes.");
+        } else {
+          toast.success(`Importados ${elements.length} elementos do arquivo PSD. (${textElements} textos, ${imageElements} imagens, ${containerElements} containers)`);
+        }
       } else {
-        toast.success(`Importados ${elements.length} elementos do arquivo PSD. (${textElements} textos, ${imageElements} imagens, ${containerElements} containers)`);
+        toast.dismiss(loadingToast);
+        toast.error("Não foi possível determinar as dimensões do arquivo PSD.");
       }
     } catch (error) {
       console.error("=== PSD IMPORT ERROR ===");
@@ -74,6 +97,41 @@ export const PSDImport = () => {
       // Reset the input value to allow selecting the same file again
       event.target.value = '';
     }
+  };
+
+  // Function to get PSD dimensions before importing
+  const getPSDDimensions = async (file: File): Promise<{width: number, height: number}> => {
+    return new Promise((resolve) => {
+      // Create a FileReader
+      const reader = new FileReader();
+      
+      reader.onload = async () => {
+        try {
+          // Import psd.js dynamically (it's already installed)
+          const PSD = await import('psd.js');
+          
+          // Parse the PSD file
+          const psd = await PSD.default.fromBuffer(reader.result as ArrayBuffer);
+          
+          // Get dimensions
+          const width = psd.header.width;
+          const height = psd.header.height;
+          
+          resolve({ width, height });
+        } catch (error) {
+          console.error("Error reading PSD dimensions:", error);
+          resolve({ width: 0, height: 0 });
+        }
+      };
+      
+      reader.onerror = () => {
+        console.error("Error reading file");
+        resolve({ width: 0, height: 0 });
+      };
+      
+      // Read the file as ArrayBuffer
+      reader.readAsArrayBuffer(file);
+    });
   };
 
   return (

@@ -42,11 +42,19 @@ export const CanvasArea = ({
 }: CanvasAreaProps) => {
   return (
     <div className="relative flex flex-col items-center">
-      {size.name !== "All" && (
-        <div className="text-sm text-gray-600 mb-2">
-          {size.name} ({size.width}×{size.height})
-        </div>
-      )}
+      {/* Canvas label that scales with zoom */}
+      <div 
+        className="text-sm text-gray-600 mb-1 font-medium"
+        style={{
+          transform: `scale(${zoomLevel})`,
+          transformOrigin: "center bottom",
+          marginBottom: `${Math.max(6, 8 * zoomLevel)}px`,
+          whiteSpace: "nowrap"
+        }}
+      >
+        {size.name} ({size.width}×{size.height})
+      </div>
+      
       <Card
         ref={canvasRef}
         className="relative bg-white shadow-lg transform"

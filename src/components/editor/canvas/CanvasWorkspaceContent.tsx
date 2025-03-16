@@ -1,6 +1,5 @@
 
 import { CanvasArea } from "./CanvasArea";
-import { CanvasControls } from "./CanvasControls";
 import { BannerSize, CanvasNavigationMode, EditingMode, EditorElement } from "../types";
 
 interface CanvasWorkspaceContentProps {
@@ -150,27 +149,63 @@ const CanvasContainer = ({
   handleMouseUp,
   editorKey
 }: CanvasContainerProps) => {
+  // Function to filter elements by size
+  const getElementsForSize = (size: BannerSize) => {
+    return elements.filter(el => el.sizeId === size.name);
+  };
+
+  // Determine if we should use a grid layout
+  const useGridLayout = shouldShowAllSizes && activeSizes.length > 1;
+
   return (
     <div
       style={{
         transform: `translate(${panPosition.x}px, ${panPosition.y}px)`,
         transition: isPanning ? 'none' : 'transform 0.1s ease-out',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '40px',
-        alignItems: 'center',
       }}
     >
       {shouldShowAllSizes ? (
-        activeSizes.map((size, index) => (
+        <div 
+          className={useGridLayout ? "grid gap-10 items-start" : "flex flex-col gap-10 items-center"}
+          style={useGridLayout ? {
+            gridTemplateColumns: `repeat(${Math.min(activeSizes.length, 3)}, auto)`,
+            width: 'fit-content'
+          } : undefined}
+        >
+          {activeSizes.map((size, index) => (
+            <div key={`canvas-wrapper-${size.name}-${index}`} className="flex flex-col items-center">
+              <CanvasArea
+                key={`canvas-${size.name}-${editorKey}-${index}`}
+                size={size}
+                elements={getElementsForSize(size)}
+                selectedElement={selectedElement}
+                isDragging={isDragging}
+                isElementOutsideContainer={isElementOutsideContainer}
+                zoomLevel={zoomLevel}
+                hoveredContainer={hoveredContainer}
+                handleMouseDown={handleMouseDown}
+                handleCanvasMouseDown={handleCanvasMouseDown}
+                handleResizeStart={handleResizeStart}
+                handleContainerHover={handleContainerHover}
+                handleContainerHoverEnd={handleContainerHoverEnd}
+                canvasNavMode={canvasNavMode}
+                handleMouseMove={handleMouseMove}
+                handleMouseUp={handleMouseUp}
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center">
           <CanvasArea
-            key={`canvas-${size.name}-${editorKey}-${index}`}
-            size={size}
-            elements={elements}
+            key={`single-canvas-${editorKey}`}
+            size={selectedSize}
+            elements={elements.filter(el => !el.sizeId || el.sizeId === selectedSize.name)}
             selectedElement={selectedElement}
             isDragging={isDragging}
             isElementOutsideContainer={isElementOutsideContainer}
             zoomLevel={zoomLevel}
+            canvasRef={canvasRef}
             hoveredContainer={hoveredContainer}
             handleMouseDown={handleMouseDown}
             handleCanvasMouseDown={handleCanvasMouseDown}
@@ -181,27 +216,7 @@ const CanvasContainer = ({
             handleMouseMove={handleMouseMove}
             handleMouseUp={handleMouseUp}
           />
-        ))
-      ) : (
-        <CanvasArea
-          key={`single-canvas-${editorKey}`}
-          size={selectedSize}
-          elements={elements}
-          selectedElement={selectedElement}
-          isDragging={isDragging}
-          isElementOutsideContainer={isElementOutsideContainer}
-          zoomLevel={zoomLevel}
-          canvasRef={canvasRef}
-          hoveredContainer={hoveredContainer}
-          handleMouseDown={handleMouseDown}
-          handleCanvasMouseDown={handleCanvasMouseDown}
-          handleResizeStart={handleResizeStart}
-          handleContainerHover={handleContainerHover}
-          handleContainerHoverEnd={handleContainerHoverEnd}
-          canvasNavMode={canvasNavMode}
-          handleMouseMove={handleMouseMove}
-          handleMouseUp={handleMouseUp}
-        />
+        </div>
       )}
     </div>
   );

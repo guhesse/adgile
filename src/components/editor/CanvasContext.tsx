@@ -33,6 +33,7 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [zoomLevel, setZoomLevel] = useState(1);
   const [canvasNavMode, setCanvasNavMode] = useState<CanvasNavigationMode>('edit');
   const [editingMode, setEditingMode] = useState<EditingMode>('global');
+  const [gridLayout, setGridLayout] = useState<boolean>(false);
   
   // History state for undo functionality
   const [history, setHistory] = useState<HistoryState[]>([]);
@@ -228,6 +229,34 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     toast.success("Ação desfeita", { duration: 1500 });
   };
 
+  // Add a new custom size
+  const handleAddCustomSize = (newSize: BannerSize) => {
+    // Validate the size
+    if (!newSize.name || !newSize.width || !newSize.height) {
+      toast.error("Tamanho personalizado inválido");
+      return;
+    }
+
+    // Check if it already exists
+    if (activeSizes.some(s => s.name === newSize.name)) {
+      toast.error("Já existe um tamanho com este nome");
+      return;
+    }
+
+    // Add to active sizes
+    const updatedSizes = [...activeSizes, newSize];
+    setActiveSizes(updatedSizes);
+    
+    // Select the new size
+    setSelectedSize(newSize);
+
+    toast.success(`Tamanho personalizado "${newSize.name}" criado`);
+  };
+
+  const toggleGridLayout = () => {
+    setGridLayout(!gridLayout);
+  };
+
   return (
     <CanvasContext.Provider value={{
       elements,
@@ -258,6 +287,8 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setCanvasNavMode,
       editingMode,
       setEditingMode,
+      gridLayout,
+      toggleGridLayout,
       removeElement: handleRemoveElement,
       updateElementStyle: handleUpdateElementStyle,
       updateElementContent: handleUpdateElementContent,
@@ -271,6 +302,7 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       updateAllLinkedElements: handleUpdateAllLinkedElements,
       linkElementsAcrossSizes: handleLinkElementsAcrossSizes,
       unlinkElement: handleUnlinkElement,
+      addCustomSize: handleAddCustomSize,
       undo: handleUndo
     }}>
       {children}

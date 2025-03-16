@@ -1,4 +1,3 @@
-
 import { EditorElement, BannerSize } from '../../types';
 import { toast } from 'sonner';
 import { parsePSDFile } from './psdParser';
@@ -32,6 +31,8 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
     for (const layer of psd.layers) {
       const element = await processLayer(layer, selectedSize, psdData, extractedImages);
       if (element) {
+        // Assign the sizeId to ensure elements are bound to this specific canvas size
+        element.sizeId = selectedSize.name;
         elements.push(element);
       }
     }
@@ -54,6 +55,8 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
             // Process this node with pre-extracted images
             const element = await processLayer(node.layer || node, selectedSize, psdData, extractedImages);
             if (element) {
+              // Assign the sizeId for proper artboard association
+              element.sizeId = selectedSize.name;
               elements.push(element);
             }
           }
@@ -66,6 +69,8 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
             if (!child.isGroup || (typeof child.isGroup === 'function' && !child.isGroup())) {
               const element = await processLayer(child.layer || child, selectedSize, psdData, extractedImages);
               if (element) {
+                // Assign the sizeId for proper artboard association
+                element.sizeId = selectedSize.name;
                 elements.push(element);
               }
             }
@@ -80,20 +85,55 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
       }
     }
     
-    // Calculate percentage values
+    // Calculate percentage values - important for responsive behavior
     calculatePercentageValues(elements, selectedSize);
     
-    // Save PSD data to localStorage
-    console.log("=== PSD DATA FOR DATABASE ===");
-    console.log(JSON.stringify(psdData, null, 2));
+    // Make sure elements stay within the boundaries
+    elements.forEach(element => {
+      // If element extends beyond right edge
+      if (element.style.x + element.style.width > selectedSize.width) {
+        // If wider than canvas, resize it
+        if (element.style.width > selectedSize.width) {
+          element.style.width = selectedSize.width - 20; // Leave some margin
+          element.style.x = 10; // Position with margin
+        } else {
+          // Otherwise just position it within bounds
+          element.style.x = selectedSize.width - element.style.width - 10;
+        }
+      }
+      
+      // If element extends beyond bottom edge
+      if (element.style.y + element.style.height > selectedSize.height) {
+        // If taller than canvas, resize it
+        if (element.style.height > selectedSize.height) {
+          element.style.height = selectedSize.height - 20; // Leave some margin
+          element.style.y = 10; // Position with margin
+        } else {
+          // Otherwise just position it within bounds
+          element.style.y = selectedSize.height - element.style.height - 10;
+        }
+      }
+      
+      // Recalculate percentages after adjustments
+      element.style.xPercent = (element.style.x / selectedSize.width) * 100;
+      element.style.yPercent = (element.style.y / selectedSize.height) * 100;
+      element.style.widthPercent = (element.style.width / selectedSize.width) * 100;
+      element.style.heightPercent = (element.style.height / selectedSize.height) * 100;
+    });
     
-    const storageKey = savePSDDataToStorage(psdData);
-    
-    // Display information about saved PSD data
-    const psdDataKeys = getPSDStorageKeys();
-    if (psdDataKeys.length > 0) {
-      console.log(`PSD data disponíveis no localStorage: ${psdDataKeys.length}`);
-      console.log(`Último PSD salvo: ${psdDataKeys[psdDataKeys.length - 1]}`);
+    // Try to save PSD data to localStorage
+    try {
+      const storageKey = savePSDDataToStorage(psdData);
+      
+      // Display information about saved PSD data
+      const psdDataKeys = getPSDStorageKeys();
+      if (psdDataKeys.length > 0) {
+        console.log(`PSD data disponíveis no localStorage: ${psdDataKeys.length}`);
+        console.log(`Último PSD salvo: ${psdDataKeys[psdDataKeys.length - 1]}`);
+      }
+    } catch (error) {
+      console.error("Error saving PSD data to localStorage:", error);
+      // This is non-critical, so we can continue even if storage fails
     }
     
     // Log summary of imported elements

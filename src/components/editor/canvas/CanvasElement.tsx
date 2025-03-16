@@ -37,30 +37,52 @@ export const CanvasElement = ({
   const isContainer = element.type === "container" || element.type === "layout";
   const isExiting = isElementOutsideContainer && selectedElement?.id === element.id;
 
-  const optimalPosition = findOptimalPosition(element, canvasSize.width, canvasSize.height);
+  // Choose the appropriate position calculation method
+  let position;
   
-  const position = element.isIndividuallyPositioned 
-    ? { x: element.style.x, y: element.style.y, width: element.style.width, height: element.style.height }
-    : optimalPosition;
-
-  let positionStyle: React.CSSProperties = {};
-
-  if (isChild) {
-    positionStyle = {
-      position: "absolute",
-      left: position.x,
-      top: position.y,
-      width: position.width,
-      height: position.height
+  // If the element is individually positioned or has specific coordinates, use those
+  if (element.isIndividuallyPositioned || (element.style.x !== undefined && element.style.y !== undefined)) {
+    position = { 
+      x: element.style.x, 
+      y: element.style.y, 
+      width: element.style.width, 
+      height: element.style.height 
     };
-  } else {
-    positionStyle = {
-      position: "absolute",
-      left: position.x,
-      top: position.y,
-      width: position.width,
-      height: position.height
+  }
+  // Use percentage-based positioning if available
+  else if (element.style.xPercent !== undefined && element.style.yPercent !== undefined) {
+    position = {
+      x: (element.style.xPercent * canvasSize.width) / 100,
+      y: (element.style.yPercent * canvasSize.height) / 100,
+      width: (element.style.widthPercent! * canvasSize.width) / 100,
+      height: (element.style.heightPercent! * canvasSize.height) / 100
     };
+  }
+  // As a last resort, use smart positioning logic
+  else {
+    position = findOptimalPosition(element, canvasSize.width, canvasSize.height);
+  }
+
+  // Ensure the element stays within canvas boundaries
+  const constrainedPosition = {
+    x: Math.max(0, Math.min(position.x, canvasSize.width - Math.min(position.width, 20))),
+    y: Math.max(0, Math.min(position.y, canvasSize.height - Math.min(position.height, 20))),
+    width: Math.min(position.width, canvasSize.width),
+    height: Math.min(position.height, canvasSize.height)
+  };
+
+  // Apply the final position style
+  let positionStyle: React.CSSProperties = {
+    position: "absolute",
+    left: constrainedPosition.x,
+    top: constrainedPosition.y,
+    width: constrainedPosition.width,
+    height: constrainedPosition.height
+  };
+
+  // If this element doesn't belong to this canvas size, don't render it
+  if (element.sizeId && element.sizeId !== canvasSize.name) {
+    return null;
   }
 
   return (

@@ -30,6 +30,8 @@ export interface CanvasContextType {
   setCanvasNavMode: React.Dispatch<React.SetStateAction<CanvasNavigationMode>>;
   editingMode: EditingMode;
   setEditingMode: React.Dispatch<React.SetStateAction<EditingMode>>;
+  gridLayout?: boolean;
+  toggleGridLayout?: () => void;
   removeElement: (elementId: string) => void;
   updateElementStyle: (property: string, value: any) => void;
   updateElementContent: (content: string) => void;
@@ -48,5 +50,6 @@ export interface CanvasContextType {
   ) => EditorElement[];
   linkElementsAcrossSizes: (element: EditorElement) => void;
   unlinkElement: (element: EditorElement) => void;
+  addCustomSize: (size: BannerSize) => void;
   undo: () => void;
 }
