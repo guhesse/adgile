@@ -82,7 +82,7 @@ export const ElementRenderer = ({ element }: ElementRendererProps) => {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-500 text-sm p-2 text-center">
-            {element.alt || element.name || "Imagem"}
+            {element.alt || element.content || "Imagem"}
           </div>
         )}
       </div>

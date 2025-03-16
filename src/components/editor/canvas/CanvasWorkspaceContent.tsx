@@ -1,6 +1,7 @@
 
 import { CanvasArea } from "./CanvasArea";
 import { BannerSize, CanvasNavigationMode, EditingMode, EditorElement } from "../types";
+import { CanvasControls } from "./CanvasControls";
 
 interface CanvasWorkspaceContentProps {
   containerRef: React.RefObject<HTMLDivElement>;
