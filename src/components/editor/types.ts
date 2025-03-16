@@ -7,7 +7,7 @@ export type BannerSize = {
 
 export type EditorElement = {
   id: string;
-  type: "text" | "image" | "button" | "layout" | "container" | "paragraph" | "divider" | "spacer" | "logo" | "video";
+  type: "text" | "image" | "button" | "layout" | "container" | "paragraph" | "divider" | "spacer" | "logo" | "video" | "artboard-background";
   content: string;
   style: {
     x: number;
@@ -54,7 +54,7 @@ export type EditorElement = {
   childElements?: EditorElement[];
   alt?: string;
   parentId?: string; // Reference to parent container/layout
-  inContainer: boolean; // Whether element is inside a container
+  inContainer?: boolean; // Whether element is inside a container
   sizeId?: string; // The banner size this element belongs to
   linkedElementId?: string; // ID of the linked element in other sizes
   isIndividuallyPositioned?: boolean; // Whether this element has been individually positioned

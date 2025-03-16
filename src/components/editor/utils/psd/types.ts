@@ -26,6 +26,17 @@ export interface PSDFileData {
 }
 
 /**
+ * Interface for storing metadata about PSD files
+ */
+export interface PSDMetadata {
+  /** List of PSD file storage keys */
+  storageKeys: string[];
+  
+  /** Date when the metadata was last updated */
+  lastUpdated: string;
+}
+
+/**
  * Interface for storing information about a layer in a PSD file
  */
 export interface PSDLayerInfo {
