@@ -63,126 +63,72 @@ export const CanvasWorkspaceContent = ({
   return (
     <div
       ref={containerRef}
-      className={`flex-1 p-8 flex justify-center items-center overflow-hidden ${canvasNavMode === 'pan' ? 'canvas-pan-mode' : ''}`}
+      className={`flex-1 p-8 overflow-hidden ${canvasNavMode === 'pan' ? 'canvas-pan-mode' : ''}`}
       style={{
         cursor: isPanning ? 'grabbing' : canvasNavMode === 'pan' ? 'grab' : 'default',
+        position: 'relative',
       }}
     >
-      <CanvasContainer 
-        panPosition={panPosition}
-        isPanning={isPanning}
-        shouldShowAllSizes={shouldShowAllSizes}
-        activeSizes={activeSizes}
-        selectedSize={selectedSize}
-        elements={elements}
-        selectedElement={selectedElement}
-        isDragging={isDragging}
-        isElementOutsideContainer={isElementOutsideContainer}
-        zoomLevel={zoomLevel}
-        canvasRef={canvasRef}
-        hoveredContainer={hoveredContainer}
-        handleMouseDown={handleMouseDown}
-        handleCanvasMouseDown={handleCanvasMouseDown}
-        handleResizeStart={handleResizeStart}
-        handleContainerHover={handleContainerHover}
-        handleContainerHoverEnd={handleContainerHoverEnd}
-        canvasNavMode={canvasNavMode}
-        handleMouseMove={handleMouseMove}
-        handleMouseUp={handleMouseUp}
-        editorKey={editorKey}
-      />
-
-      <CanvasControls 
-        zoomLevel={zoomLevel}
-        setZoomLevel={setZoomLevel}
-        editingMode={editingMode}
-        setEditingMode={setEditingMode}
-      />
-    </div>
-  );
-};
-
-interface CanvasContainerProps {
-  panPosition: { x: number; y: number };
-  isPanning: boolean;
-  shouldShowAllSizes: boolean;
-  activeSizes: BannerSize[];
-  selectedSize: BannerSize;
-  elements: EditorElement[];
-  selectedElement: EditorElement | null;
-  isDragging: boolean;
-  isElementOutsideContainer: boolean;
-  zoomLevel: number;
-  canvasRef?: React.RefObject<HTMLDivElement>;
-  hoveredContainer: string | null;
-  handleMouseDown: (e: React.MouseEvent, element: EditorElement) => void;
-  handleCanvasMouseDown: (e: React.MouseEvent) => void;
-  handleResizeStart: (e: React.MouseEvent, direction: string, element: EditorElement) => void;
-  handleContainerHover: (e: React.MouseEvent, containerId: string) => void;
-  handleContainerHoverEnd: () => void;
-  canvasNavMode: CanvasNavigationMode;
-  handleMouseMove: (e: React.MouseEvent) => void;
-  handleMouseUp: () => void;
-  editorKey: string;
-}
-
-// Extract CanvasContainer as a separate component
-const CanvasContainer = ({
-  panPosition,
-  isPanning,
-  shouldShowAllSizes,
-  activeSizes,
-  selectedSize,
-  elements,
-  selectedElement,
-  isDragging,
-  isElementOutsideContainer,
-  zoomLevel,
-  canvasRef,
-  hoveredContainer,
-  handleMouseDown,
-  handleCanvasMouseDown,
-  handleResizeStart,
-  handleContainerHover,
-  handleContainerHoverEnd,
-  canvasNavMode,
-  handleMouseMove,
-  handleMouseUp,
-  editorKey
-}: CanvasContainerProps) => {
-  // Function to filter elements by size
-  const getElementsForSize = (size: BannerSize) => {
-    return elements.filter(el => el.sizeId === size.name);
-  };
-
-  // Determine if we should use a grid layout
-  const useGridLayout = shouldShowAllSizes && activeSizes.length > 1;
-
-  return (
-    <div
-      style={{
-        transform: `translate(${panPosition.x}px, ${panPosition.y}px)`,
-        transition: isPanning ? 'none' : 'transform 0.1s ease-out',
-      }}
-    >
-      {shouldShowAllSizes ? (
-        <div 
-          className={useGridLayout ? "grid gap-10 items-start" : "flex flex-col gap-10 items-center"}
-          style={useGridLayout ? {
-            gridTemplateColumns: `repeat(${Math.min(activeSizes.length, 3)}, auto)`,
-            width: 'fit-content'
-          } : undefined}
+      {/* Canvas workspace with fixed size and scrollable content */}
+      <div 
+        className="h-full w-full overflow-auto"
+        style={{
+          position: 'relative',
+        }}
+      >
+        {/* Infinite canvas area that can be zoomed and panned */}
+        <div
+          style={{
+            transform: `scale(${zoomLevel})`,
+            transformOrigin: '0 0',
+            transition: isPanning ? 'none' : 'transform 0.1s ease-out',
+            position: 'absolute',
+            left: `${panPosition.x}px`,
+            top: `${panPosition.y}px`,
+          }}
         >
-          {activeSizes.map((size, index) => (
-            <div key={`canvas-wrapper-${size.name}-${index}`} className="flex flex-col items-center">
+          {shouldShowAllSizes ? (
+            <div 
+              className="grid gap-10"
+              style={{
+                gridTemplateColumns: `repeat(auto-fill, minmax(300px, 1fr))`,
+                width: 'max-content',
+              }}
+            >
+              {activeSizes.map((size, index) => (
+                <div key={`canvas-wrapper-${size.name}-${index}`}>
+                  <CanvasArea
+                    key={`canvas-${size.name}-${editorKey}-${index}`}
+                    size={size}
+                    elements={elements.filter(el => !el.sizeId || el.sizeId === size.name)}
+                    selectedElement={selectedElement}
+                    isDragging={isDragging}
+                    isElementOutsideContainer={isElementOutsideContainer}
+                    zoomLevel={1} // Fixed at 1 as we're scaling the entire workspace now
+                    hoveredContainer={hoveredContainer}
+                    handleMouseDown={handleMouseDown}
+                    handleCanvasMouseDown={handleCanvasMouseDown}
+                    handleResizeStart={handleResizeStart}
+                    handleContainerHover={handleContainerHover}
+                    handleContainerHoverEnd={handleContainerHoverEnd}
+                    canvasNavMode={canvasNavMode}
+                    handleMouseMove={handleMouseMove}
+                    handleMouseUp={handleMouseUp}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div>
               <CanvasArea
-                key={`canvas-${size.name}-${editorKey}-${index}`}
-                size={size}
-                elements={getElementsForSize(size)}
+                key={`single-canvas-${editorKey}`}
+                size={selectedSize}
+                elements={elements.filter(el => !el.sizeId || el.sizeId === selectedSize.name)}
                 selectedElement={selectedElement}
                 isDragging={isDragging}
                 isElementOutsideContainer={isElementOutsideContainer}
-                zoomLevel={zoomLevel}
+                zoomLevel={1} // Fixed at 1 as we're scaling the entire workspace now
+                canvasRef={canvasRef}
                 hoveredContainer={hoveredContainer}
                 handleMouseDown={handleMouseDown}
                 handleCanvasMouseDown={handleCanvasMouseDown}
@@ -194,31 +140,16 @@ const CanvasContainer = ({
                 handleMouseUp={handleMouseUp}
               />
             </div>
-          ))}
+          )}
         </div>
-      ) : (
-        <div className="flex flex-col items-center">
-          <CanvasArea
-            key={`single-canvas-${editorKey}`}
-            size={selectedSize}
-            elements={elements.filter(el => !el.sizeId || el.sizeId === selectedSize.name)}
-            selectedElement={selectedElement}
-            isDragging={isDragging}
-            isElementOutsideContainer={isElementOutsideContainer}
-            zoomLevel={zoomLevel}
-            canvasRef={canvasRef}
-            hoveredContainer={hoveredContainer}
-            handleMouseDown={handleMouseDown}
-            handleCanvasMouseDown={handleCanvasMouseDown}
-            handleResizeStart={handleResizeStart}
-            handleContainerHover={handleContainerHover}
-            handleContainerHoverEnd={handleContainerHoverEnd}
-            canvasNavMode={canvasNavMode}
-            handleMouseMove={handleMouseMove}
-            handleMouseUp={handleMouseUp}
-          />
-        </div>
-      )}
+      </div>
+
+      <CanvasControls 
+        zoomLevel={zoomLevel}
+        setZoomLevel={setZoomLevel}
+        editingMode={editingMode}
+        setEditingMode={setEditingMode}
+      />
     </div>
   );
 };

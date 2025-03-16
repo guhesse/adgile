@@ -1,6 +1,9 @@
 
 import { useState, useEffect } from "react";
 import { EditingMode } from "../types";
+import { ZoomIn, ZoomOut, Maximize } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 
 interface CanvasControlsProps {
   zoomLevel: number;
@@ -15,6 +18,22 @@ export const CanvasControls = ({
   editingMode, 
   setEditingMode 
 }: CanvasControlsProps) => {
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(prev + 0.1, 3));
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(prev - 0.1, 0.2));
+  };
+
+  const handleResetZoom = () => {
+    setZoomLevel(1);
+  };
+
+  const handleZoomSliderChange = (value: number[]) => {
+    setZoomLevel(value[0] / 100);
+  };
+
   return (
     <>
       <div className="absolute bottom-14 right-4 bg-white px-3 py-1.5 rounded shadow-md">
@@ -36,14 +55,47 @@ export const CanvasControls = ({
 
       <div className="absolute bottom-4 right-4 bg-white px-3 py-1.5 rounded shadow-md flex items-center gap-3">
         <span className="text-xs whitespace-nowrap">Zoom: {Math.round(zoomLevel * 100)}%</span>
-        <input 
-          type="range" 
-          min="10" 
-          max="500" 
-          value={zoomLevel * 100} 
-          onChange={(e) => setZoomLevel(Number(e.target.value) / 100)}
-          className="w-24 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-        />
+        
+        <div className="flex items-center gap-1">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleZoomOut} 
+            className="p-1 h-auto" 
+            title="Zoom Out"
+          >
+            <ZoomOut size={14} />
+          </Button>
+          
+          <Slider 
+            value={[zoomLevel * 100]} 
+            min={20} 
+            max={300}
+            step={5}
+            onValueChange={handleZoomSliderChange}
+            className="w-24"
+          />
+          
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleZoomIn} 
+            className="p-1 h-auto" 
+            title="Zoom In"
+          >
+            <ZoomIn size={14} />
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleResetZoom} 
+            className="p-1 h-7 ml-1" 
+            title="Reset Zoom"
+          >
+            <Maximize size={14} />
+          </Button>
+        </div>
       </div>
     </>
   );

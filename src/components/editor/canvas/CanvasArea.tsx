@@ -41,30 +41,14 @@ export const CanvasArea = ({
   handleMouseUp
 }: CanvasAreaProps) => {
   return (
-    <div className="relative flex flex-col items-center">
-      {/* Canvas label that scales with zoom */}
-      <div 
-        className="text-sm text-gray-600 mb-1 font-medium"
-        style={{
-          transform: `scale(${zoomLevel})`,
-          transformOrigin: "center bottom",
-          marginBottom: `${Math.max(6, 8 * zoomLevel)}px`,
-          whiteSpace: "nowrap"
-        }}
-      >
-        {size.name} ({size.width}×{size.height})
-      </div>
-      
+    <div className="relative">
       <Card
         ref={canvasRef}
-        className="relative bg-white shadow-lg transform"
+        className="relative bg-white shadow-lg"
         style={{
           width: size.width,
           height: size.height,
-          backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px)",
-          transform: `scale(${zoomLevel})`,
-          transformOrigin: "center center",
-          transition: "transform 0.2s ease-out"
+          backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px)"
         }}
         onMouseDown={(e) => {
           // Verificar se clicou diretamente no Card (canvas) e não em um elemento
@@ -76,6 +60,13 @@ export const CanvasArea = ({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
+        {/* Canvas label positioned at the top */}
+        <div 
+          className="absolute -top-6 left-0 right-0 text-sm text-gray-600 font-medium text-center"
+        >
+          {size.name} ({size.width}×{size.height})
+        </div>
+
         {elements
           .filter(el => !el.inContainer)
           .map((element, index) => (
