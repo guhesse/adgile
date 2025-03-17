@@ -7,10 +7,10 @@ interface ElementHandlesProps {
 }
 
 export const ElementHandles = ({ element, handleResizeStart }: ElementHandlesProps) => {
-  // Define consistent style for handles
+  // Definir estilo consistente para manipuladores
   const handleStyle = {
-    width: '12px', 
-    height: '12px',
+    width: '10px', 
+    height: '10px',
     backgroundColor: '#ffffff',
     borderRadius: '50%',
     border: '2px solid #4299e1',
@@ -21,9 +21,10 @@ export const ElementHandles = ({ element, handleResizeStart }: ElementHandlesPro
     cursor: 'pointer'
   };
 
-  // Use stopPropagation to prevent click events from bubbling
+  // Usar stopPropagation para evitar que eventos de clique se propaguem
   const handleMouseDown = (e: React.MouseEvent, direction: string) => {
     e.stopPropagation();
+    e.preventDefault();
     handleResizeStart(e, direction, element);
   };
 
@@ -36,8 +37,8 @@ export const ElementHandles = ({ element, handleResizeStart }: ElementHandlesPro
         style={{
           ...handleStyle,
           cursor: 'n-resize',
-          top: '-6px',
-          left: 'calc(50% - 6px)',
+          top: '-5px',
+          left: 'calc(50% - 5px)',
         }}
       />
       
@@ -48,8 +49,8 @@ export const ElementHandles = ({ element, handleResizeStart }: ElementHandlesPro
         style={{
           ...handleStyle,
           cursor: 'e-resize',
-          top: 'calc(50% - 6px)',
-          right: '-6px',
+          top: 'calc(50% - 5px)',
+          right: '-5px',
         }}
       />
       
@@ -60,8 +61,8 @@ export const ElementHandles = ({ element, handleResizeStart }: ElementHandlesPro
         style={{
           ...handleStyle,
           cursor: 's-resize',
-          bottom: '-6px',
-          left: 'calc(50% - 6px)',
+          bottom: '-5px',
+          left: 'calc(50% - 5px)',
         }}
       />
       
@@ -72,8 +73,8 @@ export const ElementHandles = ({ element, handleResizeStart }: ElementHandlesPro
         style={{
           ...handleStyle,
           cursor: 'w-resize',
-          top: 'calc(50% - 6px)',
-          left: '-6px',
+          top: 'calc(50% - 5px)',
+          left: '-5px',
         }}
       />
       
@@ -84,8 +85,8 @@ export const ElementHandles = ({ element, handleResizeStart }: ElementHandlesPro
         style={{
           ...handleStyle,
           cursor: 'nw-resize',
-          top: '-6px',
-          left: '-6px',
+          top: '-5px',
+          left: '-5px',
         }}
       />
       
@@ -96,8 +97,8 @@ export const ElementHandles = ({ element, handleResizeStart }: ElementHandlesPro
         style={{
           ...handleStyle,
           cursor: 'ne-resize',
-          top: '-6px',
-          right: '-6px',
+          top: '-5px',
+          right: '-5px',
         }}
       />
       
@@ -108,8 +109,8 @@ export const ElementHandles = ({ element, handleResizeStart }: ElementHandlesPro
         style={{
           ...handleStyle,
           cursor: 'se-resize',
-          bottom: '-6px',
-          right: '-6px',
+          bottom: '-5px',
+          right: '-5px',
         }}
       />
       
@@ -120,8 +121,8 @@ export const ElementHandles = ({ element, handleResizeStart }: ElementHandlesPro
         style={{
           ...handleStyle,
           cursor: 'sw-resize',
-          bottom: '-6px',
-          left: '-6px',
+          bottom: '-5px',
+          left: '-5px',
         }}
       />
     </>

@@ -2,7 +2,7 @@
 import { EditorElement } from "../../types";
 import { absoluteToPercentage, percentageToAbsolute, snapToGrid } from "./gridCore";
 
-// Convert element positions to percentage-based
+// Converter posições de elemento para baseadas em porcentagem
 export const convertElementToPercentage = (
   element: EditorElement,
   canvasWidth: number,
@@ -25,13 +25,13 @@ export const convertElementToPercentage = (
   };
 };
 
-// Convert percentage positions to absolute (for a specific canvas size)
+// Converter posições percentuais para absolutas (para um tamanho específico de canvas)
 export const applyPercentageToElement = (
   element: EditorElement,
   canvasWidth: number,
   canvasHeight: number
 ): EditorElement => {
-  // Only apply if percentage values exist
+  // Apenas aplicar se valores percentuais existirem
   if (
     element.style.xPercent !== undefined &&
     element.style.yPercent !== undefined &&
@@ -52,58 +52,88 @@ export const applyPercentageToElement = (
   return element;
 };
 
-// Smart positioning: Find the optimal position for an element across different canvas sizes
+// Posicionamento inteligente: Encontrar a posição ideal para um elemento em diferentes tamanhos de canvas
 export const findOptimalPosition = (
   element: EditorElement,
   canvasWidth: number,
   canvasHeight: number
 ): { x: number, y: number, width: number, height: number } => {
-  // If this element already has percentage values, use them
+  // Se este elemento já tem valores percentuais, usá-los
   if (
     element.style.xPercent !== undefined &&
     element.style.yPercent !== undefined &&
     element.style.widthPercent !== undefined &&
     element.style.heightPercent !== undefined
   ) {
-    return {
-      x: percentageToAbsolute(element.style.xPercent, canvasWidth),
-      y: percentageToAbsolute(element.style.yPercent, canvasHeight),
-      width: percentageToAbsolute(element.style.widthPercent, canvasWidth),
-      height: percentageToAbsolute(element.style.heightPercent, canvasHeight)
-    };
-  }
-
-  // If element is a text, center it horizontally
-  if (element.type === "text" || element.type === "paragraph") {
-    const x = (canvasWidth - element.style.width) / 2;
-    return {
-      x: snapToGrid(x),
-      y: element.style.y,
-      width: element.style.width,
-      height: element.style.height
-    };
-  }
-
-  // If element is an image or logo, maintain aspect ratio
-  if (element.type === "image" || element.type === "logo") {
-    const aspectRatio = element.style.width / element.style.height;
-    let newWidth = Math.min(element.style.width, canvasWidth * 0.8); // 80% of canvas width max
-    let newHeight = newWidth / aspectRatio;
+    // Verificar alinhamento inferior
+    const isBottomAligned = element.style.yPercent + element.style.heightPercent > 95;
     
-    // Center it
-    const x = (canvasWidth - newWidth) / 2;
-    const y = (canvasHeight - newHeight) / 3; // Position in the upper third
+    // Calcular dimensões absolutas a partir das porcentagens
+    let x = percentageToAbsolute(element.style.xPercent, canvasWidth);
+    let y = percentageToAbsolute(element.style.yPercent, canvasHeight);
+    let width = percentageToAbsolute(element.style.widthPercent, canvasWidth);
+    let height = percentageToAbsolute(element.style.heightPercent, canvasHeight);
+    
+    // Se for uma imagem, manter proporção
+    if (element.type === "image" || element.type === "logo") {
+      const aspectRatio = element.style.width / element.style.height;
+      height = width / aspectRatio;
+    }
+    
+    // Se estiver alinhado na parte inferior, ajustar posição y
+    if (isBottomAligned) {
+      y = canvasHeight - height;
+    }
     
     return {
       x: snapToGrid(x),
       y: snapToGrid(y),
-      width: snapToGrid(newWidth),
-      height: snapToGrid(newHeight)
+      width: snapToGrid(width),
+      height: snapToGrid(height)
     };
   }
 
-  // Default: scale by canvas size
-  const widthRatio = canvasWidth / 600; // Assuming 600 is a reference width
+  // Se não tiver valores percentuais, calcular com base no tipo do elemento
+  
+  // Se elemento for um texto, centralizá-lo horizontalmente
+  if (element.type === "text" || element.type === "paragraph") {
+    const widthPercent = (element.style.width / 600) * 100; // Usando 600 como largura de referência
+    const heightPercent = (element.style.height / 600) * 100;
+    
+    const width = (widthPercent * canvasWidth) / 100;
+    const height = (heightPercent * canvasHeight) / 100;
+    const x = (canvasWidth - width) / 2;
+    
+    return {
+      x: snapToGrid(x),
+      y: element.style.y,
+      width: snapToGrid(width),
+      height: snapToGrid(height)
+    };
+  }
+
+  // Se elemento for uma imagem ou logo, manter proporção
+  if (element.type === "image" || element.type === "logo") {
+    const aspectRatio = element.style.width / element.style.height;
+    const widthPercent = (element.style.width / 600) * 100; // Usando 600 como largura de referência
+    
+    const width = (widthPercent * canvasWidth) / 100;
+    const height = width / aspectRatio;
+    
+    // Centralizá-lo
+    const x = (canvasWidth - width) / 2;
+    const y = (canvasHeight - height) / 3; // Posicionar no terço superior
+    
+    return {
+      x: snapToGrid(x),
+      y: snapToGrid(y),
+      width: snapToGrid(width),
+      height: snapToGrid(height)
+    };
+  }
+
+  // Padrão: escalar pelo tamanho do canvas
+  const widthRatio = canvasWidth / 600; // Assumindo 600 como largura de referência
   const heightRatio = canvasHeight / 600;
   
   return {

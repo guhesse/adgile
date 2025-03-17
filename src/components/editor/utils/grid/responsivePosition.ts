@@ -1,16 +1,17 @@
+
 import { EditorElement, BannerSize } from "../../types";
 import { snapToGrid } from "./gridCore";
 
 /**
- * Calculates the ideal position for a linked element across different canvas sizes
- * based on percentages while respecting canvas boundaries
+ * Calcula a posição ideal para um elemento vinculado em diferentes tamanhos de canvas
+ * com base em porcentagens, respeitando os limites do canvas
  */
 export const calculateSmartPosition = (
   element: EditorElement,
   sourceSize: BannerSize,
   targetSize: BannerSize
 ): { x: number; y: number; width: number; height: number } => {
-  // First, ensure we have percentage values
+  // Primeiro, garantir que temos valores percentuais
   const xPercent = element.style.xPercent !== undefined 
     ? element.style.xPercent 
     : (element.style.x / sourceSize.width) * 100;
@@ -27,46 +28,53 @@ export const calculateSmartPosition = (
     ? element.style.heightPercent 
     : (element.style.height / sourceSize.height) * 100;
 
-  // Calculate position based on percentages
+  // Calcular posição baseada em porcentagens
   let x = (xPercent * targetSize.width) / 100;
   let y = (yPercent * targetSize.height) / 100;
   let width = (widthPercent * targetSize.width) / 100;
   let height = (heightPercent * targetSize.height) / 100;
 
-  // Ensure minimum dimensions
+  // Garantir dimensões mínimas
   width = Math.max(width, 20);
   height = Math.max(height, 20);
 
-  // Special handling for images to preserve aspect ratio
+  // Tratamento especial para imagens para preservar proporção
   if (element.type === "image" || element.type === "logo") {
-    // Get the original aspect ratio
+    // Obter a proporção original
     const originalAspectRatio = 
       (element.style.width / element.style.height) || 
       (sourceSize.width / sourceSize.height);
     
-    // Calculate the new aspect ratio based on the percentage calculations
+    // Calcular nova proporção baseada nos cálculos percentuais
     const newAspectRatio = width / height;
     
-    // If aspect ratios are significantly different, adjust dimensions
+    // Se as proporções forem significativamente diferentes, ajustar dimensões
     if (Math.abs(originalAspectRatio - newAspectRatio) > 0.01) {
-      // For images, prioritize percentage-based width and adjust height to maintain aspect ratio
+      // Para imagens, priorizar largura baseada em porcentagem e ajustar altura para manter proporção
       height = width / originalAspectRatio;
+      
+      // Recalcular altura em porcentagem para manter consistência
+      const newHeightPercent = (height / targetSize.height) * 100;
+      element.style.heightPercent = newHeightPercent;
     }
   }
 
-  // Bottom alignment detection and preservation
-  const isBottomAligned = Math.abs((element.style.y + element.style.height) - sourceSize.height) < 10;
+  // Detecção e preservação de alinhamento inferior
+  const isBottomAligned = Math.abs((element.style.y + element.style.height) - sourceSize.height) < 20;
   if (isBottomAligned) {
-    // If element was bottom-aligned in source, keep it bottom-aligned in target
+    // Se o elemento estava alinhado na parte inferior na fonte, mantê-lo alinhado no destino
     y = targetSize.height - height;
+    
+    // Atualizar yPercent para refletir a posição alinhada ao fundo
+    element.style.yPercent = ((targetSize.height - height) / targetSize.height) * 100;
   }
 
-  // Ensure element stays within canvas bounds
-  const margin = 0; // No margin for overflow
+  // Garantir que o elemento permaneça dentro dos limites do canvas
+  const margin = 0; // Sem margem para overflow
   x = Math.max(margin * -1, Math.min(x, targetSize.width - width - margin));
   y = Math.max(margin * -1, Math.min(y, targetSize.height - height - margin));
 
-  // Snap to grid
+  // Ajustar à grade
   x = snapToGrid(x);
   y = snapToGrid(y);
   width = snapToGrid(width);
@@ -76,8 +84,8 @@ export const calculateSmartPosition = (
 };
 
 /**
- * Maintains element position relative to cursor during drag operations
- * across different canvas sizes
+ * Mantém a posição do elemento em relação ao cursor durante operações de arrastar
+ * em diferentes tamanhos de canvas
  */
 export const calculateDragPosition = (
   mouseX: number,
@@ -87,18 +95,18 @@ export const calculateDragPosition = (
   element: EditorElement,
   canvasSize: BannerSize
 ): { x: number; y: number } => {
-  // Calculate new position based on mouse and offset
+  // Calcular nova posição com base no mouse e no deslocamento
   let newX = mouseX - dragOffsetX;
   let newY = mouseY - dragOffsetY;
 
-  // Constrain to canvas
+  // Restringir ao canvas
   const maxX = canvasSize.width - element.style.width;
   const maxY = canvasSize.height - element.style.height;
   
   newX = Math.max(0, Math.min(newX, maxX));
   newY = Math.max(0, Math.min(newY, maxY));
 
-  // Snap to grid
+  // Ajustar à grade
   newX = snapToGrid(newX);
   newY = snapToGrid(newY);
 
@@ -106,7 +114,8 @@ export const calculateDragPosition = (
 };
 
 /**
- * Updates linked elements intelligently when one is modified
+ * Atualiza elementos vinculados de forma inteligente quando um é modificado,
+ * mantendo proporções e posições relativas
  */
 export const updateLinkedElementsIntelligently = (
   elements: EditorElement[],
@@ -115,25 +124,33 @@ export const updateLinkedElementsIntelligently = (
 ): EditorElement[] => {
   if (!sourceElement.linkedElementId) return elements;
 
-  // Find the source element's size
+  // Encontrar o tamanho do elemento fonte
   const sourceSize = activeSizes.find(size => size.name === sourceElement.sizeId) || activeSizes[0];
 
-  // Update all linked elements
+  // Verificar se o elemento fonte está alinhado ao fundo
+  const isBottomAligned = Math.abs((sourceElement.style.y + sourceElement.style.height) - sourceSize.height) < 20;
+
+  // Atualizar todos os elementos vinculados
   return elements.map(el => {
-    // Skip if not linked to the source element, is the source element itself, or is individually positioned
+    // Pular se não estiver vinculado ao elemento fonte, for o próprio elemento fonte ou estiver posicionado individualmente
     if (el.linkedElementId !== sourceElement.linkedElementId || 
         el.id === sourceElement.id || 
         el.isIndividuallyPositioned) {
       return el;
     }
 
-    // Find the target element's size
+    // Encontrar o tamanho do elemento alvo
     const targetSize = activeSizes.find(size => size.name === el.sizeId) || activeSizes[0];
     
-    // Calculate smart position for this canvas size
+    // Calcular posição inteligente para este tamanho de canvas
     const smartPosition = calculateSmartPosition(sourceElement, sourceSize, targetSize);
     
-    // Update element with new positions
+    // Se o elemento original estiver alinhado ao fundo, garantir que este também esteja
+    if (isBottomAligned) {
+      smartPosition.y = targetSize.height - smartPosition.height;
+    }
+    
+    // Atualizar elemento com novas posições
     return {
       ...el,
       style: {
@@ -142,7 +159,7 @@ export const updateLinkedElementsIntelligently = (
         y: smartPosition.y,
         width: smartPosition.width,
         height: smartPosition.height,
-        // Copy other percentage values
+        // Copiar outros valores percentuais
         xPercent: (smartPosition.x / targetSize.width) * 100,
         yPercent: (smartPosition.y / targetSize.height) * 100,
         widthPercent: (smartPosition.width / targetSize.width) * 100,

@@ -1,12 +1,15 @@
+
 import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import TextPanel from "./panels/TextPanel";
+import { TextPanel } from "./panels/TextPanel";
 import ImagePanel from "./panels/ImagePanel";
-import ButtonPanel from "./panels/ButtonPanel";
-import LayoutPanel from "./panels/LayoutPanel";
-import ContainerPanel from "./panels/ContainerPanel";
-import ArtboardPanel from "./panels/ArtboardPanel";
+import { ButtonPanel } from "./panels/ButtonPanel";
+import { ArtboardPanel } from "./panels/ArtboardPanel";
 import { useCanvas } from "./CanvasContext";
+
+// Componentes temporários para os painéis que ainda não existem
+const LayoutPanel = () => <div>Painel de Layout</div>;
+const ContainerPanel = () => <div>Painel de Container</div>;
 
 const PropertyPanel = () => {
   const { selectedElement } = useCanvas();
@@ -19,7 +22,7 @@ const PropertyPanel = () => {
 
       <Tabs defaultValue="content" className="space-y-2">
         <TabsList className="w-full flex justify-center">
-          {selectedElement && (
+          {selectedElement ? (
             <>
               <TabsTrigger value="content">Conteúdo</TabsTrigger>
               <TabsTrigger value="style">Estilo</TabsTrigger>
@@ -27,6 +30,8 @@ const PropertyPanel = () => {
                 <TabsTrigger value="image">Imagem</TabsTrigger>
               )}
             </>
+          ) : (
+            <TabsTrigger value="artboard">Prancheta</TabsTrigger>
           )}
         </TabsList>
 
