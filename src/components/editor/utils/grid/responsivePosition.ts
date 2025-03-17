@@ -28,45 +28,34 @@ export const calculateSmartPosition = (
     ? element.style.heightPercent 
     : (element.style.height / sourceSize.height) * 100;
 
-  // Calcular posição baseada em porcentagens
+  // Calcular posição baseada em porcentagens - manter proporção relativa à prancheta
   let x = (xPercent * targetSize.width) / 100;
   let y = (yPercent * targetSize.height) / 100;
   let width = (widthPercent * targetSize.width) / 100;
   let height = (heightPercent * targetSize.height) / 100;
 
   // Garantir dimensões mínimas
-  width = Math.max(width, 20);
-  height = Math.max(height, 20);
+  width = Math.max(width, 10);
+  height = Math.max(height, 10);
 
   // Tratamento especial para imagens para preservar proporção
   if (element.type === "image" || element.type === "logo") {
     // Obter a proporção original
     const originalAspectRatio = 
-      (element.style.width / element.style.height) || 
-      (sourceSize.width / sourceSize.height);
+      (element.style.originalWidth && element.style.originalHeight) 
+        ? element.style.originalWidth / element.style.originalHeight
+        : element.style.width / element.style.height;
     
-    // Calcular nova proporção baseada nos cálculos percentuais
-    const newAspectRatio = width / height;
-    
-    // Se as proporções forem significativamente diferentes, ajustar dimensões
-    if (Math.abs(originalAspectRatio - newAspectRatio) > 0.01) {
-      // Para imagens, priorizar largura baseada em porcentagem e ajustar altura para manter proporção
+    // Se a proporção original está disponível, usá-la para manter a proporção
+    if (originalAspectRatio) {
       height = width / originalAspectRatio;
-      
-      // Recalcular altura em porcentagem para manter consistência
-      const newHeightPercent = (height / targetSize.height) * 100;
-      element.style.heightPercent = newHeightPercent;
     }
   }
 
   // Detecção e preservação de alinhamento inferior
   const isBottomAligned = Math.abs((element.style.y + element.style.height) - sourceSize.height) < 20;
   if (isBottomAligned) {
-    // Se o elemento estava alinhado na parte inferior na fonte, mantê-lo alinhado no destino
     y = targetSize.height - height;
-    
-    // Atualizar yPercent para refletir a posição alinhada ao fundo
-    element.style.yPercent = ((targetSize.height - height) / targetSize.height) * 100;
   }
 
   // Garantir que o elemento permaneça dentro dos limites do canvas
@@ -142,28 +131,57 @@ export const updateLinkedElementsIntelligently = (
     // Encontrar o tamanho do elemento alvo
     const targetSize = activeSizes.find(size => size.name === el.sizeId) || activeSizes[0];
     
-    // Calcular posição inteligente para este tamanho de canvas
-    const smartPosition = calculateSmartPosition(sourceElement, sourceSize, targetSize);
+    // Calcular posição proporcional ao tamanho da prancheta
+    const xPercent = (sourceElement.style.x / sourceSize.width) * 100;
+    const yPercent = (sourceElement.style.y / sourceSize.height) * 100;
+    const widthPercent = (sourceElement.style.width / sourceSize.width) * 100;
+    const heightPercent = (sourceElement.style.height / sourceSize.height) * 100;
+    
+    // Aplicar essas porcentagens ao tamanho da prancheta alvo
+    let x = (xPercent * targetSize.width) / 100;
+    let y = (yPercent * targetSize.height) / 100;
+    let width = (widthPercent * targetSize.width) / 100;
+    let height = (heightPercent * targetSize.height) / 100;
+    
+    // Assegurar que as dimensões mínimas são mantidas
+    width = Math.max(width, 10);
+    height = Math.max(height, 10);
+    
+    // Tratamento especial para imagens
+    if (el.type === "image" || el.type === "logo") {
+      const aspectRatio = sourceElement.style.width / sourceElement.style.height;
+      height = width / aspectRatio;
+    }
     
     // Se o elemento original estiver alinhado ao fundo, garantir que este também esteja
     if (isBottomAligned) {
-      smartPosition.y = targetSize.height - smartPosition.height;
+      y = targetSize.height - height;
     }
+    
+    // Garantir que o elemento permanece dentro dos limites
+    x = Math.max(0, Math.min(x, targetSize.width - width));
+    y = Math.max(0, Math.min(y, targetSize.height - height));
+    
+    // Ajustar à grade
+    x = snapToGrid(x);
+    y = snapToGrid(y);
+    width = snapToGrid(width);
+    height = snapToGrid(height);
     
     // Atualizar elemento com novas posições
     return {
       ...el,
       style: {
         ...el.style,
-        x: smartPosition.x,
-        y: smartPosition.y,
-        width: smartPosition.width,
-        height: smartPosition.height,
-        // Copiar outros valores percentuais
-        xPercent: (smartPosition.x / targetSize.width) * 100,
-        yPercent: (smartPosition.y / targetSize.height) * 100,
-        widthPercent: (smartPosition.width / targetSize.width) * 100,
-        heightPercent: (smartPosition.height / targetSize.height) * 100
+        x: x,
+        y: y,
+        width: width,
+        height: height,
+        // Atualizar valores percentuais
+        xPercent: (x / targetSize.width) * 100,
+        yPercent: (y / targetSize.height) * 100,
+        widthPercent: (width / targetSize.width) * 100,
+        heightPercent: (height / targetSize.height) * 100
       }
     };
   });

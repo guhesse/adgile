@@ -242,13 +242,32 @@ export const useDragAndResize = ({
       newX = snapToGrid(newX);
       newY = snapToGrid(newY);
 
-      // Calculate the percentage positions for responsive layouts
+      // Calculate percentage values for responsive layouts
+      const widthPercent = (newWidth / selectedSize.width) * 100;
+      const heightPercent = (newHeight / selectedSize.height) * 100;
       const xPercent = (newX / selectedSize.width) * 100;
       const yPercent = (newY / selectedSize.height) * 100;
-      
-      // Detect bottom alignment - useful for maintaining in responsive layouts
-      const isBottomAligned = Math.abs((newY + element.style.height) - selectedSize.height) < 10;
-      const bottomOffset = isBottomAligned ? 0 : null;
+
+      // Para imagens, preservar a proporção original e armazenar dimensões originais
+      if ((element.type === "image" || element.type === "logo")) {
+        // Se estivermos redimensionando pelas bordas se/nw/ne/sw, preservar proporção
+        if (resizeDirection === 'nw' || resizeDirection === 'ne' || 
+            resizeDirection === 'sw' || resizeDirection === 'se') {
+          const aspectRatio = elementInitialPos.width / elementInitialPos.height;
+          
+          // Se não houver valores originais, salvá-los
+          if (!element.style.originalWidth) {
+            element.style.originalWidth = elementInitialPos.width;
+            element.style.originalHeight = elementInitialPos.height;
+          }
+          
+          if (resizeDirection === 'se' || resizeDirection === 'ne') {
+            newHeight = newWidth / aspectRatio;
+          } else {
+            newWidth = newHeight * aspectRatio;
+          }
+        }
+      }
 
       let updatedElements = [...elements];
       

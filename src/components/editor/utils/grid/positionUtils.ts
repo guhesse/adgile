@@ -38,14 +38,27 @@ export const applyPercentageToElement = (
     element.style.widthPercent !== undefined &&
     element.style.heightPercent !== undefined
   ) {
+    // Calcular valores absolutos a partir das porcentagens
+    const x = percentageToAbsolute(element.style.xPercent, canvasWidth);
+    const y = percentageToAbsolute(element.style.yPercent, canvasHeight);
+    const width = percentageToAbsolute(element.style.widthPercent, canvasWidth);
+    const height = percentageToAbsolute(element.style.heightPercent, canvasHeight);
+    
+    // Se for imagem, ajustar altura para manter proporção
+    let adjustedHeight = height;
+    if ((element.type === "image" || element.type === "logo") && element.style.originalWidth && element.style.originalHeight) {
+      const aspectRatio = element.style.originalWidth / element.style.originalHeight;
+      adjustedHeight = width / aspectRatio;
+    }
+    
     return {
       ...element,
       style: {
         ...element.style,
-        x: percentageToAbsolute(element.style.xPercent, canvasWidth),
-        y: percentageToAbsolute(element.style.yPercent, canvasHeight),
-        width: percentageToAbsolute(element.style.widthPercent, canvasWidth),
-        height: percentageToAbsolute(element.style.heightPercent, canvasHeight)
+        x: x,
+        y: y,
+        width: width,
+        height: element.type === "image" || element.type === "logo" ? adjustedHeight : height
       }
     };
   }
@@ -65,22 +78,23 @@ export const findOptimalPosition = (
     element.style.widthPercent !== undefined &&
     element.style.heightPercent !== undefined
   ) {
-    // Verificar alinhamento inferior
-    const isBottomAligned = element.style.yPercent + element.style.heightPercent > 95;
-    
-    // Calcular dimensões absolutas a partir das porcentagens
-    let x = percentageToAbsolute(element.style.xPercent, canvasWidth);
-    let y = percentageToAbsolute(element.style.yPercent, canvasHeight);
-    let width = percentageToAbsolute(element.style.widthPercent, canvasWidth);
-    let height = percentageToAbsolute(element.style.heightPercent, canvasHeight);
+    // Converter porcentagens para tamanho atual da prancheta
+    let x = (element.style.xPercent * canvasWidth) / 100;
+    let y = (element.style.yPercent * canvasHeight) / 100;
+    let width = (element.style.widthPercent * canvasWidth) / 100;
+    let height = (element.style.heightPercent * canvasHeight) / 100;
     
     // Se for uma imagem, manter proporção
     if (element.type === "image" || element.type === "logo") {
-      const aspectRatio = element.style.width / element.style.height;
+      const aspectRatio = element.style.originalWidth && element.style.originalHeight 
+        ? element.style.originalWidth / element.style.originalHeight
+        : element.style.width / element.style.height;
+      
       height = width / aspectRatio;
     }
     
-    // Se estiver alinhado na parte inferior, ajustar posição y
+    // Verificar alinhamento inferior
+    const isBottomAligned = element.style.yPercent + element.style.heightPercent > 95;
     if (isBottomAligned) {
       y = canvasHeight - height;
     }
@@ -93,14 +107,15 @@ export const findOptimalPosition = (
     };
   }
 
-  // Se não tiver valores percentuais, calcular com base no tipo do elemento
+  // Se não tiver valores percentuais, calcular posições relativas
+  
+  // Calcular porcentagens com base na largura de referência
+  const widthPercent = (element.style.width / 600) * 100; // Usando 600 como largura de referência
+  const width = (widthPercent * canvasWidth) / 100;
   
   // Se elemento for um texto, centralizá-lo horizontalmente
   if (element.type === "text" || element.type === "paragraph") {
-    const widthPercent = (element.style.width / 600) * 100; // Usando 600 como largura de referência
     const heightPercent = (element.style.height / 600) * 100;
-    
-    const width = (widthPercent * canvasWidth) / 100;
     const height = (heightPercent * canvasHeight) / 100;
     const x = (canvasWidth - width) / 2;
     
@@ -115,9 +130,6 @@ export const findOptimalPosition = (
   // Se elemento for uma imagem ou logo, manter proporção
   if (element.type === "image" || element.type === "logo") {
     const aspectRatio = element.style.width / element.style.height;
-    const widthPercent = (element.style.width / 600) * 100; // Usando 600 como largura de referência
-    
-    const width = (widthPercent * canvasWidth) / 100;
     const height = width / aspectRatio;
     
     // Centralizá-lo
