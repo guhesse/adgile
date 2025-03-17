@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { EditorElement } from "./types";
 import { TextPanel } from "./panels/TextPanel";
-import ImagePanel from "./panels/ImagePanel";
+import { ImagePanel } from "./panels/ImagePanel";
 import { ButtonPanel } from "./panels/ButtonPanel";
 import { AnimationPanel } from "./panels/AnimationPanel";
 import { GenericPanel } from "./panels/GenericPanel";
