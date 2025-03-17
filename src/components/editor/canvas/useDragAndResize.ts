@@ -50,13 +50,11 @@ export const useDragAndResize = ({
   const isDraggingRef = useRef(false);
   const selectedElementRef = useRef<EditorElement | null>(null);
 
-  // Keep the selectedElementRef in sync with selectedElement
   useEffect(() => {
     selectedElementRef.current = selectedElement;
   }, [selectedElement]);
 
   const handleMouseDown = (e: React.MouseEvent, element: EditorElement) => {
-    // Prevent the normal browser image dragging behavior
     e.preventDefault();
     e.stopPropagation();
     
@@ -69,7 +67,6 @@ export const useDragAndResize = ({
       return;
     }
 
-    // Store the element's initial position and size
     setElementInitialPos({
       x: element.style.x,
       y: element.style.y,
@@ -77,7 +74,6 @@ export const useDragAndResize = ({
       height: element.style.height
     });
 
-    // Only set selected element if it's different from the current one
     if (!selectedElement || selectedElement.id !== element.id) {
       setSelectedElement(element);
     }
@@ -85,11 +81,9 @@ export const useDragAndResize = ({
     setIsDragging(true);
     isDraggingRef.current = true;
 
-    // Calculate the offset between mouse position and element's top-left corner
     const rect = e.currentTarget.getBoundingClientRect();
     const zoomLevel = parseFloat((e.currentTarget.closest('[data-canvas-wrapper]') as HTMLElement)?.dataset.zoomLevel || '1');
     
-    // Calculate the offset from the mouse to the top-left corner of the element
     const offsetX = (e.clientX - rect.left) / zoomLevel;
     const offsetY = (e.clientY - rect.top) / zoomLevel;
     
@@ -121,12 +115,10 @@ export const useDragAndResize = ({
     setIsResizing(true);
     setResizeDirection(direction);
     
-    // Only update selected element if it's different
     if (!selectedElement || selectedElement.id !== element.id) {
       setSelectedElement(element);
     }
     
-    // Store the element's initial position and size
     setElementInitialPos({
       x: element.style.x,
       y: element.style.y,
@@ -205,15 +197,12 @@ export const useDragAndResize = ({
       const canvasRect = canvas.getBoundingClientRect();
       const zoomLevel = parseFloat(canvas.style.transform?.match(/scale\((.+)\)/)?.[1] || '1');
       
-      // Get the mouse position in canvas coordinates
       const mouseX = (e.clientX - canvasRect.left) / zoomLevel;
       const mouseY = (e.clientY - canvasRect.top) / zoomLevel;
       
-      // Calculate new position based on mouse position and the initial offset
       let newX = mouseX - dragOffset.x;
       let newY = mouseY - dragOffset.y;
 
-      // Apply constraints if inside a container
       const parentElement = element.inContainer ?
         elements.find(el => el.id === element.parentId) : null;
 
@@ -232,30 +221,27 @@ export const useDragAndResize = ({
           newY = Math.max(0, Math.min(newY, parentElement.style.height - element.style.height));
         }
       } else {
-        // Allow some overflow for elements on the artboard
-        const overflowAllowance = 0; // No overflow allowance
+        const overflowAllowance = 0;
         newX = Math.max(-overflowAllowance, Math.min(newX, selectedSize.width - element.style.width + overflowAllowance));
         newY = Math.max(-overflowAllowance, Math.min(newY, selectedSize.height - element.style.height + overflowAllowance));
       }
 
-      // Snap to grid
       newX = snapToGrid(newX);
       newY = snapToGrid(newY);
 
-      // Calculate percentage values for responsive layouts
+      const newWidth = element.style.width;
+      const newHeight = element.style.height;
+
       const widthPercent = (newWidth / selectedSize.width) * 100;
       const heightPercent = (newHeight / selectedSize.height) * 100;
       const xPercent = (newX / selectedSize.width) * 100;
       const yPercent = (newY / selectedSize.height) * 100;
 
-      // Para imagens, preservar a proporção original e armazenar dimensões originais
       if ((element.type === "image" || element.type === "logo")) {
-        // Se estivermos redimensionando pelas bordas se/nw/ne/sw, preservar proporção
         if (resizeDirection === 'nw' || resizeDirection === 'ne' || 
             resizeDirection === 'sw' || resizeDirection === 'se') {
           const aspectRatio = elementInitialPos.width / elementInitialPos.height;
           
-          // Se não houver valores originais, salvá-los
           if (!element.style.originalWidth) {
             element.style.originalWidth = elementInitialPos.width;
             element.style.originalHeight = elementInitialPos.height;
@@ -271,11 +257,9 @@ export const useDragAndResize = ({
 
       let updatedElements = [...elements];
       
-      // Check if we're updating an individually positioned element
       const isIndividualUpdate = editingMode === 'individual' || !element.linkedElementId;
 
       if (!isIndividualUpdate) {
-        // Use our improved linked elements function to maintain proportions across sizes
         updatedElements = updateLinkedElementsIntelligently(
           updatedElements,
           {
@@ -291,7 +275,6 @@ export const useDragAndResize = ({
           activeSizes
         );
       } else {
-        // Only update this specific element
         updatedElements = updatedElements.map(el => {
           if (el.id === element.id) {
             return { 
@@ -334,7 +317,6 @@ export const useDragAndResize = ({
 
       setElements(updatedElements);
 
-      // Update the selected element with new position
       const updatedElement = {
         ...element,
         style: { 
@@ -362,7 +344,6 @@ export const useDragAndResize = ({
       let newX = elementInitialPos.x;
       let newY = elementInitialPos.y;
 
-      // Calculate the new dimensions and position based on the resize direction
       if (resizeDirection.includes('e')) {
         newWidth = snapToGrid(Math.max(50, elementInitialPos.width + deltaX));
       }
@@ -380,7 +361,6 @@ export const useDragAndResize = ({
         newHeight = possibleHeight;
       }
 
-      // Apply constraints if the element is inside a container
       if (element.inContainer && element.parentId) {
         const parentElement = elements.find(el => el.id === element.parentId);
         if (parentElement) {
@@ -400,7 +380,6 @@ export const useDragAndResize = ({
           }
         }
       } else {
-        // For artboard elements, strictly enforce boundaries
         if (newX < 0) {
           newX = 0;
           newWidth = elementInitialPos.width;
@@ -417,13 +396,11 @@ export const useDragAndResize = ({
         }
       }
 
-      // Calculate percentage values for responsive layouts
       const widthPercent = (newWidth / selectedSize.width) * 100;
       const heightPercent = (newHeight / selectedSize.height) * 100;
       const xPercent = (newX / selectedSize.width) * 100;
       const yPercent = (newY / selectedSize.height) * 100;
 
-      // For images, preserve aspect ratio during resize
       if ((element.type === "image" || element.type === "logo") && 
           (resizeDirection === 'nw' || resizeDirection === 'ne' || 
            resizeDirection === 'sw' || resizeDirection === 'se')) {
@@ -438,11 +415,9 @@ export const useDragAndResize = ({
 
       let updatedElements;
       
-      // Check if we're updating an individually positioned element
       const isIndividualUpdate = editingMode === 'individual' || !element.linkedElementId;
 
       if (!isIndividualUpdate) {
-        // Use our improved linked elements function to maintain proportions across sizes
         updatedElements = updateLinkedElementsIntelligently(
           elements,
           {
@@ -462,7 +437,6 @@ export const useDragAndResize = ({
           activeSizes
         );
       } else {
-        // Only update this specific element
         updatedElements = elements.map(el => {
           if (el.id === element.id) {
             return { 
@@ -513,7 +487,6 @@ export const useDragAndResize = ({
 
       setElements(updatedElements);
 
-      // Update the selected element with new dimensions
       const updatedElement = {
         ...element,
         style: { 
@@ -542,19 +515,15 @@ export const useDragAndResize = ({
     }
 
     if (isDragging || isResizing) {
-      // Apply container changes if needed
       if (hoveredContainer && selectedElement && selectedElement.type !== 'container' && selectedElement.type !== 'layout') {
         moveElementToContainer(selectedElement, hoveredContainer, elements, setElements, setSelectedElement);
       } else {
-        // Ensure elements stay within bounds
         let updatedElements = [...elements];
         let needsUpdate = false;
         
         updatedElements = updatedElements.map(element => {
-          // For elements in container, don't apply constraints directly
           if (element.inContainer) return element;
           
-          // Check if the element is too far outside the bounds
           if (isElementOutOfBounds(element, selectedSize.width, selectedSize.height)) {
             needsUpdate = true;
             return constrainElementToArtboard(element, selectedSize.width, selectedSize.height);
@@ -566,7 +535,6 @@ export const useDragAndResize = ({
         if (needsUpdate) {
           setElements(updatedElements);
           
-          // Update the selected element if it was modified
           if (selectedElement && !selectedElement.inContainer) {
             const updatedSelectedElement = updatedElements.find(el => el.id === selectedElement.id);
             if (updatedSelectedElement) {
@@ -579,61 +547,17 @@ export const useDragAndResize = ({
       }
     }
 
-    // Clear any timers
     if (containerExitTimer) {
       clearTimeout(containerExitTimer);
       setContainerExitTimer(null);
       setIsElementOutsideContainer(false);
     }
 
-    // Reset the state variables
     setIsDragging(false);
     isDraggingRef.current = false;
     setIsResizing(false);
     handleContainerHoverEnd();
   };
 
-  // Add a global mouse up handler
-  useEffect(() => {
-    const handleGlobalMouseUp = () => {
-      if (isDraggingRef.current) {
-        handleMouseUp();
-      }
-    };
+  useEffect
 
-    window.addEventListener('mouseup', handleGlobalMouseUp);
-    
-    return () => {
-      window.removeEventListener('mouseup', handleGlobalMouseUp);
-    };
-  }, [isDragging, isResizing, hoveredContainer, selectedElement]);
-
-  return {
-    isDragging,
-    setIsDragging,
-    isResizing,
-    setIsResizing,
-    resizeDirection,
-    setResizeDirection,
-    dragStart,
-    setDragStart,
-    containerHoverTimer,
-    containerExitTimer,
-    hoveredContainer,
-    isPanning,
-    setIsPanning,
-    panStart,
-    setPanStart,
-    panPosition,
-    setPanPosition,
-    isElementOutsideContainer,
-    handleMouseDown,
-    handleCanvasMouseDown,
-    handleResizeStart,
-    handleContainerHover,
-    handleContainerHoverEnd,
-    handleElementExitContainer,
-    handleMouseMove,
-    handleMouseUp
-  };
-};
