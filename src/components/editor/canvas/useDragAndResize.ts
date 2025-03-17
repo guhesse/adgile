@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { snapToGrid } from '../utils/gridUtils';
 import { BannerSize, CanvasNavigationMode, EditingMode, EditorElement } from '../types';
@@ -202,6 +203,8 @@ export const useDragAndResize = ({
       
       let newX = mouseX - dragOffset.x;
       let newY = mouseY - dragOffset.y;
+      let newWidth = element.style.width;
+      let newHeight = element.style.height;
 
       const parentElement = element.inContainer ?
         elements.find(el => el.id === element.parentId) : null;
@@ -228,9 +231,6 @@ export const useDragAndResize = ({
 
       newX = snapToGrid(newX);
       newY = snapToGrid(newY);
-
-      const newWidth = element.style.width;
-      const newHeight = element.style.height;
 
       const widthPercent = (newWidth / selectedSize.width) * 100;
       const heightPercent = (newHeight / selectedSize.height) * 100;
@@ -559,5 +559,17 @@ export const useDragAndResize = ({
     handleContainerHoverEnd();
   };
 
-  useEffect
-
+  return {
+    isDragging,
+    isResizing,
+    hoveredContainer,
+    isElementOutsideContainer,
+    handleMouseDown,
+    handleCanvasMouseDown,
+    handleResizeStart,
+    handleContainerHover,
+    handleContainerHoverEnd,
+    handleMouseMove,
+    handleMouseUp
+  };
+};
