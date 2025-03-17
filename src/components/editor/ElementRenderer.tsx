@@ -53,6 +53,37 @@ export const ElementRenderer = ({ element }: ElementRendererProps) => {
   
   if (element.type === "image") {
     const hasValidImage = element.content && isValidImageUrl(element.content as string);
+    const renderImageWithLink = (imageElement: JSX.Element) => {
+      if (element.link) {
+        return (
+          <a 
+            href={element.link} 
+            target={element.openInNewTab ? "_blank" : "_self"}
+            rel="noopener noreferrer"
+            className="w-full h-full block"
+          >
+            {imageElement}
+          </a>
+        );
+      }
+      return imageElement;
+    };
+    
+    const imageElement = hasValidImage ? (
+      <img
+        src={element.content as string}
+        alt={element.alt || "Image element"}
+        className="w-full h-full"
+        style={{
+          objectFit: element.style.objectFit || "cover",
+          objectPosition: element.style.objectPosition || "center",
+        }}
+      />
+    ) : (
+      <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-500 text-sm p-2 text-center">
+        {element.alt || element.content || "Imagem"}
+      </div>
+    );
     
     return (
       <div 
@@ -70,21 +101,7 @@ export const ElementRenderer = ({ element }: ElementRendererProps) => {
           overflow: "hidden"
         }}
       >
-        {hasValidImage ? (
-          <img
-            src={element.content as string}
-            alt={element.alt || "Image element"}
-            className="w-full h-full"
-            style={{
-              objectFit: element.style.objectFit || "cover",
-              objectPosition: element.style.objectPosition || "center",
-            }}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-500 text-sm p-2 text-center">
-            {element.alt || element.content || "Imagem"}
-          </div>
-        )}
+        {renderImageWithLink(imageElement)}
       </div>
     );
   }

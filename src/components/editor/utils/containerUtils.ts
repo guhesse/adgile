@@ -112,38 +112,41 @@ export const moveElementOutOfContainer = (
   toast.success('Elemento removido do container');
 };
 
-// Nova função para manter elementos dentro dos limites da artboard
+// Updated function to constrain element to artboard with some allowed overflow
 export const constrainElementToArtboard = (
   element: EditorElement,
   canvasWidth: number,
   canvasHeight: number
 ): EditorElement => {
-  // Se o elemento estiver em um container, não aplicamos restrições diretamente
+  // If the element is in a container, don't apply constraints directly
   if (element.inContainer) return element;
+  
+  // Allow some overflow for elements on the artboard
+  const overflowAllowance = 20; // Allow elements to go 20px outside the artboard
   
   let newX = element.style.x;
   let newY = element.style.y;
   
-  // Verificar se o elemento está fora dos limites horizontais
-  if (newX < 0) {
-    newX = 0;
-  } else if (newX + element.style.width > canvasWidth) {
-    newX = Math.max(0, canvasWidth - element.style.width);
+  // Check if the element is too far outside the horizontal bounds
+  if (newX < -overflowAllowance) {
+    newX = -overflowAllowance;
+  } else if (newX + element.style.width > canvasWidth + overflowAllowance) {
+    newX = canvasWidth + overflowAllowance - element.style.width;
   }
   
-  // Verificar se o elemento está fora dos limites verticais
-  if (newY < 0) {
-    newY = 0;
-  } else if (newY + element.style.height > canvasHeight) {
-    newY = Math.max(0, canvasHeight - element.style.height);
+  // Check if the element is too far outside the vertical bounds
+  if (newY < -overflowAllowance) {
+    newY = -overflowAllowance;
+  } else if (newY + element.style.height > canvasHeight + overflowAllowance) {
+    newY = canvasHeight + overflowAllowance - element.style.height;
   }
   
-  // Se não houve mudanças, retornar o elemento original
+  // If no changes needed, return the original element
   if (newX === element.style.x && newY === element.style.y) {
     return element;
   }
   
-  // Atualizar as porcentagens também
+  // Update percentages along with absolute positions
   const xPercent = (newX / canvasWidth) * 100;
   const yPercent = (newY / canvasHeight) * 100;
   
@@ -159,46 +162,45 @@ export const constrainElementToArtboard = (
   };
 };
 
-// Nova função para verificar se um elemento está completamente fora da artboard
+// Updated function to check if element is too far outside the artboard
 export const isElementOutOfBounds = (
   element: EditorElement,
   canvasWidth: number,
   canvasHeight: number
 ): boolean => {
-  // Elemento está fora horizontalmente se estiver completamente à esquerda ou à direita
-  const isOutHorizontally = 
-    element.style.x + element.style.width < 0 || 
-    element.style.x > canvasWidth;
+  const overflowAllowance = 30; // Slightly larger than the constraint allowance
   
-  // Elemento está fora verticalmente se estiver completamente acima ou abaixo
+  // Element is out of bounds if it's completely outside the artboard plus allowance
+  const isOutHorizontally = 
+    element.style.x + element.style.width < -overflowAllowance || 
+    element.style.x > canvasWidth + overflowAllowance;
+  
   const isOutVertically = 
-    element.style.y + element.style.height < 0 || 
-    element.style.y > canvasHeight;
+    element.style.y + element.style.height < -overflowAllowance || 
+    element.style.y > canvasHeight + overflowAllowance;
   
   return isOutHorizontally || isOutVertically;
 };
 
-// Nova função para aplicar restrições a todos os elementos
+// Updated function to apply constraints to all elements
 export const constrainAllElements = (
   elements: EditorElement[],
   canvasWidth: number,
   canvasHeight: number
 ): EditorElement[] => {
   return elements.map(element => {
-    // Se o elemento tiver filhos, aplique restrições a eles também
+    // If the element has children, apply constraints to the parent first
     if (element.childElements && element.childElements.length > 0) {
-      const constrainedChildren = element.childElements.map(child => {
-        // Para filhos em containers, as coordenadas são relativas ao container
-        // Então não precisamos aplicar restrições da artboard diretamente
-        return child;
-      });
+      const constrainedParent = constrainElementToArtboard(element, canvasWidth, canvasHeight);
       
+      // We don't need to constrain children as they're positioned relative to their parent
       return {
-        ...constrainElementToArtboard(element, canvasWidth, canvasHeight),
-        childElements: constrainedChildren
+        ...constrainedParent,
+        childElements: element.childElements
       };
     }
     
+    // For standalone elements
     return constrainElementToArtboard(element, canvasWidth, canvasHeight);
   });
 };

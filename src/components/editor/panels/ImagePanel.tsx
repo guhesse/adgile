@@ -1,4 +1,3 @@
-
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -7,8 +6,15 @@ import { useEffect, useState } from "react";
 import { ANIMATION_PRESETS } from "../types";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
-import { CornerDownLeft, CornerDownRight, CornerLeftDown, CornerLeftUp, CornerRightDown, CornerRightUp, 
-         AlignLeft, AlignCenter, AlignRight, Check, ChevronDown, Minus, Plus, Upload } from "lucide-react";
+import { 
+  Image, 
+  Upload, 
+  ChevronDown, 
+  Check, 
+  Link as LinkIcon,
+  ExternalLink
+} from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface ImagePanelProps {
   element: any;
@@ -28,6 +34,11 @@ export const ImagePanel = ({ element, updateElementStyle, updateElementContent, 
   const [borderStyle, setBorderStyle] = useState(element?.style.borderStyle || "solid");
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFileName, setSelectedFileName] = useState("");
+  const [objectFit, setObjectFit] = useState(element?.style.objectFit || "cover");
+  const [imageScale, setImageScale] = useState(100);
+  const [imageLink, setImageLink] = useState(element?.link || "");
+  const [openInNewTab, setOpenInNewTab] = useState(element?.openInNewTab || true);
+  const [altText, setAltText] = useState(element?.alt || "");
 
   useEffect(() => {
     if (element) {
@@ -37,6 +48,8 @@ export const ImagePanel = ({ element, updateElementStyle, updateElementContent, 
       setBorderWidth(element.style.borderWidth || 0);
       setBorderColor(element.style.borderColor || "#000000");
       setBorderStyle(element.style.borderStyle || "solid");
+      setObjectFit(element.style.objectFit || "cover");
+      setAltText(element.alt || "");
     }
   }, [element]);
 
@@ -59,64 +72,154 @@ export const ImagePanel = ({ element, updateElementStyle, updateElementContent, 
     }
   };
 
-  const handleBackgroundColorChange = (color: string) => {
-    setBackgroundColor(color);
-    updateElementStyle("backgroundColor", color);
+  const handleObjectFitChange = (value: string) => {
+    setObjectFit(value);
+    updateElementStyle("objectFit", value);
   };
 
-  const handleCornerRadiusChange = (value: number) => {
-    setCornerRadius(value);
-    if (applyToAllCorners) {
-      updateElementStyle("borderRadius", value);
-      updateElementStyle("borderTopLeftRadius", undefined);
-      updateElementStyle("borderTopRightRadius", undefined);
-      updateElementStyle("borderBottomLeftRadius", undefined);
-      updateElementStyle("borderBottomRightRadius", undefined);
-    }
+  const handleLinkChange = (value: string) => {
+    setImageLink(value);
+    updateElementStyle("link", value);
   };
 
-  const handleIndividualCornerChange = (corner: string, value: number) => {
-    updateElementStyle(corner, value);
+  const handleAltTextChange = (value: string) => {
+    setAltText(value);
+    updateElementStyle("alt", value);
   };
 
-  const handleBorderWidthChange = (width: number) => {
-    setBorderWidth(width);
-    updateElementStyle("borderWidth", width);
-  };
-
-  const handleBorderStyleChange = (style: string) => {
-    setBorderStyle(style);
-    updateElementStyle("borderStyle", style);
-  };
-
-  const handleBorderColorChange = (color: string) => {
-    setBorderColor(color);
-    updateElementStyle("borderColor", color);
-  };
-
-  const handleAlignment = (align: "left" | "center" | "right") => {
-    updateElementStyle("objectFit", "cover");
-    updateElementStyle("objectPosition", align);
+  const handleOpenInNewTabChange = (checked: boolean) => {
+    setOpenInNewTab(checked);
+    updateElementStyle("openInNewTab", checked);
   };
 
   if (activeTab === "content") {
     return (
-      <div className="space-y-4 p-4">
-        <div className="space-y-2">
-          <Label htmlFor="image">URL da Imagem</Label>
-          <Input
-            type="text"
-            id="image"
-            value={imageUrl}
-            onChange={(e) => {
-              setImageUrl(e.target.value);
-              updateElementContent(e.target.value);
-            }}
-          />
+      <div className="space-y-6 p-4 font-['Geist',sans-serif]">
+        <div className="text-center text-xs text-[#717680]">
+          Conteúdo
         </div>
-
+        
+        <div className="flex h-[99px] items-center gap-2 w-full">
+          <div className="flex p-2.5 justify-center items-center gap-2.5 flex-1 h-full rounded-xl bg-[#E9EAEB]">
+            {element.content ? (
+              <img
+                src={element.content}
+                alt="Preview"
+                className="max-h-[80px] max-w-full object-contain"
+              />
+            ) : (
+              <Image size={35} className="text-[#A4A7AE]" />
+            )}
+          </div>
+        </div>
+        
         <div className="space-y-2">
-          <Label htmlFor="upload">Upload da Imagem</Label>
+          <div className="text-center text-xs text-[#717680]">
+            Tamanho
+          </div>
+          
+          <div className="flex w-full">
+            <div className="flex h-[39px] p-1 justify-center items-center gap-0 flex-1 rounded bg-[#E9EAEB]">
+              <div 
+                className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm cursor-pointer ${objectFit === 'contain' ? 'bg-[#6941C6] text-white' : 'bg-[#E9EAEB] text-[#717680]'}`}
+                onClick={() => handleObjectFitChange('contain')}
+              >
+                <span className="text-xs font-['Geist',sans-serif]">Original</span>
+              </div>
+              <div 
+                className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm cursor-pointer ${objectFit === 'fill' ? 'bg-[#6941C6] text-white' : 'bg-[#E9EAEB] text-[#717680]'}`}
+                onClick={() => handleObjectFitChange('fill')}
+              >
+                <span className="text-xs font-['Geist',sans-serif]">Preencher</span>
+              </div>
+              <div 
+                className={`flex min-w-[56px] p-1.5 px-3 justify-center items-center flex-1 rounded-sm cursor-pointer ${objectFit === 'cover' ? 'bg-[#6941C6] text-white' : 'bg-[#E9EAEB] text-[#717680]'}`}
+                onClick={() => handleObjectFitChange('cover')}
+              >
+                <span className="text-xs font-['Geist',sans-serif]">Escala</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-4 w-full">
+            <Slider 
+              defaultValue={[imageScale]} 
+              min={50} 
+              max={150} 
+              step={1}
+              onValueChange={(value) => {
+                setImageScale(value[0]);
+                updateElementStyle("objectPosition", `${value[0]}%`);
+              }}
+              className="w-[280px] mx-auto"
+            />
+          </div>
+        </div>
+        
+        <div className="space-y-2">
+          <div className="text-center text-xs text-[#717680]">
+            Vincular a
+          </div>
+          
+          <Select value="webpage" onValueChange={() => {}}>
+            <SelectTrigger className="w-full text-xs h-[34px] border-[#E9EAEB]">
+              <SelectValue placeholder="Página da Web" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="webpage">Página da Web</SelectItem>
+              <SelectItem value="email">E-mail</SelectItem>
+              <SelectItem value="phone">Telefone</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <div className="flex items-center rounded-sm border border-[#E2E8F0] px-3 h-[30px]">
+            <input 
+              type="text" 
+              value={imageLink} 
+              onChange={(e) => handleLinkChange(e.target.value)}
+              placeholder="Link"
+              className="w-full bg-transparent border-none focus:outline-none text-xs text-[#64748B]"
+            />
+          </div>
+          
+          <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center h-4 space-x-2">
+              <Checkbox 
+                id="openInNewTab" 
+                checked={openInNewTab} 
+                onCheckedChange={handleOpenInNewTabChange}
+                className="bg-[#414651] border-[#414651]"
+              />
+            </div>
+            <label 
+              htmlFor="openInNewTab" 
+              className="text-[#717680] text-xs cursor-pointer"
+            >
+              Abrir link em nova guia
+            </label>
+          </div>
+        </div>
+        
+        <div className="space-y-2">
+          <div className="text-center text-xs text-[#717680]">
+            Texto alternativo
+          </div>
+          
+          <div className="flex items-center rounded-sm border border-[#E2E8F0] px-3 h-[30px]">
+            <input 
+              type="text" 
+              value={altText} 
+              onChange={(e) => handleAltTextChange(e.target.value)}
+              placeholder="Descreva o que vê na imagem"
+              className="w-full bg-transparent border-none focus:outline-none text-xs text-[#64748B]"
+            />
+          </div>
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="upload" className="text-center block text-xs text-[#717680]">
+            Upload da Imagem
+          </Label>
           <div className="relative">
             <div className="flex">
               <div className="relative flex-1">
@@ -151,118 +254,12 @@ export const ImagePanel = ({ element, updateElementStyle, updateElementContent, 
             </div>
           </div>
         </div>
-
-        {element.content && (
-          <div className="border rounded-md overflow-hidden mt-3 p-1">
-            <div className="text-xs text-gray-500 mb-1 px-1">Imagem atual:</div>
-            <div className="relative aspect-video bg-slate-100 flex items-center justify-center rounded">
-              <img
-                src={element.content}
-                alt="Preview"
-                className="max-h-[150px] max-w-full object-contain"
-              />
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <Label>Tamanho</Label>
-          <div className="flex gap-2">
-            <div>
-              <Label htmlFor="width">Largura</Label>
-              <Input
-                type="number"
-                id="width"
-                value={element?.style.width || 100}
-                onChange={(e) => updateElementStyle("width", Number(e.target.value))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="height">Altura</Label>
-              <Input
-                type="number"
-                id="height"
-                value={element?.style.height || 100}
-                onChange={(e) => updateElementStyle("height", Number(e.target.value))}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Posição</Label>
-          <div className="flex gap-2">
-            <div>
-              <Label htmlFor="x">X</Label>
-              <Input
-                type="number"
-                id="x"
-                value={element?.style.x || 0}
-                onChange={(e) => updateElementStyle("x", Number(e.target.value))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="y">Y</Label>
-              <Input
-                type="number"
-                id="y"
-                value={element?.style.y || 0}
-                onChange={(e) => updateElementStyle("y", Number(e.target.value))}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="animation">Animação</Label>
-          <Select
-            value={element?.style.animation || ""}
-            onValueChange={(value) => updateElementStyle("animation", value)}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Selecione a animação" />
-            </SelectTrigger>
-            <SelectContent>
-              {ANIMATION_PRESETS.map((animation) => (
-                <SelectItem key={animation.value} value={animation.value}>
-                  {animation.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {element?.style.animation && (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="animationDuration">Duração da animação (s)</Label>
-              <Slider
-                defaultValue={[element?.style.animationDuration || 1]}
-                max={10}
-                step={0.1}
-                onValueChange={(value) => updateElementStyle("animationDuration", value[0])}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="animationDelay">Delay da animação (s)</Label>
-              <Slider
-                defaultValue={[element?.style.animationDelay || 0]}
-                max={5}
-                step={0.1}
-                onValueChange={(value) => updateElementStyle("animationDelay", value[0])}
-              />
-            </div>
-          </>
-        )}
       </div>
     );
   }
 
-  // Style tab
   return (
     <div className="space-y-6 p-4">
-      {/* Background Color Section */}
       <div className="space-y-2">
         <div className="text-center text-xs text-[#717680] font-[Geist]">
           Cor de fundo
@@ -318,7 +315,6 @@ export const ImagePanel = ({ element, updateElementStyle, updateElementContent, 
         </div>
       </div>
       
-      {/* Corners Section */}
       <div className="space-y-4">
         <div className="text-center text-xs text-[#717680] font-[Geist]">
           Cantos
@@ -389,7 +385,6 @@ export const ImagePanel = ({ element, updateElementStyle, updateElementContent, 
         </div>
       </div>
       
-      {/* Border Section */}
       <div className="space-y-4">
         <div className="text-center text-xs text-[#717680] font-[Geist]">
           Borda
@@ -441,7 +436,6 @@ export const ImagePanel = ({ element, updateElementStyle, updateElementContent, 
         </div>
       </div>
       
-      {/* Alignment Section */}
       <div className="space-y-4 pb-2">
         <div className="text-center text-xs text-[#717680] font-[Geist]">
           Alinhamento
@@ -473,3 +467,4 @@ export const ImagePanel = ({ element, updateElementStyle, updateElementContent, 
     </div>
   );
 };
+
