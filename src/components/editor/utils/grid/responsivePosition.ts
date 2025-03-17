@@ -1,4 +1,3 @@
-
 import { EditorElement, BannerSize } from "../../types";
 import { snapToGrid } from "./gridCore";
 
@@ -28,7 +27,7 @@ export const calculateSmartPosition = (
     ? element.style.heightPercent 
     : (element.style.height / sourceSize.height) * 100;
 
-  // Calculate raw position based on percentages
+  // Calculate position based on percentages
   let x = (xPercent * targetSize.width) / 100;
   let y = (yPercent * targetSize.height) / 100;
   let width = (widthPercent * targetSize.width) / 100;
@@ -38,20 +37,32 @@ export const calculateSmartPosition = (
   width = Math.max(width, 20);
   height = Math.max(height, 20);
 
-  // For images, we need to preserve aspect ratio
+  // Special handling for images to preserve aspect ratio
   if (element.type === "image" || element.type === "logo") {
-    const sourceAspectRatio = element.style.width / element.style.height;
-    const targetAspectRatio = width / height;
+    // Get the original aspect ratio
+    const originalAspectRatio = 
+      (element.style.width / element.style.height) || 
+      (sourceSize.width / sourceSize.height);
+    
+    // Calculate the new aspect ratio based on the percentage calculations
+    const newAspectRatio = width / height;
     
     // If aspect ratios are significantly different, adjust dimensions
-    if (Math.abs(sourceAspectRatio - targetAspectRatio) > 0.01) {
-      // For images, prioritize width and adjust height
-      height = width / sourceAspectRatio;
+    if (Math.abs(originalAspectRatio - newAspectRatio) > 0.01) {
+      // For images, prioritize percentage-based width and adjust height to maintain aspect ratio
+      height = width / originalAspectRatio;
     }
   }
 
-  // Ensure element stays within canvas bounds with a small margin
-  const margin = 0; // Allow no margin for overflow 
+  // Bottom alignment detection and preservation
+  const isBottomAligned = Math.abs((element.style.y + element.style.height) - sourceSize.height) < 10;
+  if (isBottomAligned) {
+    // If element was bottom-aligned in source, keep it bottom-aligned in target
+    y = targetSize.height - height;
+  }
+
+  // Ensure element stays within canvas bounds
+  const margin = 0; // No margin for overflow
   x = Math.max(margin * -1, Math.min(x, targetSize.width - width - margin));
   y = Math.max(margin * -1, Math.min(y, targetSize.height - height - margin));
 
@@ -109,7 +120,7 @@ export const updateLinkedElementsIntelligently = (
 
   // Update all linked elements
   return elements.map(el => {
-    // Skip if not linked to the source element or is individually positioned
+    // Skip if not linked to the source element, is the source element itself, or is individually positioned
     if (el.linkedElementId !== sourceElement.linkedElementId || 
         el.id === sourceElement.id || 
         el.isIndividuallyPositioned) {
@@ -131,11 +142,11 @@ export const updateLinkedElementsIntelligently = (
         y: smartPosition.y,
         width: smartPosition.width,
         height: smartPosition.height,
-        // Update percentage values
-        xPercent: sourceElement.style.xPercent,
-        yPercent: sourceElement.style.yPercent,
-        widthPercent: sourceElement.style.widthPercent,
-        heightPercent: sourceElement.style.heightPercent
+        // Copy other percentage values
+        xPercent: (smartPosition.x / targetSize.width) * 100,
+        yPercent: (smartPosition.y / targetSize.height) * 100,
+        widthPercent: (smartPosition.width / targetSize.width) * 100,
+        heightPercent: (smartPosition.height / targetSize.height) * 100
       }
     };
   });

@@ -42,29 +42,17 @@ export const CanvasElement = ({
   const isSelected = selectedElement?.id === element.id;
 
   // Choose the appropriate position calculation method
-  let position;
+  let position = { 
+    x: element.style.x, 
+    y: element.style.y, 
+    width: element.style.width, 
+    height: element.style.height 
+  };
   
-  // If the element is individually positioned or has specific coordinates, use those
-  if (element.isIndividuallyPositioned || (element.style.x !== undefined && element.style.y !== undefined)) {
-    position = { 
-      x: element.style.x, 
-      y: element.style.y, 
-      width: element.style.width, 
-      height: element.style.height 
-    };
-  }
-  // Use percentage-based positioning if available
-  else if (element.style.xPercent !== undefined && element.style.yPercent !== undefined) {
-    position = {
-      x: (element.style.xPercent * canvasSize.width) / 100,
-      y: (element.style.yPercent * canvasSize.height) / 100,
-      width: (element.style.widthPercent! * canvasSize.width) / 100,
-      height: (element.style.heightPercent! * canvasSize.height) / 100
-    };
-  }
-  // As a last resort, use smart positioning logic
-  else {
-    position = findOptimalPosition(element, canvasSize.width, canvasSize.height);
+  // If the element doesn't belong to this canvas size, don't render it
+  // Global elements (sizeId = 'global') should appear in all canvases
+  if (element.sizeId && element.sizeId !== canvasSize.name && element.sizeId !== 'global') {
+    return null;
   }
 
   // Apply the final position style
@@ -76,16 +64,16 @@ export const CanvasElement = ({
     height: position.height
   };
 
-  // If this element doesn't belong to this canvas size, don't render it
-  // Global elements (sizeId = 'global') should appear in all canvases
-  if (element.sizeId && element.sizeId !== canvasSize.name && element.sizeId !== 'global') {
-    return null;
-  }
-
   // Function to prevent default browser image dragging
   const handleDragStart = (e: React.DragEvent) => {
     e.preventDefault();
     return false;
+  };
+
+  // Handle mousedown to prevent bubbling when selecting elements
+  const handleElementMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    handleMouseDown(e, element);
   };
 
   return (
@@ -111,7 +99,7 @@ export const CanvasElement = ({
         outline: "none",
       }}
       className={`${isSelected ? "outline-2 outline-blue-600" : ""} ${element.style.animation || ""}`}
-      onMouseDown={(e) => handleMouseDown(e, element)}
+      onMouseDown={handleElementMouseDown}
       onDragStart={handleDragStart}
       draggable={false}
       data-element-id={element.id}

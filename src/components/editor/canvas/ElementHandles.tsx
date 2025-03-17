@@ -7,7 +7,7 @@ interface ElementHandlesProps {
 }
 
 export const ElementHandles = ({ element, handleResizeStart }: ElementHandlesProps) => {
-  // Define uma função para criar handles com um estilo consistente
+  // Define consistent style for handles
   const handleStyle = {
     width: '12px', 
     height: '12px',
@@ -17,7 +17,14 @@ export const ElementHandles = ({ element, handleResizeStart }: ElementHandlesPro
     position: 'absolute' as const,
     zIndex: 10,
     boxShadow: '0 0 0 1px rgba(0,0,0,0.1)',
-    pointerEvents: 'all' as const
+    pointerEvents: 'all' as const,
+    cursor: 'pointer'
+  };
+
+  // Use stopPropagation to prevent click events from bubbling
+  const handleMouseDown = (e: React.MouseEvent, direction: string) => {
+    e.stopPropagation();
+    handleResizeStart(e, direction, element);
   };
 
   return (
@@ -25,7 +32,7 @@ export const ElementHandles = ({ element, handleResizeStart }: ElementHandlesPro
       {/* Norte */}
       <div 
         className="resize-handle resize-handle-n" 
-        onMouseDown={(e) => handleResizeStart(e, 'n', element)}
+        onMouseDown={(e) => handleMouseDown(e, 'n')}
         style={{
           ...handleStyle,
           cursor: 'n-resize',
@@ -37,7 +44,7 @@ export const ElementHandles = ({ element, handleResizeStart }: ElementHandlesPro
       {/* Leste */}
       <div 
         className="resize-handle resize-handle-e" 
-        onMouseDown={(e) => handleResizeStart(e, 'e', element)}
+        onMouseDown={(e) => handleMouseDown(e, 'e')}
         style={{
           ...handleStyle,
           cursor: 'e-resize',
@@ -49,7 +56,7 @@ export const ElementHandles = ({ element, handleResizeStart }: ElementHandlesPro
       {/* Sul */}
       <div 
         className="resize-handle resize-handle-s" 
-        onMouseDown={(e) => handleResizeStart(e, 's', element)}
+        onMouseDown={(e) => handleMouseDown(e, 's')}
         style={{
           ...handleStyle,
           cursor: 's-resize',
@@ -61,7 +68,7 @@ export const ElementHandles = ({ element, handleResizeStart }: ElementHandlesPro
       {/* Oeste */}
       <div 
         className="resize-handle resize-handle-w" 
-        onMouseDown={(e) => handleResizeStart(e, 'w', element)}
+        onMouseDown={(e) => handleMouseDown(e, 'w')}
         style={{
           ...handleStyle,
           cursor: 'w-resize',
@@ -73,7 +80,7 @@ export const ElementHandles = ({ element, handleResizeStart }: ElementHandlesPro
       {/* Noroeste */}
       <div 
         className="resize-handle resize-handle-nw" 
-        onMouseDown={(e) => handleResizeStart(e, 'nw', element)}
+        onMouseDown={(e) => handleMouseDown(e, 'nw')}
         style={{
           ...handleStyle,
           cursor: 'nw-resize',
@@ -85,7 +92,7 @@ export const ElementHandles = ({ element, handleResizeStart }: ElementHandlesPro
       {/* Nordeste */}
       <div 
         className="resize-handle resize-handle-ne" 
-        onMouseDown={(e) => handleResizeStart(e, 'ne', element)}
+        onMouseDown={(e) => handleMouseDown(e, 'ne')}
         style={{
           ...handleStyle,
           cursor: 'ne-resize',
@@ -97,7 +104,7 @@ export const ElementHandles = ({ element, handleResizeStart }: ElementHandlesPro
       {/* Sudeste */}
       <div 
         className="resize-handle resize-handle-se" 
-        onMouseDown={(e) => handleResizeStart(e, 'se', element)}
+        onMouseDown={(e) => handleMouseDown(e, 'se')}
         style={{
           ...handleStyle,
           cursor: 'se-resize',
@@ -109,7 +116,7 @@ export const ElementHandles = ({ element, handleResizeStart }: ElementHandlesPro
       {/* Sudoeste */}
       <div 
         className="resize-handle resize-handle-sw" 
-        onMouseDown={(e) => handleResizeStart(e, 'sw', element)}
+        onMouseDown={(e) => handleMouseDown(e, 'sw')}
         style={{
           ...handleStyle,
           cursor: 'sw-resize',
