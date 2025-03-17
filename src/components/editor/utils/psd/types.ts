@@ -75,5 +75,7 @@ export interface PSDLayerInfo {
     textAlign?: string;
     lineHeight?: number;
     letterSpacing?: number;
+    fontStyle?: string;
+    textDecoration?: string;
   };
 }

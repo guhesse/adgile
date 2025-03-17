@@ -80,10 +80,10 @@ export const PSDImport = () => {
         console.log("Aplicando sizeId global a todos os elementos");
         
         // Additional logging for text elements to debug styling
-        const textElements = globalElements.filter(el => el.type === 'text');
-        if (textElements.length > 0) {
+        const textElementsCount = globalElements.filter(el => el.type === 'text').length;
+        if (textElementsCount > 0) {
           console.log("=== DETALHAMENTO DE ELEMENTOS DE TEXTO ===");
-          textElements.forEach((textElement, index) => {
+          globalElements.filter(el => el.type === 'text').forEach((textElement, index) => {
             console.log(`Texto #${index + 1}: "${textElement.content}"`);
             console.log(`Estilos aplicados:`, {
               fontFamily: textElement.style.fontFamily || 'Não definido',
@@ -107,14 +107,14 @@ export const PSDImport = () => {
         toast.dismiss(loadingToast);
         
         // Log information about imported elements
-        const textElements = globalElements.filter(el => el.type === 'text').length;
+        const textCount = globalElements.filter(el => el.type === 'text').length;
         const imageElements = globalElements.filter(el => el.type === 'image').length;
         const containerElements = globalElements.filter(el => el.type === 'container').length;
         
         console.log("=== PSD IMPORT COMPLETED ===");
         console.log("Resumo da importação:", {
           total: globalElements.length,
-          textos: textElements,
+          textos: textCount,
           imagens: imageElements,
           containers: containerElements
         });
@@ -122,7 +122,7 @@ export const PSDImport = () => {
         if (globalElements.length === 0) {
           toast.warning("Nenhum elemento foi importado do arquivo PSD. Verifique os logs para mais detalhes.");
         } else {
-          toast.success(`Importados ${globalElements.length} elementos do arquivo PSD. (${textElements} textos, ${imageElements} imagens, ${containerElements} containers)`);
+          toast.success(`Importados ${globalElements.length} elementos do arquivo PSD. (${textCount} textos, ${imageElements} imagens, ${containerElements} containers)`);
         }
       } else {
         toast.dismiss(loadingToast);
