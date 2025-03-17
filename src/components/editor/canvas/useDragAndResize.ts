@@ -1,7 +1,9 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { snapToGrid } from '../utils/gridUtils';
 import { BannerSize, CanvasNavigationMode, EditingMode, EditorElement } from '../types';
 import { moveElementOutOfContainer, moveElementToContainer, constrainElementToArtboard, isElementOutOfBounds } from '../utils/containerUtils';
+import { updateLinkedElementsIntelligently } from '../utils/grid/responsivePosition';
 
 interface UseDragAndResizeProps {
   elements: EditorElement[];
@@ -18,6 +20,7 @@ interface UseDragAndResizeProps {
   ) => EditorElement[];
   organizeElements: () => void;
   canvasNavMode: CanvasNavigationMode;
+  activeSizes: BannerSize[];
 }
 
 export const useDragAndResize = ({
@@ -29,13 +32,15 @@ export const useDragAndResize = ({
   editingMode,
   updateAllLinkedElements,
   organizeElements,
-  canvasNavMode
+  canvasNavMode,
+  activeSizes
 }: UseDragAndResizeProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [resizeDirection, setResizeDirection] = useState("");
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [elementInitialPos, setElementInitialPos] = useState({ x: 0, y: 0 });
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [elementInitialPos, setElementInitialPos] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const [containerHoverTimer, setContainerHoverTimer] = useState<NodeJS.Timeout | null>(null);
   const [containerExitTimer, setContainerExitTimer] = useState<NodeJS.Timeout | null>(null);
   const [hoveredContainer, setHoveredContainer] = useState<string | null>(null);
@@ -64,17 +69,30 @@ export const useDragAndResize = ({
     setIsDragging(true);
     isDraggingRef.current = true;
 
-    // Store the element's initial position
+    // Store the element's initial position and size
     setElementInitialPos({
       x: element.style.x,
-      y: element.style.y
+      y: element.style.y,
+      width: element.style.width,
+      height: element.style.height
     });
 
     // Calculate the offset between mouse position and element's top-left corner
     const rect = e.currentTarget.getBoundingClientRect();
+    const zoomLevel = parseFloat((e.currentTarget.closest('[data-canvas-wrapper]') as HTMLElement)?.dataset.zoomLevel || '1');
+    
+    // Calculate the offset from the mouse to the top-left corner of the element
+    const offsetX = (e.clientX - rect.left) / zoomLevel;
+    const offsetY = (e.clientY - rect.top) / zoomLevel;
+    
+    setDragOffset({
+      x: offsetX,
+      y: offsetY
+    });
+    
     setDragStart({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+      x: e.clientX,
+      y: e.clientY,
     });
   };
 
@@ -95,6 +113,15 @@ export const useDragAndResize = ({
     setIsResizing(true);
     setResizeDirection(direction);
     setSelectedElement(element);
+    
+    // Store the element's initial position and size
+    setElementInitialPos({
+      x: element.style.x,
+      y: element.style.y,
+      width: element.style.width,
+      height: element.style.height
+    });
+    
     setDragStart({
       x: e.clientX,
       y: e.clientY,
@@ -165,17 +192,15 @@ export const useDragAndResize = ({
       const canvasRect = canvas.getBoundingClientRect();
       const zoomLevel = parseFloat(canvas.style.transform?.match(/scale\((.+)\)/)?.[1] || '1');
       
-      // Get the new position based on mouse position and initial offset
-      const mouseX = e.clientX;
-      const mouseY = e.clientY;
+      // Get the mouse position in canvas coordinates
+      const mouseX = (e.clientX - canvasRect.left) / zoomLevel;
+      const mouseY = (e.clientY - canvasRect.top) / zoomLevel;
       
-      const canvasX = (mouseX - canvasRect.left) / zoomLevel;
-      const canvasY = (mouseY - canvasRect.top) / zoomLevel;
-      
-      // Calculate new position keeping the exact point where user clicked on the element
-      let newX = canvasX - dragStart.x / zoomLevel;
-      let newY = canvasY - dragStart.y / zoomLevel;
+      // Calculate new position based on mouse position and the initial offset
+      let newX = mouseX - dragOffset.x;
+      let newY = mouseY - dragOffset.y;
 
+      // Apply constraints if inside a container
       const parentElement = selectedElement.inContainer ?
         elements.find(el => el.id === selectedElement.parentId) : null;
 
@@ -195,7 +220,7 @@ export const useDragAndResize = ({
         }
       } else {
         // Allow some overflow for elements on the artboard
-        const overflowAllowance = 20; // Allow elements to go 20px outside the artboard
+        const overflowAllowance = 0; // No overflow allowance
         newX = Math.max(-overflowAllowance, Math.min(newX, selectedSize.width - selectedElement.style.width + overflowAllowance));
         newY = Math.max(-overflowAllowance, Math.min(newY, selectedSize.height - selectedElement.style.height + overflowAllowance));
       }
@@ -209,11 +234,20 @@ export const useDragAndResize = ({
       let updatedElements = [...elements];
 
       if (editingMode === 'global' && selectedElement.linkedElementId) {
-        updatedElements = updateAllLinkedElements(
+        // Use our improved linked elements function
+        updatedElements = updateLinkedElementsIntelligently(
           updatedElements,
-          selectedElement,
-          { xPercent, yPercent },
-          { x: newX, y: newY }
+          {
+            ...selectedElement,
+            style: {
+              ...selectedElement.style,
+              x: newX,
+              y: newY,
+              xPercent,
+              yPercent
+            }
+          },
+          activeSizes
         );
       } else {
         updatedElements = updatedElements.map(el => {
@@ -276,26 +310,26 @@ export const useDragAndResize = ({
       const deltaX = (e.clientX - dragStart.x) / zoomLevel;
       const deltaY = (e.clientY - dragStart.y) / zoomLevel;
 
-      let newWidth = selectedElement.style.width;
-      let newHeight = selectedElement.style.height;
-      let newX = selectedElement.style.x;
-      let newY = selectedElement.style.y;
+      let newWidth = elementInitialPos.width;
+      let newHeight = elementInitialPos.height;
+      let newX = elementInitialPos.x;
+      let newY = elementInitialPos.y;
 
       // Calculate the new dimensions and position based on the resize direction
       if (resizeDirection.includes('e')) {
-        newWidth = snapToGrid(Math.max(50, selectedElement.style.width + deltaX));
+        newWidth = snapToGrid(Math.max(50, elementInitialPos.width + deltaX));
       }
       if (resizeDirection.includes('w')) {
-        const possibleWidth = snapToGrid(Math.max(50, selectedElement.style.width - deltaX));
-        newX = snapToGrid(selectedElement.style.x + (selectedElement.style.width - possibleWidth));
+        const possibleWidth = snapToGrid(Math.max(50, elementInitialPos.width - deltaX));
+        newX = snapToGrid(elementInitialPos.x + (elementInitialPos.width - possibleWidth));
         newWidth = possibleWidth;
       }
       if (resizeDirection.includes('s')) {
-        newHeight = snapToGrid(Math.max(20, selectedElement.style.height + deltaY));
+        newHeight = snapToGrid(Math.max(20, elementInitialPos.height + deltaY));
       }
       if (resizeDirection.includes('n')) {
-        const possibleHeight = snapToGrid(Math.max(20, selectedElement.style.height - deltaY));
-        newY = snapToGrid(selectedElement.style.y + (selectedElement.style.height - possibleHeight));
+        const possibleHeight = snapToGrid(Math.max(20, elementInitialPos.height - deltaY));
+        newY = snapToGrid(elementInitialPos.y + (elementInitialPos.height - possibleHeight));
         newHeight = possibleHeight;
       }
 
@@ -305,11 +339,11 @@ export const useDragAndResize = ({
         if (parentElement) {
           if (newX < 0) {
             newX = 0;
-            newWidth = selectedElement.style.width;
+            newWidth = elementInitialPos.width;
           }
           if (newY < 0) {
             newY = 0;
-            newHeight = selectedElement.style.height;
+            newHeight = elementInitialPos.height;
           }
           if (newX + newWidth > parentElement.style.width) {
             newWidth = parentElement.style.width - newX;
@@ -319,21 +353,20 @@ export const useDragAndResize = ({
           }
         }
       } else {
-        // Allow some overflow for elements on the artboard
-        const overflowAllowance = 20; // Allow elements to go 20px outside the artboard
-        if (newX < -overflowAllowance) {
-          newX = -overflowAllowance;
-          newWidth = selectedElement.style.width;
+        // For artboard elements, strictly enforce boundaries
+        if (newX < 0) {
+          newX = 0;
+          newWidth = elementInitialPos.width;
         }
-        if (newY < -overflowAllowance) {
-          newY = -overflowAllowance;
-          newHeight = selectedElement.style.height;
+        if (newY < 0) {
+          newY = 0;
+          newHeight = elementInitialPos.height;
         }
-        if (newX + newWidth > selectedSize.width + overflowAllowance) {
-          newWidth = selectedSize.width - newX + overflowAllowance;
+        if (newX + newWidth > selectedSize.width) {
+          newWidth = selectedSize.width - newX;
         }
-        if (newY + newHeight > selectedSize.height + overflowAllowance) {
-          newHeight = selectedSize.height - newY + overflowAllowance;
+        if (newY + newHeight > selectedSize.height) {
+          newHeight = selectedSize.height - newY;
         }
       }
 
@@ -345,11 +378,24 @@ export const useDragAndResize = ({
       let updatedElements;
       
       if (editingMode === 'global' && selectedElement.linkedElementId) {
-        updatedElements = updateAllLinkedElements(
+        // Use our improved linked elements function
+        updatedElements = updateLinkedElementsIntelligently(
           elements,
-          selectedElement,
-          { xPercent, yPercent, widthPercent, heightPercent },
-          { x: newX, y: newY, width: newWidth, height: newHeight }
+          {
+            ...selectedElement,
+            style: {
+              ...selectedElement.style,
+              x: newX,
+              y: newY,
+              width: newWidth,
+              height: newHeight,
+              xPercent,
+              yPercent,
+              widthPercent,
+              heightPercent
+            }
+          },
+          activeSizes
         );
       } else {
         updatedElements = elements.map(el => {
@@ -417,11 +463,6 @@ export const useDragAndResize = ({
         },
         isIndividuallyPositioned: editingMode === 'individual'
       });
-
-      setDragStart({
-        x: e.clientX,
-        y: e.clientY,
-      });
     }
   };
 
@@ -436,7 +477,7 @@ export const useDragAndResize = ({
       if (hoveredContainer && selectedElement && selectedElement.type !== 'container' && selectedElement.type !== 'layout') {
         moveElementToContainer(selectedElement, hoveredContainer, elements, setElements, setSelectedElement);
       } else {
-        // Ensure elements don't go too far outside the artboard
+        // Ensure elements stay within bounds
         let updatedElements = [...elements];
         let needsUpdate = false;
         
@@ -496,7 +537,7 @@ export const useDragAndResize = ({
     return () => {
       window.removeEventListener('mouseup', handleGlobalMouseUp);
     };
-  }, [handleMouseUp]);  // We need to include handleMouseUp in the dependency array
+  }, [isDragging, isResizing, hoveredContainer, selectedElement]);
 
   return {
     isDragging,
