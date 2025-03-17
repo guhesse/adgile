@@ -131,7 +131,7 @@ export const updateLinkedElementsIntelligently = (
     // Encontrar o tamanho do elemento alvo
     const targetSize = activeSizes.find(size => size.name === el.sizeId) || activeSizes[0];
     
-    // Calcular posição proporcional ao tamanho da prancheta
+    // Atualizar os valores percentuais com base no elemento fonte
     const xPercent = (sourceElement.style.x / sourceSize.width) * 100;
     const yPercent = (sourceElement.style.y / sourceSize.height) * 100;
     const widthPercent = (sourceElement.style.width / sourceSize.width) * 100;
@@ -178,10 +178,10 @@ export const updateLinkedElementsIntelligently = (
         width: width,
         height: height,
         // Atualizar valores percentuais
-        xPercent: (x / targetSize.width) * 100,
-        yPercent: (y / targetSize.height) * 100,
-        widthPercent: (width / targetSize.width) * 100,
-        heightPercent: (height / targetSize.height) * 100
+        xPercent: xPercent,
+        yPercent: yPercent,
+        widthPercent: widthPercent,
+        heightPercent: heightPercent
       }
     };
   });

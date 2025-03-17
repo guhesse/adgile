@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { snapToGrid } from '../utils/gridUtils';
 import { BannerSize, CanvasNavigationMode, EditingMode, EditorElement } from '../types';
@@ -269,7 +268,11 @@ export const useDragAndResize = ({
               x: newX,
               y: newY,
               xPercent,
-              yPercent
+              yPercent,
+              width: newWidth,
+              height: newHeight,
+              widthPercent,
+              heightPercent
             }
           },
           activeSizes
@@ -284,7 +287,11 @@ export const useDragAndResize = ({
                 x: newX, 
                 y: newY,
                 xPercent,
-                yPercent
+                yPercent,
+                width: newWidth,
+                height: newHeight,
+                widthPercent,
+                heightPercent
               },
               isIndividuallyPositioned: true
             };
@@ -302,7 +309,11 @@ export const useDragAndResize = ({
                         x: newX, 
                         y: newY,
                         xPercent,
-                        yPercent
+                        yPercent,
+                        width: newWidth,
+                        height: newHeight,
+                        widthPercent,
+                        heightPercent
                       },
                       isIndividuallyPositioned: true
                     }
@@ -324,7 +335,11 @@ export const useDragAndResize = ({
           x: newX, 
           y: newY,
           xPercent,
-          yPercent
+          yPercent,
+          width: newWidth,
+          height: newHeight,
+          widthPercent,
+          heightPercent
         },
         isIndividuallyPositioned: isIndividualUpdate
       };

@@ -1,6 +1,7 @@
 
 import { EditorElement, BannerSize } from "../types";
 import { toast } from "sonner";
+import { calculateSmartPosition } from "../utils/grid/responsivePosition";
 
 // Link an element across all active sizes
 export const linkElementsAcrossSizes = (
@@ -14,18 +15,16 @@ export const linkElementsAcrossSizes = (
   // Create a unique linked ID for this group of elements
   const linkedId = `linked-${Date.now()}`;
   
-  // Convert the source element to percentage-based values
-  const sourceElementWithPercentages = {
-    ...element,
-    style: {
-      ...element.style,
-    }
-  };
+  // Calculate percentage values for the source element
+  const xPercent = (element.style.x / selectedSize.width) * 100;
+  const yPercent = (element.style.y / selectedSize.height) * 100;
+  const widthPercent = (element.style.width / selectedSize.width) * 100;
+  const heightPercent = (element.style.height / selectedSize.height) * 100;
   
   // Update the elements array with linked versions across all sizes
   const updatedElements = [...elements];
   
-  // Find the element in the array and update it
+  // Find the element in the array and update it with percentage values
   const sourceIndex = updatedElements.findIndex(el => el.id === element.id);
   if (sourceIndex !== -1) {
     updatedElements[sourceIndex] = {
@@ -33,6 +32,10 @@ export const linkElementsAcrossSizes = (
       linkedElementId: linkedId,
       style: {
         ...updatedElements[sourceIndex].style,
+        xPercent,
+        yPercent,
+        widthPercent,
+        heightPercent
       }
     };
   }
@@ -42,6 +45,9 @@ export const linkElementsAcrossSizes = (
     // Skip the current size (source element's size)
     if (size.name === selectedSize.name) return;
     
+    // Calculate position and size for this specific canvas size
+    const { x, y, width, height } = calculateSmartPosition(element, selectedSize, size);
+    
     // Create a clone for this size
     const clone: EditorElement = {
       ...element,
@@ -50,12 +56,15 @@ export const linkElementsAcrossSizes = (
       linkedElementId: linkedId,
       style: {
         ...element.style,
-        // Apply the percentage values to the new size
-        // Calculate the absolute values for this size
-        x: (element.style.xPercent! * size.width) / 100,
-        y: (element.style.yPercent! * size.height) / 100,
-        width: (element.style.widthPercent! * size.width) / 100,
-        height: (element.style.heightPercent! * size.height) / 100
+        x,
+        y,
+        width,
+        height,
+        // Store percentage values
+        xPercent,
+        yPercent,
+        widthPercent,
+        heightPercent
       }
     };
     
@@ -100,6 +109,28 @@ export const updateAllLinkedElements = (
 ): EditorElement[] => {
   if (!sourceElement.linkedElementId) return elements;
   
+  // Find source size
+  const sourceSize = activeSizes.find(size => size.name === sourceElement.sizeId) || activeSizes[0];
+  
+  // If we have absolute changes, calculate the corresponding percentage changes
+  const calculatedPercentChanges = { ...percentageChanges };
+  
+  if (absoluteChanges.x !== undefined) {
+    calculatedPercentChanges.xPercent = (absoluteChanges.x / sourceSize.width) * 100;
+  }
+  
+  if (absoluteChanges.y !== undefined) {
+    calculatedPercentChanges.yPercent = (absoluteChanges.y / sourceSize.height) * 100;
+  }
+  
+  if (absoluteChanges.width !== undefined) {
+    calculatedPercentChanges.widthPercent = (absoluteChanges.width / sourceSize.width) * 100;
+  }
+  
+  if (absoluteChanges.height !== undefined) {
+    calculatedPercentChanges.heightPercent = (absoluteChanges.height / sourceSize.height) * 100;
+  }
+  
   return elements.map(el => {
     // Update source element
     if (el.id === sourceElement.id) {
@@ -108,7 +139,7 @@ export const updateAllLinkedElements = (
         style: {
           ...el.style,
           ...absoluteChanges,
-          ...percentageChanges
+          ...calculatedPercentChanges
         }
       };
     }
@@ -118,23 +149,23 @@ export const updateAllLinkedElements = (
       const size = activeSizes.find(size => size.name === el.sizeId);
       
       if (size) {
-        // Calculate absolute values for this size
+        // Calculate absolute values for this size based on percentage
         const newAbsoluteValues: Record<string, number> = {};
         
-        if (percentageChanges.xPercent !== undefined) {
-          newAbsoluteValues.x = (percentageChanges.xPercent * size.width) / 100;
+        if (calculatedPercentChanges.xPercent !== undefined) {
+          newAbsoluteValues.x = (calculatedPercentChanges.xPercent * size.width) / 100;
         }
         
-        if (percentageChanges.yPercent !== undefined) {
-          newAbsoluteValues.y = (percentageChanges.yPercent * size.height) / 100;
+        if (calculatedPercentChanges.yPercent !== undefined) {
+          newAbsoluteValues.y = (calculatedPercentChanges.yPercent * size.height) / 100;
         }
         
-        if (percentageChanges.widthPercent !== undefined) {
-          newAbsoluteValues.width = (percentageChanges.widthPercent * size.width) / 100;
+        if (calculatedPercentChanges.widthPercent !== undefined) {
+          newAbsoluteValues.width = (calculatedPercentChanges.widthPercent * size.width) / 100;
         }
         
-        if (percentageChanges.heightPercent !== undefined) {
-          newAbsoluteValues.height = (percentageChanges.heightPercent * size.height) / 100;
+        if (calculatedPercentChanges.heightPercent !== undefined) {
+          newAbsoluteValues.height = (calculatedPercentChanges.heightPercent * size.height) / 100;
         }
         
         return {
@@ -142,7 +173,7 @@ export const updateAllLinkedElements = (
           style: {
             ...el.style,
             ...newAbsoluteValues,
-            ...percentageChanges
+            ...calculatedPercentChanges
           }
         };
       }
@@ -161,10 +192,23 @@ export const createLinkedVersions = (
   const linkedElements: EditorElement[] = [];
   const linkedId = `linked-${Date.now()}`;
   
-  // Update the original element with the linked ID
+  // Calculate percentage values for the source element
+  const xPercent = (element.style.x / selectedSize.width) * 100;
+  const yPercent = (element.style.y / selectedSize.height) * 100;
+  const widthPercent = (element.style.width / selectedSize.width) * 100;
+  const heightPercent = (element.style.height / selectedSize.height) * 100;
+  
+  // Update the original element with the linked ID and percentage values
   const updatedElement = {
     ...element,
-    linkedElementId: linkedId
+    linkedElementId: linkedId,
+    style: {
+      ...element.style,
+      xPercent,
+      yPercent,
+      widthPercent,
+      heightPercent
+    }
   };
   
   linkedElements.push(updatedElement);
@@ -174,11 +218,21 @@ export const createLinkedVersions = (
     // Skip the current size
     if (size.name === selectedSize.name) return;
     
-    // Calculate absolute values for this size
-    const newX = (element.style.xPercent! * size.width) / 100;
-    const newY = (element.style.yPercent! * size.height) / 100;
-    const newWidth = (element.style.widthPercent! * size.width) / 100;
-    const newHeight = (element.style.heightPercent! * size.height) / 100;
+    // Use calculateSmartPosition to get proper positioning based on percentages
+    const { x, y, width, height } = calculateSmartPosition(
+      {
+        ...element,
+        style: {
+          ...element.style,
+          xPercent,
+          yPercent,
+          widthPercent,
+          heightPercent
+        }
+      },
+      selectedSize,
+      size
+    );
     
     let linkedElement: EditorElement;
     
@@ -190,10 +244,14 @@ export const createLinkedVersions = (
         linkedElementId: linkedId,
         style: {
           ...element.style,
-          x: newX,
-          y: newY,
-          width: newWidth,
-          height: newHeight
+          x,
+          y,
+          width,
+          height,
+          xPercent,
+          yPercent,
+          widthPercent,
+          heightPercent
         },
         childElements: element.childElements?.map(child => ({
           ...child,
@@ -210,10 +268,14 @@ export const createLinkedVersions = (
         linkedElementId: linkedId,
         style: {
           ...element.style,
-          x: newX,
-          y: newY,
-          width: newWidth,
-          height: newHeight
+          x,
+          y,
+          width,
+          height,
+          xPercent,
+          yPercent,
+          widthPercent,
+          heightPercent
         }
       };
     }

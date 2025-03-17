@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState } from "react";
 import { 
   BannerSize, 
@@ -10,6 +9,7 @@ import {
 import { animationOperations } from "./context/modificationOperations";
 import { generateRandomId } from "./utils/idGenerator";
 import { CanvasContextType } from "./context/CanvasContextTypes";
+import { updateLinkedElementsIntelligently } from "./utils/grid/responsivePosition";
 
 interface CanvasProviderProps {
   children: React.ReactNode;
@@ -35,8 +35,6 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
   const [activeSizes, setActiveSizes] = useState<BannerSize[]>([defaultSize]);
   const [editingMode, setEditingMode] = useState<EditingMode>('global');
   const [gridLayout, setGridLayout] = useState(false);
-  
-  // Add artboardBackgroundColor state
   const [artboardBackgroundColor, setArtboardBackgroundColor] = useState<string>('#ffffff');
 
   const organizeElements = () => {
@@ -140,7 +138,6 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
       sizeId: selectedSize.name === 'All' ? 'global' : selectedSize.name,
     };
     
-    // For specific types, customize the default properties
     if (type === 'button') {
       newElement.content = 'Button';
     } else if (type === 'image') {
@@ -160,7 +157,6 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
 
   const handleAddLayout = (template: any) => {
     console.log("Adding layout template:", template);
-    // Simple implementation - can be expanded for different layout types
     const containerId = `container-${generateRandomId()}`;
     const containerElement: EditorElement = {
       id: containerId,
@@ -203,7 +199,6 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
   };
 
   const handleImageUpload = async (file: File): Promise<string> => {
-    // Simulate image upload - in a real app, you'd upload to a server/storage
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -225,18 +220,48 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
     percentageChanges: Partial<{ xPercent: number; yPercent: number; widthPercent: number; heightPercent: number }>,
     absoluteChanges: Partial<{ x: number; y: number; width: number; height: number }>
   ): EditorElement[] => {
-    // Implementation will be added later if needed
-    return elements;
+    if (!sourceElement.linkedElementId) return elements;
+    
+    const calculatedPercentChanges = { ...percentageChanges };
+    
+    if (absoluteChanges.x !== undefined && percentageChanges.xPercent === undefined) {
+      calculatedPercentChanges.xPercent = (absoluteChanges.x / selectedSize.width) * 100;
+    }
+    
+    if (absoluteChanges.y !== undefined && percentageChanges.yPercent === undefined) {
+      calculatedPercentChanges.yPercent = (absoluteChanges.y / selectedSize.height) * 100;
+    }
+    
+    if (absoluteChanges.width !== undefined && percentageChanges.widthPercent === undefined) {
+      calculatedPercentChanges.widthPercent = (absoluteChanges.width / selectedSize.width) * 100;
+    }
+    
+    if (absoluteChanges.height !== undefined && percentageChanges.heightPercent === undefined) {
+      calculatedPercentChanges.heightPercent = (absoluteChanges.height / selectedSize.height) * 100;
+    }
+    
+    const updatedSourceElement = {
+      ...sourceElement,
+      style: {
+        ...sourceElement.style,
+        ...absoluteChanges,
+        ...calculatedPercentChanges
+      }
+    };
+    
+    return updateLinkedElementsIntelligently(elements, updatedSourceElement, activeSizes);
   };
 
   const linkElementsAcrossSizes = (element: EditorElement) => {
-    // Implementation will be added later if needed
-    console.log("Link elements across sizes for:", element.id);
+    const { linkElementsAcrossSizes: linkElements } = require('./context/responsiveOperations');
+    const updatedElements = linkElements(element, elements, selectedSize, activeSizes);
+    setElements(updatedElements);
   };
 
   const unlinkElement = (element: EditorElement) => {
-    // Implementation will be added later if needed
-    console.log("Unlink element:", element.id);
+    const { unlinkElement: unlink } = require('./context/responsiveOperations');
+    const updatedElements = unlink(element, elements);
+    setElements(updatedElements);
   };
 
   const addCustomSize = (size: BannerSize) => {
@@ -256,15 +281,12 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
 
   const undo = () => {
     console.log('Undo triggered');
-    // Implementation will be added later if needed
   };
 
-  // Update artboard background color
   const updateArtboardBackground = (color: string) => {
     setArtboardBackgroundColor(color);
   };
 
-  // Value object
   const value: CanvasContextType = {
     elements,
     setElements,

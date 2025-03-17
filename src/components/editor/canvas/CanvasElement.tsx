@@ -2,7 +2,7 @@
 import { BannerSize, CanvasNavigationMode, EditorElement } from "../types";
 import { ElementRenderer } from "../ElementRenderer";
 import { ElementHandles } from "./ElementHandles";
-import { findOptimalPosition } from "../utils/grid/positionUtils";
+import { calculateSmartPosition } from "../utils/grid/responsivePosition";
 
 interface CanvasElementProps {
   element: EditorElement;
@@ -41,7 +41,13 @@ export const CanvasElement = ({
   const isImage = element.type === "image" || element.type === "logo";
   const isSelected = selectedElement?.id === element.id;
 
-  // Choose the appropriate position calculation method
+  // If the element doesn't belong to this canvas size, don't render it
+  // Global elements (sizeId = 'global') should appear in all canvases
+  if (element.sizeId && element.sizeId !== canvasSize.name && element.sizeId !== 'global') {
+    return null;
+  }
+
+  // Determine the position for this element
   let position = { 
     x: element.style.x, 
     y: element.style.y, 
@@ -49,10 +55,22 @@ export const CanvasElement = ({
     height: element.style.height 
   };
   
-  // If the element doesn't belong to this canvas size, don't render it
-  // Global elements (sizeId = 'global') should appear in all canvases
-  if (element.sizeId && element.sizeId !== canvasSize.name && element.sizeId !== 'global') {
-    return null;
+  // If element has percentage values and needs to be adjusted for this canvas size
+  if (element.style.xPercent !== undefined && 
+      element.style.yPercent !== undefined && 
+      element.style.widthPercent !== undefined && 
+      element.style.heightPercent !== undefined &&
+      element.sizeId !== canvasSize.name) {
+    
+    // Find the source size (the size this element was originally created for)
+    const sourceSize = {
+      name: element.sizeId || 'unknown',
+      width: canvasSize.width, // Fallback to current size if unknown
+      height: canvasSize.height
+    };
+    
+    // Use calculateSmartPosition to adjust to this canvas
+    position = calculateSmartPosition(element, sourceSize, canvasSize);
   }
 
   // Apply the final position style
