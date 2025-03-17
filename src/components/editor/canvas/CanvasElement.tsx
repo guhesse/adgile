@@ -39,7 +39,6 @@ export const CanvasElement = ({
   const isContainer = element.type === "container" || element.type === "layout";
   const isExiting = isElementOutsideContainer && selectedElement?.id === element.id;
   const isImage = element.type === "image" || element.type === "logo";
-  const isSelected = selectedElement?.id === element.id;
 
   // Choose the appropriate position calculation method
   let position;
@@ -101,23 +100,18 @@ export const CanvasElement = ({
         border: isContainer
           ? isHovered ? "1px dashed #4080ff" : "1px dashed #aaa"
           : undefined,
-        zIndex: isDragging && isSelected ? 1000 : zIndex, // Increase z-index when dragging
-        transition: isExiting ? "none" : "all 0.1s ease-out",
+        zIndex: isDragging && selectedElement?.id === element.id ? 1000 : zIndex,
+        transition: isExiting ? "none" : "background-color 0.3s, border-color 0.3s",
         overflow: isContainer ? "hidden" : "visible",
         cursor: canvasNavMode === 'pan' ? 'grab' : 'move',
         userSelect: "none",
         opacity: element.style.opacity !== undefined ? element.style.opacity : 1,
-        boxShadow: isSelected ? "0 0 0 2px #2563eb" : (isExiting ? "0 0 0 2px #ff4040" : undefined),
-        outline: "none",
+        boxShadow: isExiting ? "0 0 0 2px #ff4040" : undefined
       }}
-      className={`${isSelected ? "outline-2 outline-blue-600" : ""} ${element.style.animation || ""}`}
+      className={`${selectedElement?.id === element.id ? "outline outline-2 outline-blue-500" : ""} ${element.style.animation || ""}`}
       onMouseDown={(e) => handleMouseDown(e, element)}
       onDragStart={handleDragStart}
       draggable={false}
-      data-element-id={element.id}
-      data-element-type={element.type}
-      data-zoom-level={1} // Add data attribute for zoom level
-      data-canvas-wrapper="true" // Add wrapper identifier for calculations
       onMouseEnter={(e) => {
         if (isContainer) {
           handleContainerHover(e, element.id);
@@ -160,7 +154,7 @@ export const CanvasElement = ({
         </div>
       )}
 
-      {isSelected && canvasNavMode !== 'pan' && (
+      {selectedElement?.id === element.id && canvasNavMode !== 'pan' && (
         <ElementHandles 
           element={element} 
           handleResizeStart={handleResizeStart}

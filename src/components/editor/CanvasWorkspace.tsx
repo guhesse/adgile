@@ -79,8 +79,7 @@ export const CanvasWorkspace = () => {
     editingMode,
     updateAllLinkedElements,
     organizeElements,
-    canvasNavMode,
-    activeSizes
+    canvasNavMode
   });
 
   // Effect to ensure all elements stay within the bounds of the artboard

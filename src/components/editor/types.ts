@@ -53,8 +53,6 @@ export type EditorElement = {
   columns?: number;
   childElements?: EditorElement[];
   alt?: string;
-  link?: string; // Link URL for elements that can be linked
-  openInNewTab?: boolean; // Whether to open the link in a new tab
   parentId?: string; // Reference to parent container/layout
   inContainer?: boolean; // Whether element is inside a container
   sizeId?: string; // The banner size this element belongs to
