@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,10 +17,13 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Image, Link, CornerDownLeft, CornerDownRight, CornerUpLeft, CornerUpRight, Minus, Plus, AlignCenter, AlignLeft, AlignRight } from "lucide-react";
 
-const ImagePanel = () => {
+interface ImagePanelProps {
+  selectedElement: EditorElement;
+  updateElementStyle?: (property: string, value: any) => void;
+}
+
+const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) => {
   const {
-    selectedElement,
-    updateElementStyle,
     updateElementContent,
     handleImageUpload,
   } = useCanvas();
@@ -108,11 +110,15 @@ const ImagePanel = () => {
   };
 
   const handleObjectFitChange = (value: string) => {
-    updateElementStyle("objectFit", value);
+    if (updateElementStyle) {
+      updateElementStyle("objectFit", value);
+    }
   };
 
   const handleOpacityChange = (value: number[]) => {
-    updateElementStyle("opacity", value[0] / 100);
+    if (updateElementStyle) {
+      updateElementStyle("opacity", value[0] / 100);
+    }
   };
 
   return (
@@ -250,13 +256,12 @@ const ImagePanel = () => {
             
             <Separator className="my-4" />
             
-            {/* Temporarily removed border controls with undefined handlers */}
             <div className="text-center text-sm text-gray-500">Posição</div>
             <div className="flex justify-center gap-2">
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => updateElementStyle("objectPosition", "left")}
+                onClick={() => updateElementStyle && updateElementStyle("objectPosition", "left")}
                 className={selectedElement.style.objectPosition === "left" ? "bg-purple-100" : ""}
               >
                 <AlignLeft className="h-4 w-4" />
@@ -264,7 +269,7 @@ const ImagePanel = () => {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => updateElementStyle("objectPosition", "center")}
+                onClick={() => updateElementStyle && updateElementStyle("objectPosition", "center")}
                 className={selectedElement.style.objectPosition === "center" ? "bg-purple-100" : ""}
               >
                 <AlignCenter className="h-4 w-4" />
@@ -272,7 +277,7 @@ const ImagePanel = () => {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => updateElementStyle("objectPosition", "right")}
+                onClick={() => updateElementStyle && updateElementStyle("objectPosition", "right")}
                 className={selectedElement.style.objectPosition === "right" ? "bg-purple-100" : ""}
               >
                 <AlignRight className="h-4 w-4" />

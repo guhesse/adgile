@@ -6,12 +6,20 @@ import ImagePanel from "./panels/ImagePanel";
 import { ButtonPanel } from "./panels/ButtonPanel";
 import { ArtboardPanel } from "./panels/ArtboardPanel";
 import { useCanvas } from "./CanvasContext";
+import { EditorElement, BannerSize } from "./types";
+
+// Define interfaces for all panel props
+interface PropertyPanelProps {
+  selectedElement?: EditorElement | null;
+  updateElementStyle?: (property: string, value: any) => void;
+  updateElementContent?: (content: string) => void;
+}
 
 // Componentes temporários para os painéis que ainda não existem
 const LayoutPanel = () => <div>Painel de Layout</div>;
 const ContainerPanel = () => <div>Painel de Container</div>;
 
-const PropertyPanel = () => {
+const PropertyPanel: React.FC = () => {
   const { 
     selectedElement, 
     selectedSize,
@@ -92,7 +100,12 @@ const PropertyPanel = () => {
               {selectedElement.type === "container" && <ContainerPanel />}
             </TabsContent>
             <TabsContent value="image" className="space-y-2">
-              {selectedElement.type === "image" && <ImagePanel element={selectedElement} updateElementStyle={updateElementStyle} />}
+              {selectedElement.type === "image" && (
+                <ImagePanel 
+                  selectedElement={selectedElement} 
+                  updateElementStyle={updateElementStyle} 
+                />
+              )}
             </TabsContent>
           </>
         ) : (

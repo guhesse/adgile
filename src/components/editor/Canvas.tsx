@@ -56,11 +56,7 @@ const CanvasContent = ({ editorMode }: CanvasProps) => {
         </div>
         
         <div className="flex-1 overflow-y-auto">
-          <PropertyPanel 
-            selectedElement={selectedElement}
-            updateElementStyle={updateElementStyle}
-            updateElementContent={updateElementContent}
-          />
+          <PropertyPanel />
         </div>
       </div>
 
