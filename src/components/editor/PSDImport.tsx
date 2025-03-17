@@ -36,9 +36,21 @@ export const PSDImport = () => {
       // Log file information
       console.log("=== PSD IMPORT STARTED ===");
       console.log("Importando arquivo PSD:", file.name, "Tamanho:", Math.round(file.size / 1024), "KB");
+      console.log("Estrutura de importação:", {
+        passos: [
+          "1. Leitura do arquivo PSD",
+          "2. Extração das dimensões do documento",
+          "3. Criação de um tamanho personalizado baseado nas dimensões",
+          "4. Processamento das camadas",
+          "5. Extração de texto e formatação",
+          "6. Extração de imagens",
+          "7. Criação de elementos na canvas"
+        ]
+      });
       
       // Get PSD file dimensions first
       const { width, height } = await getPSDDimensions(file);
+      console.log("Dimensões detectadas:", width, "×", height, "pixels");
       
       if (width && height) {
         // Create a custom size based on the PSD dimensions
@@ -49,17 +61,23 @@ export const PSDImport = () => {
           height
         };
         
+        console.log("Criando tamanho personalizado:", customSizeName, `(${width}×${height}px)`);
+        
         // Add the custom size to active sizes and select it
         addCustomSize(customSize);
         
         // Import PSD file with the new custom size
+        console.log("Iniciando processamento das camadas...");
         const elements = await importPSDFile(file, customSize);
+        console.log("Camadas processadas:", elements.length);
         
         // Ensure ALL elements have global sizeId to appear in all formats
         const globalElements = elements.map(element => ({
           ...element,
           sizeId: 'global'
         }));
+        
+        console.log("Aplicando sizeId global a todos os elementos");
         
         // Update canvas elements
         setElements(globalElements);
@@ -117,6 +135,7 @@ export const PSDImport = () => {
           const PSD = (await import('psd.js')).default;
           
           // Parse the PSD file
+          console.log("Analisando estrutura do PSD para obter dimensões...");
           const psd = new PSD(new Uint8Array(reader.result as ArrayBuffer));
           await psd.parse();
           
@@ -129,6 +148,7 @@ export const PSDImport = () => {
         } catch (error) {
           console.error("Error reading PSD dimensions:", error);
           // If dimensions can't be determined, use default values
+          console.log("Usando dimensões padrão (1440×1660) devido a erro na leitura");
           resolve({ width: 1440, height: 1660 });
         }
       };

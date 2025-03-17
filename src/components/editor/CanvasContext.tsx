@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useRef, useEffect } from "react";
 import { 
   BannerSize, 
   EditorElement, 
@@ -6,10 +6,11 @@ import {
   EditingMode, 
   CanvasNavigationMode
 } from "./types";
-import { animationOperations } from "./context/modificationOperations";
+import { animationOperations, removeElement as removeElementOp } from "./context/modificationOperations";
 import { generateRandomId } from "./utils/idGenerator";
 import { CanvasContextType } from "./context/CanvasContextTypes";
 import { updateLinkedElementsIntelligently } from "./utils/grid/responsivePosition";
+import { toast } from "sonner";
 
 interface CanvasProviderProps {
   children: React.ReactNode;
@@ -36,15 +37,25 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
   const [editingMode, setEditingMode] = useState<EditingMode>('global');
   const [gridLayout, setGridLayout] = useState(false);
   const [artboardBackgroundColor, setArtboardBackgroundColor] = useState<string>('#ffffff');
+  
+  const historyRef = useRef<{elements: EditorElement[], selectedElement: EditorElement | null}[]>([]);
+  const currentHistoryIndexRef = useRef<number>(-1);
+  const maxHistoryLength = 50;
 
   const organizeElements = () => {
     setKey(prevKey => prevKey + 1);
   };
 
   const removeElement = (elementId: string) => {
-    setElements(prevElements => {
-      return prevElements.filter(el => el.id !== elementId);
-    });
+    const { updatedElements, newSelectedElement } = removeElementOp(
+      elementId,
+      elements,
+      selectedElement,
+      editingMode
+    );
+
+    setElements(updatedElements);
+    setSelectedElement(newSelectedElement);
   };
 
   const updateElementStyle = (property: string, value: any) => {
@@ -279,8 +290,45 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
     });
   };
 
+  const addToHistory = (newElements: EditorElement[], newSelectedElement: EditorElement | null) => {
+    if (currentHistoryIndexRef.current < historyRef.current.length - 1) {
+      historyRef.current = historyRef.current.slice(0, currentHistoryIndexRef.current + 1);
+    }
+
+    if (historyRef.current.length >= maxHistoryLength) {
+      historyRef.current.shift();
+    } else {
+      currentHistoryIndexRef.current++;
+    }
+
+    historyRef.current.push({
+      elements: JSON.parse(JSON.stringify(newElements)),
+      selectedElement: newSelectedElement ? JSON.parse(JSON.stringify(newSelectedElement)) : null
+    });
+  };
+
+  useEffect(() => {
+    if (elements.length > 0) {
+      addToHistory(elements, selectedElement);
+    }
+  }, [elements]);
+
   const undo = () => {
     console.log('Undo triggered');
+    
+    if (currentHistoryIndexRef.current <= 0) {
+      toast.info("Não há mais ações para desfazer");
+      return;
+    }
+    
+    currentHistoryIndexRef.current--;
+    const previousState = historyRef.current[currentHistoryIndexRef.current];
+    
+    if (previousState) {
+      setElements(previousState.elements);
+      setSelectedElement(previousState.selectedElement);
+      toast.info("Última ação desfeita");
+    }
   };
 
   const updateArtboardBackground = (color: string) => {

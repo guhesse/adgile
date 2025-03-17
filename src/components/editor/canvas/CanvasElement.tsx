@@ -3,6 +3,7 @@ import { BannerSize, CanvasNavigationMode, EditorElement } from "../types";
 import { ElementRenderer } from "../ElementRenderer";
 import { ElementHandles } from "./ElementHandles";
 import { calculateSmartPosition } from "../utils/grid/responsivePosition";
+import { useCallback, useRef } from "react";
 
 interface CanvasElementProps {
   element: EditorElement;
@@ -17,7 +18,7 @@ interface CanvasElementProps {
   handleContainerHoverEnd: () => void;
   hoveredContainer: string | null;
   canvasNavMode: CanvasNavigationMode;
-  zIndex?: number; // Added zIndex prop
+  zIndex?: number;
 }
 
 export const CanvasElement = ({
@@ -33,13 +34,17 @@ export const CanvasElement = ({
   handleContainerHoverEnd,
   hoveredContainer,
   canvasNavMode,
-  zIndex = 1 // Default zIndex
+  zIndex = 1
 }: CanvasElementProps) => {
   const isHovered = hoveredContainer === element.id;
   const isContainer = element.type === "container" || element.type === "layout";
   const isExiting = isElementOutsideContainer && selectedElement?.id === element.id;
   const isImage = element.type === "image" || element.type === "logo";
+  const isText = element.type === "text";
   const isSelected = selectedElement?.id === element.id;
+  
+  // Referência para manter um ponto fixo ao arrastar
+  const elementRef = useRef<HTMLDivElement>(null);
 
   // If the element doesn't belong to this canvas size, don't render it
   // Global elements (sizeId = 'global') should appear in all canvases
@@ -88,14 +93,26 @@ export const CanvasElement = ({
     return false;
   };
 
-  // Handle mousedown to prevent bubbling when selecting elements
-  const handleElementMouseDown = (e: React.MouseEvent) => {
+  // Otimizado handler de mouse down para elementos de texto
+  const handleElementMouseDown = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    // Captura posição do mouse no início do arraste relativo ao elemento
+    if (elementRef.current && isText) {
+      const rect = elementRef.current.getBoundingClientRect();
+      const offsetX = e.clientX - rect.left;
+      const offsetY = e.clientY - rect.top;
+      
+      // Guarda as informações no elemento do evento para uso no handler de drag
+      (e as any).elementOffset = { x: offsetX, y: offsetY };
+    }
+    
     handleMouseDown(e, element);
-  };
+  }, [element, handleMouseDown, isText]);
 
   return (
     <div
+      ref={elementRef}
       style={{
         ...positionStyle,
         animationPlayState: element.style.animationPlayState,
@@ -107,14 +124,15 @@ export const CanvasElement = ({
         border: isContainer
           ? isHovered ? "1px dashed #4080ff" : "1px dashed #aaa"
           : undefined,
-        zIndex: isDragging && isSelected ? 1000 : zIndex, // Increase z-index when dragging
-        transition: isExiting ? "none" : "all 0.1s ease-out",
+        zIndex: isDragging && isSelected ? 1000 : zIndex,
+        transition: isExiting ? "none" : (isDragging ? "none" : "all 0.1s ease-out"),
         overflow: isContainer ? "hidden" : "visible",
         cursor: canvasNavMode === 'pan' ? 'grab' : 'move',
         userSelect: "none",
         opacity: element.style.opacity !== undefined ? element.style.opacity : 1,
         boxShadow: isSelected ? "0 0 0 2px #2563eb" : (isExiting ? "0 0 0 2px #ff4040" : undefined),
         outline: "none",
+        touchAction: "none", // Prevents touch scrolling during drags
       }}
       className={`${isSelected ? "outline-2 outline-blue-600" : ""} ${element.style.animation || ""}`}
       onMouseDown={handleElementMouseDown}
@@ -122,8 +140,8 @@ export const CanvasElement = ({
       draggable={false}
       data-element-id={element.id}
       data-element-type={element.type}
-      data-zoom-level={1} // Add data attribute for zoom level
-      data-canvas-wrapper="true" // Add wrapper identifier for calculations
+      data-zoom-level={1}
+      data-canvas-wrapper="true"
       onMouseEnter={(e) => {
         if (isContainer) {
           handleContainerHover(e, element.id);
@@ -160,7 +178,7 @@ export const CanvasElement = ({
               handleContainerHoverEnd={handleContainerHoverEnd}
               hoveredContainer={hoveredContainer}
               canvasNavMode={canvasNavMode}
-              zIndex={childIndex + 1} // Ensure child elements have higher z-index
+              zIndex={childIndex + 1}
             />
           ))}
         </div>
