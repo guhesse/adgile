@@ -79,6 +79,24 @@ export const PSDImport = () => {
         
         console.log("Aplicando sizeId global a todos os elementos");
         
+        // Additional logging for text elements to debug styling
+        const textElements = globalElements.filter(el => el.type === 'text');
+        if (textElements.length > 0) {
+          console.log("=== DETALHAMENTO DE ELEMENTOS DE TEXTO ===");
+          textElements.forEach((textElement, index) => {
+            console.log(`Texto #${index + 1}: "${textElement.content}"`);
+            console.log(`Estilos aplicados:`, {
+              fontFamily: textElement.style.fontFamily || 'Não definido',
+              fontSize: textElement.style.fontSize || 'Não definido',
+              fontWeight: textElement.style.fontWeight || 'Não definido',
+              color: textElement.style.color || 'Não definido',
+              textAlign: textElement.style.textAlign || 'Não definido',
+              lineHeight: textElement.style.lineHeight || 'Não definido',
+              letterSpacing: textElement.style.letterSpacing || 'Não definido'
+            });
+          });
+        }
+        
         // Update canvas elements
         setElements(globalElements);
         

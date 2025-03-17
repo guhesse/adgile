@@ -1,4 +1,3 @@
-
 import { BannerSize, CanvasNavigationMode, EditorElement } from "../types";
 import { ElementRenderer } from "../ElementRenderer";
 import { ElementHandles } from "./ElementHandles";
@@ -36,6 +35,7 @@ export const CanvasElement = ({
   canvasNavMode,
   zIndex = 1
 }: CanvasElementProps) => {
+  
   const isHovered = hoveredContainer === element.id;
   const isContainer = element.type === "container" || element.type === "layout";
   const isExiting = isElementOutsideContainer && selectedElement?.id === element.id;
@@ -43,7 +43,7 @@ export const CanvasElement = ({
   const isText = element.type === "text";
   const isSelected = selectedElement?.id === element.id;
   
-  // Referência para manter um ponto fixo ao arrastar
+  // Reference to maintain a fixed point when dragging
   const elementRef = useRef<HTMLDivElement>(null);
 
   // If the element doesn't belong to this canvas size, don't render it
@@ -93,22 +93,22 @@ export const CanvasElement = ({
     return false;
   };
 
-  // Otimizado handler de mouse down para elementos de texto
+  // Optimized mouse down handler for text elements
   const handleElementMouseDown = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     
-    // Captura posição do mouse no início do arraste relativo ao elemento
-    if (elementRef.current && isText) {
+    // Capture mouse position at the beginning of the drag relative to the element
+    if (elementRef.current) {
       const rect = elementRef.current.getBoundingClientRect();
       const offsetX = e.clientX - rect.left;
       const offsetY = e.clientY - rect.top;
       
-      // Guarda as informações no elemento do evento para uso no handler de drag
+      // Store information in the event object for use in the drag handler
       (e as any).elementOffset = { x: offsetX, y: offsetY };
     }
     
     handleMouseDown(e, element);
-  }, [element, handleMouseDown, isText]);
+  }, [element, handleMouseDown]);
 
   return (
     <div

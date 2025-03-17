@@ -4,6 +4,7 @@ import { detectLayerType } from './layerDetection';
 import { createTextElement, createImageElement, createFallbackElement } from './elementCreation';
 import { PSDFileData, PSDLayerInfo } from './types';
 import { saveImageToStorage } from './storage';
+import { convertPSDColorToHex, convertPSDAlignmentToCSS } from './formatters';
 
 /**
  * Process a single PSD layer into an editor element
@@ -69,136 +70,181 @@ export const processLayer = async (
         // Extract text styling with enhanced logging
         console.log(`Extraindo estilos de texto para: ${layer.name || 'sem nome'}`);
         try {
-          // Log all available layer text properties for debugging
+          // Log raw layer object for better debugging
+          console.log(`Camada de texto completa:`, layer);
+          
+          // Extract text information directly from layer if possible
           if (layer.text) {
-            console.log(`Propriedades disponíveis do texto:`, Object.keys(layer.text));
-            
-            // Extract all available text properties for better information
-            const textProperties = {};
-            for (const key in layer.text) {
-              if (typeof layer.text[key] !== 'function') {
-                textProperties[key] = layer.text[key];
-              }
-            }
-            console.log(`Propriedades de texto da camada:`, textProperties);
+            console.log(`Propriedades de texto (layer.text):`, layer.text);
           }
           
-          // Get text styling information if available
-          if (layer.text && (layer.text.font || Object.keys(layer.text).length > 0)) {
-            const textStyle = {
-              fontSize: layer.text.fontSize || layer.text.size,
-              fontFamily: layer.text.font,
-              fontWeight: layer.text.fontWeight,
-              color: layer.text.color,
-              textAlign: layer.text.alignment,
-              lineHeight: layer.text.leading,
-              letterSpacing: layer.text.tracking,
-              fontStyle: layer.text.italic ? 'italic' : 'normal',
-              textDecoration: layer.text.underline ? 'underline' : 'none'
-            };
+          // Check if the layer has the text property in the expected format from psd.js
+          if (layer.text && layer.text.value) {
+            console.log(`Texto encontrado: "${layer.text.value}"`);
             
-            console.log(`Estilos de texto encontrados:`, textStyle);
+            // Update element content with the actual text
+            element.content = layer.text.value;
             
-            // Apply text styles to the element
-            if (textStyle.fontSize) {
-              element.style.fontSize = typeof textStyle.fontSize === 'number' 
-                ? textStyle.fontSize 
-                : parseInt(textStyle.fontSize);
-              console.log(`Aplicando fontSize: ${element.style.fontSize}`);
-            }
-            
-            if (textStyle.fontFamily) {
-              element.style.fontFamily = textStyle.fontFamily;
-              console.log(`Aplicando fontFamily: ${element.style.fontFamily}`);
-            }
-            
-            if (textStyle.fontWeight) {
-              // Convert PSD font weight to CSS weight
-              const weight = typeof textStyle.fontWeight === 'string' 
-                ? textStyle.fontWeight.toLowerCase()
-                : textStyle.fontWeight;
-                
-              // Convert named weights to values
-              if (weight === 'bold' || weight >= 700) {
-                element.style.fontWeight = 'bold';
-              } else if (weight === 'medium' || (weight >= 500 && weight < 700)) {
-                element.style.fontWeight = 'medium';
-              } else {
-                element.style.fontWeight = 'normal';
+            // Extract font information
+            if (layer.text.font) {
+              console.log(`Informações de fonte encontradas:`, layer.text.font);
+              
+              // Font family
+              if (layer.text.font.name) {
+                element.style.fontFamily = layer.text.font.name;
+                console.log(`Aplicando fontFamily: ${element.style.fontFamily}`);
               }
               
-              console.log(`Aplicando fontWeight: ${element.style.fontWeight}`);
-            }
-            
-            if (textStyle.color) {
-              element.style.color = textStyle.color;
-              console.log(`Aplicando color: ${element.style.color}`);
-            }
-            
-            if (textStyle.textAlign) {
-              // Convert PSD alignment to editor alignment
-              const alignment = textStyle.textAlign.toString().toLowerCase();
-              if (alignment.includes('left')) {
-                element.style.textAlign = 'left';
-              } else if (alignment.includes('right')) {
-                element.style.textAlign = 'right';
-              } else if (alignment.includes('center')) {
-                element.style.textAlign = 'center';
-              } else if (alignment.includes('justify')) {
-                element.style.textAlign = 'justify';
+              // Font size - get first size from sizes array
+              if (layer.text.font.sizes && layer.text.font.sizes.length > 0) {
+                const fontSize = layer.text.font.sizes[0];
+                element.style.fontSize = fontSize;
+                console.log(`Aplicando fontSize: ${element.style.fontSize}`);
               }
               
-              console.log(`Aplicando textAlign: ${element.style.textAlign}`);
-            }
-            
-            if (textStyle.lineHeight) {
-              // Convert to number if needed
-              element.style.lineHeight = typeof textStyle.lineHeight === 'number'
-                ? textStyle.lineHeight
-                : parseFloat(textStyle.lineHeight);
+              // Font color - get first color from colors array and convert to hex
+              if (layer.text.font.colors && layer.text.font.colors.length > 0) {
+                const colorArray = layer.text.font.colors[0];
+                element.style.color = convertPSDColorToHex(colorArray);
+                console.log(`Aplicando color: ${element.style.color}`);
+              }
               
-              console.log(`Aplicando lineHeight: ${element.style.lineHeight}`);
+              // Text alignment - get from alignment array
+              if (layer.text.font.alignment && layer.text.font.alignment.length > 0) {
+                const alignment = layer.text.font.alignment[0].toLowerCase();
+                // Convert to our supported alignment values
+                element.style.textAlign = convertPSDAlignmentToCSS(alignment);
+                console.log(`Aplicando textAlign: ${element.style.textAlign}`);
+              }
             }
-            
-            if (textStyle.letterSpacing) {
-              // Convert to number if needed
-              element.style.letterSpacing = typeof textStyle.letterSpacing === 'number'
-                ? textStyle.letterSpacing
-                : parseFloat(textStyle.letterSpacing);
-              
-              console.log(`Aplicando letterSpacing: ${element.style.letterSpacing}`);
-            }
-            
-            if (textStyle.fontStyle) {
-              element.style.fontStyle = textStyle.fontStyle;
-              console.log(`Aplicando fontStyle: ${element.style.fontStyle}`);
-            }
-            
-            if (textStyle.textDecoration) {
-              element.style.textDecoration = textStyle.textDecoration;
-              console.log(`Aplicando textDecoration: ${element.style.textDecoration}`);
-            }
-            
-            // Store text style info in PSD data
-            const layerInfo: PSDLayerInfo = {
-              id: element.id,
-              name: layer.name || 'Text Layer',
-              type: 'text',
-              position: {
-                x: element.style.x,
-                y: element.style.y,
-                width: element.style.width,
-                height: element.style.height
-              },
-              content: element.content as string,
-              textStyle: textStyle
-            };
-            
-            psdData.layers.push(layerInfo);
-            console.log(`Estilos de texto salvos nos dados do PSD`);
           } else {
-            console.log(`Camada de texto sem propriedades de estilo definidas`);
+            // Fallback to old style extraction method
+            console.log(`Usando método alternativo de extração de estilo`);
+            
+            // Get text styling information if available
+            if (layer.text) {
+              const textStyle = {
+                fontSize: layer.text.fontSize || layer.text.size,
+                fontFamily: layer.text.font,
+                fontWeight: layer.text.fontWeight,
+                color: layer.text.color,
+                textAlign: layer.text.alignment,
+                lineHeight: layer.text.leading,
+                letterSpacing: layer.text.tracking,
+                fontStyle: layer.text.italic ? 'italic' : 'normal',
+                textDecoration: layer.text.underline ? 'underline' : 'none'
+              };
+              
+              console.log(`Estilos de texto encontrados:`, textStyle);
+              
+              // Apply text styles to the element
+              if (textStyle.fontSize) {
+                element.style.fontSize = typeof textStyle.fontSize === 'number' 
+                  ? textStyle.fontSize 
+                  : parseInt(textStyle.fontSize);
+                console.log(`Aplicando fontSize: ${element.style.fontSize}`);
+              }
+              
+              if (textStyle.fontFamily) {
+                element.style.fontFamily = textStyle.fontFamily;
+                console.log(`Aplicando fontFamily: ${element.style.fontFamily}`);
+              }
+              
+              if (textStyle.fontWeight) {
+                // Convert PSD font weight to CSS weight
+                const weight = typeof textStyle.fontWeight === 'string' 
+                  ? textStyle.fontWeight.toLowerCase()
+                  : textStyle.fontWeight;
+                  
+                // Convert named weights to values
+                if (weight === 'bold' || weight >= 700) {
+                  element.style.fontWeight = 'bold';
+                } else if (weight === 'medium' || (weight >= 500 && weight < 700)) {
+                  element.style.fontWeight = 'medium';
+                } else {
+                  element.style.fontWeight = 'normal';
+                }
+                
+                console.log(`Aplicando fontWeight: ${element.style.fontWeight}`);
+              }
+              
+              if (textStyle.color) {
+                element.style.color = textStyle.color;
+                console.log(`Aplicando color: ${element.style.color}`);
+              }
+              
+              if (textStyle.textAlign) {
+                // Convert PSD alignment to editor alignment
+                const alignment = textStyle.textAlign.toString().toLowerCase();
+                if (alignment.includes('left')) {
+                  element.style.textAlign = 'left';
+                } else if (alignment.includes('right')) {
+                  element.style.textAlign = 'right';
+                } else if (alignment.includes('center')) {
+                  element.style.textAlign = 'center';
+                }
+                // Remove 'justify' as it's not a supported option in our type
+                
+                console.log(`Aplicando textAlign: ${element.style.textAlign}`);
+              }
+              
+              if (textStyle.lineHeight) {
+                // Convert to number if needed
+                element.style.lineHeight = typeof textStyle.lineHeight === 'number'
+                  ? textStyle.lineHeight
+                  : parseFloat(textStyle.lineHeight);
+                
+                console.log(`Aplicando lineHeight: ${element.style.lineHeight}`);
+              }
+              
+              if (textStyle.letterSpacing) {
+                // Convert to number if needed
+                element.style.letterSpacing = typeof textStyle.letterSpacing === 'number'
+                  ? textStyle.letterSpacing
+                  : parseFloat(textStyle.letterSpacing);
+                
+                console.log(`Aplicando letterSpacing: ${element.style.letterSpacing}`);
+              }
+              
+              if (textStyle.fontStyle) {
+                element.style.fontStyle = textStyle.fontStyle;
+                console.log(`Aplicando fontStyle: ${element.style.fontStyle}`);
+              }
+              
+              if (textStyle.textDecoration) {
+                element.style.textDecoration = textStyle.textDecoration;
+                console.log(`Aplicando textDecoration: ${element.style.textDecoration}`);
+              }
+            }
           }
+          
+          // Store text style info in PSD data
+          const layerInfo: PSDLayerInfo = {
+            id: element.id,
+            name: layer.name || 'Text Layer',
+            type: 'text',
+            position: {
+              x: element.style.x,
+              y: element.style.y,
+              width: element.style.width,
+              height: element.style.height
+            },
+            content: element.content as string,
+            textStyle: {
+              fontSize: element.style.fontSize,
+              fontFamily: element.style.fontFamily,
+              fontWeight: element.style.fontWeight,
+              color: element.style.color,
+              textAlign: element.style.textAlign,
+              lineHeight: element.style.lineHeight,
+              letterSpacing: element.style.letterSpacing,
+              fontStyle: element.style.fontStyle,
+              textDecoration: element.style.textDecoration
+            }
+          };
+          
+          psdData.layers.push(layerInfo);
+          console.log(`Estilos de texto salvos nos dados do PSD`);
         } catch (textStyleError) {
           console.error('Erro ao extrair estilos de texto:', textStyleError);
           
