@@ -12,7 +12,17 @@ const LayoutPanel = () => <div>Painel de Layout</div>;
 const ContainerPanel = () => <div>Painel de Container</div>;
 
 const PropertyPanel = () => {
-  const { selectedElement } = useCanvas();
+  const { 
+    selectedElement, 
+    selectedSize,
+    updateElementStyle,
+    updateElementContent,
+    artboardBackgroundColor,
+    updateArtboardBackground
+  } = useCanvas();
+
+  // Track active tab state
+  const [activeTab, setActiveTab] = React.useState("content");
 
   return (
     <div className="p-4 space-y-4 bg-secondary rounded-md h-full">
@@ -20,7 +30,11 @@ const PropertyPanel = () => {
         <div className="text-lg font-medium">Propriedades</div>
       </div>
 
-      <Tabs defaultValue="content" className="space-y-2">
+      <Tabs 
+        defaultValue="content" 
+        className="space-y-2"
+        onValueChange={setActiveTab}
+      >
         <TabsList className="w-full flex justify-center">
           {selectedElement ? (
             <>
@@ -38,24 +52,56 @@ const PropertyPanel = () => {
         {selectedElement ? (
           <>
             <TabsContent value="content" className="space-y-2">
-              {selectedElement.type === "text" && <TextPanel />}
-              {selectedElement.type === "button" && <ButtonPanel />}
+              {selectedElement.type === "text" && (
+                <TextPanel 
+                  element={selectedElement} 
+                  updateElementStyle={updateElementStyle}
+                  updateElementContent={updateElementContent}
+                  activeTab={activeTab}
+                />
+              )}
+              {selectedElement.type === "button" && (
+                <ButtonPanel 
+                  element={selectedElement} 
+                  updateElementStyle={updateElementStyle}
+                  updateElementContent={updateElementContent}
+                  activeTab={activeTab}
+                />
+              )}
               {selectedElement.type === "layout" && <LayoutPanel />}
               {selectedElement.type === "container" && <ContainerPanel />}
             </TabsContent>
             <TabsContent value="style" className="space-y-2">
-              {selectedElement.type === "text" && <TextPanel />}
-              {selectedElement.type === "button" && <ButtonPanel />}
+              {selectedElement.type === "text" && (
+                <TextPanel 
+                  element={selectedElement} 
+                  updateElementStyle={updateElementStyle}
+                  updateElementContent={updateElementContent}
+                  activeTab={activeTab}
+                />
+              )}
+              {selectedElement.type === "button" && (
+                <ButtonPanel 
+                  element={selectedElement} 
+                  updateElementStyle={updateElementStyle}
+                  updateElementContent={updateElementContent}
+                  activeTab={activeTab}
+                />
+              )}
               {selectedElement.type === "layout" && <LayoutPanel />}
               {selectedElement.type === "container" && <ContainerPanel />}
             </TabsContent>
             <TabsContent value="image" className="space-y-2">
-              {selectedElement.type === "image" && <ImagePanel />}
+              {selectedElement.type === "image" && <ImagePanel element={selectedElement} updateElementStyle={updateElementStyle} />}
             </TabsContent>
           </>
         ) : (
           <TabsContent value="artboard" className="space-y-2">
-            <ArtboardPanel />
+            <ArtboardPanel 
+              selectedSize={selectedSize} 
+              updateArtboardBackground={updateArtboardBackground}
+              artboardBackgroundColor={artboardBackgroundColor}
+            />
           </TabsContent>
         )}
       </Tabs>

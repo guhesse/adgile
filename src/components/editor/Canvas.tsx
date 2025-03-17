@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { PropertyPanel } from "./PropertyPanel";
+import PropertyPanel from "./PropertyPanel";
 import { CanvasControls } from "./CanvasControls";
 import { CanvasWorkspace } from "./CanvasWorkspace";
 import { useCanvas } from "./CanvasContext";
