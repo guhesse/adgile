@@ -1,4 +1,3 @@
-
 /**
  * Interface for storing information about a PSD file
  */
@@ -22,7 +21,7 @@ export interface PSDFileData {
   backgroundColor?: string;
   
   /** Information about layers in the PSD */
-  layers: PSDLayerInfo[];
+  layers: PSDLayer[];
 }
 
 /**
@@ -78,4 +77,36 @@ export interface PSDLayerInfo {
     fontStyle?: string;
     textDecoration?: string;
   };
+}
+
+/**
+ * Interface for text layer style
+ */
+export interface TextLayerStyle {
+  text: string;
+  fontFamily: string;
+  fontSize: number;
+  color: string;
+  alignment: 'left' | 'center' | 'right' | 'justify' | string;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  letterSpacing: number;
+  lineHeight: number;
+}
+
+/**
+ * Interface for PSD layer
+ */
+export interface PSDLayer {
+  id: string;
+  name: string;
+  type: 'image' | 'text' | 'shape' | 'group';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  textContent?: string;
+  textStyle?: TextLayerStyle;
+  imageData?: string;
 }
