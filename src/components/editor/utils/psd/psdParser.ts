@@ -1,8 +1,8 @@
-
 import PSD from 'psd.js';
 import { toast } from 'sonner';
-import { PSDFileData } from './types';
+import { PSDFileData, TextLayerStyle } from './types';
 import { processImageLayers } from './layerDetection';
+import { extractTextLayerStyle } from './textExtractor';
 
 /**
  * Parse a PSD file and extract its structure
@@ -13,25 +13,26 @@ export const parsePSDFile = async (file: File): Promise<{
   psd: any;
   psdData: PSDFileData;
   extractedImages: Map<string, string>;
+  textLayers: Map<string, TextLayerStyle>;
 }> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    
+
     reader.onload = async (e) => {
       if (!e.target?.result) {
         toast.error("Failed to read the PSD file.");
         reject(new Error("Failed to read the PSD file."));
         return;
       }
-      
+
       try {
         const buffer = e.target.result as ArrayBuffer;
         const psd = new PSD(new Uint8Array(buffer));
         await psd.parse();
-        
+
         console.log("====== PSD PARSING DEBUG INFO ======");
         console.log("PSD parsed successfully");
-        
+
         // Log detailed information about the PSD file
         console.log("PSD Width:", psd.header.width);
         console.log("PSD Height:", psd.header.height);
@@ -51,42 +52,116 @@ export const parsePSDFile = async (file: File): Promise<{
 
         // Extract images from PSD
         const extractedImages: Map<string, string> = new Map();
-        
-        console.log("Processing PSD tree for images...");
-        
+        // Store text layers and their styles
+        const textLayers: Map<string, TextLayerStyle> = new Map();
+
+        console.log("Processing PSD tree for images and text layers...");
+
         // First try the direct approach similar to the example code
         if (psd.tree && typeof psd.tree === 'function') {
           const tree = psd.tree();
           console.log("PSD tree obtained:", tree);
-          
+
           // Log the full tree structure recursively to identify text layers
           console.log("====== COMPLETE PSD TREE STRUCTURE ======");
           logLayerTree(tree, 0);
-          
+
           if (tree.descendants && typeof tree.descendants === 'function') {
             console.log("Processing tree descendants");
             const descendants = tree.descendants();
-            
+
             // Log all text layers specifically
             console.log("====== TEXT LAYERS DETAILS ======");
             for (const node of descendants) {
               try {
-                // Check if this is a text layer
-                const isText = node.get && node.get('typeTool');
-                if (isText) {
+                // O importante é verificar se a camada possui typeTool
+                const hasTypeTool = node.layer && node.layer.typeTool;
+
+                if (hasTypeTool) {
                   console.log(`Text Layer Found: ${node.name}`);
+                  logTextLayerDetails(node);
+
+                  // Extrair informações de texto e estilo
+                  try {
+                    // Executar a função typeTool() para obter os dados de texto
+                    const textData = node.layer.typeTool();
+                    console.log("Text data obtained:", textData);
+
+                    // Log adicional para ajudar a debugar a estrutura
+                    console.log("Text data structure:", JSON.stringify(textData, null, 2));
+                    
+                    // Tentar acessar métodos auxiliares da biblioteca
+                    if (textData) {
+                      console.log("Explorando métodos auxiliares do textData:");
+                      if (typeof textData.fonts === 'function') console.log("Fonts:", textData.fonts());
+                      if (typeof textData.sizes === 'function') console.log("Sizes:", textData.sizes());
+                      if (typeof textData.colors === 'function') console.log("Colors:", textData.colors());
+                      if (typeof textData.alignment === 'function') console.log("Alignment:", textData.alignment());
+                      if (textData.textValue) console.log("Text Value:", textData.textValue);
+                      if (textData.engineData) console.log("Engine Data Available:", Object.keys(textData.engineData));
+                    }
+
+                    // Extrair estilo de texto a partir dos dados
+                    const textStyle = extractTextLayerStyle(textData, node);
+
+                    if (textStyle) {
+                      textLayers.set(node.name, textStyle);
+
+                      // Adicionar à estrutura de dados PSD
+                      psdData.layers.push({
+                        id: generateLayerId(node.name),
+                        name: node.name,
+                        type: 'text',
+                        x: node.left || 0,
+                        y: node.top || 0,
+                        width: (node.right || 0) - (node.left || 0),
+                        height: (node.bottom || 0) - (node.top || 0),
+                        textContent: textStyle.text || '',
+                        textStyle: textStyle
+                      });
+                    }
+                  } catch (textError) {
+                    console.error(`Error extracting text data from ${node.name}:`, textError);
+                  }
+                }
+
+                // Check if this is a text layer using the get method as fallback
+                const isText = !hasTypeTool && node.get && typeof node.get === 'function' && node.get('typeTool');
+                if (isText) {
+                  console.log(`Text Layer Found via get() method: ${node.name}`);
+
                   // Log all available properties and text-related data
                   logTextLayerDetails(node);
+
+                  // Extrair estilo de texto desta camada
+                  const typeToolData = node.get('typeTool');
+                  const textStyle = extractTextLayerStyle(typeToolData, node);
+
+                  if (textStyle) {
+                    textLayers.set(node.name, textStyle);
+
+                    psdData.layers.push({
+                      id: generateLayerId(node.name),
+                      name: node.name,
+                      type: 'text',
+                      x: node.left || 0,
+                      y: node.top || 0,
+                      width: (node.right || 0) - (node.left || 0),
+                      height: (node.bottom || 0) - (node.top || 0),
+                      textContent: textStyle.text || '',
+                      textStyle: textStyle
+                    });
+                  }
                 }
-                
+
                 if (!node.isGroup()) {
                   console.log(`Processing node: ${node.name}`);
-                  
+
                   if (node.layer && node.layer.image) {
                     try {
                       console.log(`Extracting image from node: ${node.name}`);
                       const png = node.layer.image.toPng();
-                      
+
                       if (png) {
                         const imageData = png.src || png;
                         console.log(`Successfully extracted image from node: ${node.name}`);
@@ -102,7 +177,7 @@ export const parsePSDFile = async (file: File): Promise<{
               }
             }
           }
-          
+
           // If no images were extracted using the direct approach, use our fallback
           if (extractedImages.size === 0) {
             console.log("No images extracted with direct approach, using fallback method");
@@ -112,21 +187,21 @@ export const parsePSDFile = async (file: File): Promise<{
             });
           }
         }
-        
-        console.log(`Extracted ${extractedImages.size} images from PSD tree`);
-        
-        resolve({ psd, psdData, extractedImages });
+
+        console.log(`Extracted ${extractedImages.size} images and ${textLayers.size} text layers from PSD tree`);
+
+        resolve({ psd, psdData, extractedImages, textLayers });
       } catch (error) {
         console.error("Error parsing PSD file:", error);
         reject(error);
       }
     };
-    
+
     reader.onerror = (error) => {
       console.error("Error reading file:", error);
       reject(error);
     };
-    
+
     reader.readAsArrayBuffer(file);
   });
 };
@@ -138,15 +213,15 @@ export const parsePSDFile = async (file: File): Promise<{
  */
 function logLayerTree(node: any, depth: number) {
   const indent = ' '.repeat(depth * 2);
-  
+
   if (!node) {
     console.log(`${indent}[NULL NODE]`);
     return;
   }
-  
+
   // Log node basic information
   console.log(`${indent}Layer: ${node.name || 'unnamed'} (${node.type || 'unknown type'})`);
-  
+
   // If it's a text node, log detailed text information
   if (node.text) {
     console.log(`${indent}  [TEXT LAYER]`);
@@ -161,7 +236,7 @@ function logLayerTree(node: any, depth: number) {
       console.log(`${indent}  Text Object:`, node.text);
     }
   }
-  
+
   // If node has typeTool data, log it
   if (node.typeTool) {
     console.log(`${indent}  [TYPE TOOL DATA]`);
@@ -176,7 +251,7 @@ function logLayerTree(node: any, depth: number) {
       console.log(`${indent}  TypeTool Object:`, node.typeTool);
     }
   }
-  
+
   // If node has adjustments with typeTool, log that too
   if (node.adjustments && node.adjustments.typeTool) {
     console.log(`${indent}  [ADJUSTMENTS TYPE TOOL]`);
@@ -191,7 +266,7 @@ function logLayerTree(node: any, depth: number) {
       console.log(`${indent}  Adjustments TypeTool Object:`, node.adjustments.typeTool);
     }
   }
-  
+
   // Recursively log children
   if (node.children && node.children.length > 0) {
     console.log(`${indent}Children (${node.children.length}):`);
@@ -205,10 +280,10 @@ function logLayerTree(node: any, depth: number) {
  */
 function logTextLayerDetails(node: any) {
   console.log(`\n===== TEXT LAYER: ${node.name} =====`);
-  
+
   // Try different ways to access text data
   console.log("ALL AVAILABLE PROPERTIES:", Object.keys(node));
-  
+
   // Check for 'text' property (as object or function)
   if (node.text) {
     console.log("TEXT PROPERTY FOUND:");
@@ -225,67 +300,108 @@ function logTextLayerDetails(node: any) {
   } else {
     console.log("No 'text' property found");
   }
-  
-  // Check for typeTool data
+
+  // Check for layer.typeTool data - importante usar como função
+  if (node.layer && node.layer.typeTool) {
+    console.log("LAYER TYPETOOL PROPERTY FOUND:");
+    if (typeof node.layer.typeTool === 'function') {
+      try {
+        const typeToolFnResult = node.layer.typeTool();
+        console.log("Layer TypeTool Function Result:", typeToolFnResult);
+
+        // Examine engineData structure
+        if (typeToolFnResult && typeToolFnResult.engineData) {
+          console.log("ENGINE DATA FOUND:");
+          
+          // Tentar acessar informações de fonte
+          if (typeToolFnResult.engineData.ResourceDict) {
+            console.log("Font Resources:", typeToolFnResult.engineData.ResourceDict);
+          }
+          
+          // Tentar acessar informações de estilo
+          if (typeToolFnResult.engineData.EngineDict && 
+              typeToolFnResult.engineData.EngineDict.StyleRun) {
+            console.log("Style Information:", typeToolFnResult.engineData.EngineDict.StyleRun);
+          }
+        }
+
+        // Testar métodos auxiliares
+        if (typeof typeToolFnResult.fonts === 'function') {
+          console.log("Fonts:", typeToolFnResult.fonts());
+        }
+        if (typeof typeToolFnResult.sizes === 'function') {
+          console.log("Sizes:", typeToolFnResult.sizes());
+        }
+        if (typeof typeToolFnResult.colors === 'function') {
+          console.log("Colors:", typeToolFnResult.colors());
+        }
+        if (typeof typeToolFnResult.alignment === 'function') {
+          console.log("Alignment:", typeToolFnResult.alignment());
+        }
+      } catch (e) {
+        console.log("Error calling layer.typeTool function:", e);
+      }
+    } else {
+      console.log("Layer TypeTool is not a function. This is unexpected:", node.layer.typeTool);
+    }
+  } else {
+    console.log("No 'layer.typeTool' property found");
+  }
+
+  // Check for node.typeTool data
   if (node.typeTool) {
-    console.log("TYPETOOL PROPERTY FOUND:");
+    console.log("NODE TYPETOOL PROPERTY FOUND:");
     if (typeof node.typeTool === 'function') {
       try {
         const typeToolFnResult = node.typeTool();
-        console.log("TypeTool Function Result:", typeToolFnResult);
-        
-        // Log specific font-related information if available
-        if (typeToolFnResult && typeToolFnResult.textData) {
-          console.log("FONT INFORMATION:");
-          console.log("Font Name:", typeToolFnResult.textData.fontName);
-          console.log("Font Size:", typeToolFnResult.textData.fontSize);
-          console.log("Font Color:", typeToolFnResult.textData.color);
-          console.log("Text:", typeToolFnResult.textData.text);
-        }
+        console.log("Node TypeTool Function Result:", typeToolFnResult);
       } catch (e) {
-        console.log("Error calling typeTool function:", e);
+        console.log("Error calling node.typeTool function:", e);
       }
     } else {
-      console.log("TypeTool Object:", node.typeTool);
+      console.log("Node TypeTool is not a function:", node.typeTool);
     }
-  } else {
-    console.log("No 'typeTool' property found");
   }
-  
-  // Check for resource data which might contain font information
-  if (node.resource && node.resource.data) {
-    console.log("RESOURCE DATA FOUND:");
-    console.log("Resource Data:", node.resource.data);
-  }
-  
+
   // Check if node has 'get' method to retrieve typeTool object
   if (node.get && typeof node.get === 'function') {
     try {
       const typeTool = node.get('typeTool');
-      console.log("TypeTool from get() method:", typeTool);
+      if (typeTool) {
+        console.log("TypeTool from get() method found:");
+        
+        // Se typeTool é uma função, executá-la
+        if (typeof typeTool === 'function') {
+          try {
+            const typeToolData = typeTool();
+            console.log("TypeTool data from get() method:", typeToolData);
+          } catch (e) {
+            console.log("Error executing typeTool from get() method:", e);
+          }
+        } else {
+          console.log("TypeTool from get() is not a function:", typeTool);
+        }
+      } else {
+        console.log("No typeTool found via get() method");
+      }
     } catch (e) {
       console.log("Error getting typeTool via get() method:", e);
     }
   }
-  
-  // Try to get raw layer data
-  if (node.layer) {
-    console.log("LAYER PROPERTY FOUND:");
-    console.log("Layer Object Keys:", Object.keys(node.layer));
-    
-    // Check for additional text-related properties
-    if (node.layer.text) {
-      console.log("Layer Text:", node.layer.text);
-    }
-    
-    if (node.layer.typeTool) {
-      console.log("Layer TypeTool:", node.layer.typeTool);
-    }
-    
-    if (node.layer.textInfo) {
-      console.log("Layer TextInfo:", node.layer.textInfo);
-    }
-  }
-  
+
+  // Log node position and dimensions
+  console.log("Position and Dimensions:");
+  console.log(`X: ${node.left || 0}, Y: ${node.top || 0}`);
+  console.log(`Width: ${(node.right || 0) - (node.left || 0)}, Height: ${(node.bottom || 0) - (node.top || 0)}`);
+
   console.log("=========================================\n");
+}
+
+/**
+ * Generate a unique ID for a layer
+ * @param name The layer name
+ * @returns A unique ID
+ */
+function generateLayerId(name: string): string {
+  return `layer_${name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${Date.now().toString(36)}`;
 }
