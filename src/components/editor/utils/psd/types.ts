@@ -1,3 +1,4 @@
+
 /**
  * Interface for storing information about a PSD file
  */
