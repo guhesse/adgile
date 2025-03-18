@@ -59,12 +59,26 @@ export const parsePSDFile = async (file: File): Promise<{
           const tree = psd.tree();
           console.log("PSD tree obtained:", tree);
           
+          // Log the full tree structure recursively to identify text layers
+          console.log("====== COMPLETE PSD TREE STRUCTURE ======");
+          logLayerTree(tree, 0);
+          
           if (tree.descendants && typeof tree.descendants === 'function') {
             console.log("Processing tree descendants");
             const descendants = tree.descendants();
             
+            // Log all text layers specifically
+            console.log("====== TEXT LAYERS DETAILS ======");
             for (const node of descendants) {
               try {
+                // Check if this is a text layer
+                const isText = node.get && node.get('typeTool');
+                if (isText) {
+                  console.log(`Text Layer Found: ${node.name}`);
+                  // Log all available properties and text-related data
+                  logTextLayerDetails(node);
+                }
+                
                 if (!node.isGroup()) {
                   console.log(`Processing node: ${node.name}`);
                   
@@ -116,3 +130,162 @@ export const parsePSDFile = async (file: File): Promise<{
     reader.readAsArrayBuffer(file);
   });
 };
+
+/**
+ * Recursively log the PSD layer tree structure
+ * @param node The current node to log
+ * @param depth The current depth in the tree
+ */
+function logLayerTree(node: any, depth: number) {
+  const indent = ' '.repeat(depth * 2);
+  
+  if (!node) {
+    console.log(`${indent}[NULL NODE]`);
+    return;
+  }
+  
+  // Log node basic information
+  console.log(`${indent}Layer: ${node.name || 'unnamed'} (${node.type || 'unknown type'})`);
+  
+  // If it's a text node, log detailed text information
+  if (node.text) {
+    console.log(`${indent}  [TEXT LAYER]`);
+    if (typeof node.text === 'function') {
+      try {
+        const textData = node.text();
+        console.log(`${indent}  Text Function Result:`, textData);
+      } catch (e) {
+        console.log(`${indent}  Error getting text function result:`, e);
+      }
+    } else {
+      console.log(`${indent}  Text Object:`, node.text);
+    }
+  }
+  
+  // If node has typeTool data, log it
+  if (node.typeTool) {
+    console.log(`${indent}  [TYPE TOOL DATA]`);
+    if (typeof node.typeTool === 'function') {
+      try {
+        const typeToolData = node.typeTool();
+        console.log(`${indent}  TypeTool Function Result:`, typeToolData);
+      } catch (e) {
+        console.log(`${indent}  Error getting typeTool function result:`, e);
+      }
+    } else {
+      console.log(`${indent}  TypeTool Object:`, node.typeTool);
+    }
+  }
+  
+  // If node has adjustments with typeTool, log that too
+  if (node.adjustments && node.adjustments.typeTool) {
+    console.log(`${indent}  [ADJUSTMENTS TYPE TOOL]`);
+    if (typeof node.adjustments.typeTool === 'function') {
+      try {
+        const adjustmentsTypeToolData = node.adjustments.typeTool();
+        console.log(`${indent}  Adjustments TypeTool Function Result:`, adjustmentsTypeToolData);
+      } catch (e) {
+        console.log(`${indent}  Error getting adjustments typeTool function result:`, e);
+      }
+    } else {
+      console.log(`${indent}  Adjustments TypeTool Object:`, node.adjustments.typeTool);
+    }
+  }
+  
+  // Recursively log children
+  if (node.children && node.children.length > 0) {
+    console.log(`${indent}Children (${node.children.length}):`);
+    node.children.forEach((child: any) => logLayerTree(child, depth + 1));
+  }
+}
+
+/**
+ * Log detailed information about a text layer
+ * @param node The text layer node
+ */
+function logTextLayerDetails(node: any) {
+  console.log(`\n===== TEXT LAYER: ${node.name} =====`);
+  
+  // Try different ways to access text data
+  console.log("ALL AVAILABLE PROPERTIES:", Object.keys(node));
+  
+  // Check for 'text' property (as object or function)
+  if (node.text) {
+    console.log("TEXT PROPERTY FOUND:");
+    if (typeof node.text === 'function') {
+      try {
+        const textFnResult = node.text();
+        console.log("Text Function Result:", textFnResult);
+      } catch (e) {
+        console.log("Error calling text function:", e);
+      }
+    } else {
+      console.log("Text Object:", node.text);
+    }
+  } else {
+    console.log("No 'text' property found");
+  }
+  
+  // Check for typeTool data
+  if (node.typeTool) {
+    console.log("TYPETOOL PROPERTY FOUND:");
+    if (typeof node.typeTool === 'function') {
+      try {
+        const typeToolFnResult = node.typeTool();
+        console.log("TypeTool Function Result:", typeToolFnResult);
+        
+        // Log specific font-related information if available
+        if (typeToolFnResult && typeToolFnResult.textData) {
+          console.log("FONT INFORMATION:");
+          console.log("Font Name:", typeToolFnResult.textData.fontName);
+          console.log("Font Size:", typeToolFnResult.textData.fontSize);
+          console.log("Font Color:", typeToolFnResult.textData.color);
+          console.log("Text:", typeToolFnResult.textData.text);
+        }
+      } catch (e) {
+        console.log("Error calling typeTool function:", e);
+      }
+    } else {
+      console.log("TypeTool Object:", node.typeTool);
+    }
+  } else {
+    console.log("No 'typeTool' property found");
+  }
+  
+  // Check for resource data which might contain font information
+  if (node.resource && node.resource.data) {
+    console.log("RESOURCE DATA FOUND:");
+    console.log("Resource Data:", node.resource.data);
+  }
+  
+  // Check if node has 'get' method to retrieve typeTool object
+  if (node.get && typeof node.get === 'function') {
+    try {
+      const typeTool = node.get('typeTool');
+      console.log("TypeTool from get() method:", typeTool);
+    } catch (e) {
+      console.log("Error getting typeTool via get() method:", e);
+    }
+  }
+  
+  // Try to get raw layer data
+  if (node.layer) {
+    console.log("LAYER PROPERTY FOUND:");
+    console.log("Layer Object Keys:", Object.keys(node.layer));
+    
+    // Check for additional text-related properties
+    if (node.layer.text) {
+      console.log("Layer Text:", node.layer.text);
+    }
+    
+    if (node.layer.typeTool) {
+      console.log("Layer TypeTool:", node.layer.typeTool);
+    }
+    
+    if (node.layer.textInfo) {
+      console.log("Layer TextInfo:", node.layer.textInfo);
+    }
+  }
+  
+  console.log("=========================================\n");
+}
