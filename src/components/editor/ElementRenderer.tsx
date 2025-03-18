@@ -9,17 +9,12 @@ interface ElementRendererProps {
 
 export const ElementRenderer = ({ element }: ElementRendererProps) => {
   if (element.type === "text") {
-    // Converter bold e italic do TextLayerStyle para fontWeight e fontStyle
-    const fontWeight = element.style.bold ? 'bold' : element.style.fontWeight || 'normal';
-    const fontStyle = element.style.italic ? 'italic' : element.style.fontStyle || 'normal';
-    const textDecoration = element.style.underline ? 'underline' : element.style.textDecoration || 'none';
-
     return (
       <p style={{
         fontSize: element.style.fontSize,
-        fontWeight,
-        fontStyle,
-        textDecoration,
+        fontWeight: element.style.fontWeight,
+        fontStyle: element.style.fontStyle,
+        textDecoration: element.style.textDecoration,
         color: element.style.color,
         fontFamily: element.style.fontFamily,
         lineHeight: element.style.lineHeight,

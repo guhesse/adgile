@@ -84,7 +84,6 @@ export const useDragAndResize = ({
     const rect = e.currentTarget.getBoundingClientRect();
     const zoomLevel = parseFloat((e.currentTarget.closest('[data-canvas-wrapper]') as HTMLElement)?.dataset.zoomLevel || '1');
     
-    // Capturar a posição do mouse em relação ao elemento no momento do clique
     const offsetX = (e.clientX - rect.left) / zoomLevel;
     const offsetY = (e.clientY - rect.top) / zoomLevel;
     
@@ -179,94 +178,6 @@ export const useDragAndResize = ({
     }
   };
 
-  const handleResizingLogic = (e: React.MouseEvent, element: EditorElement) => {
-    const canvas = e.currentTarget as HTMLElement;
-    const zoomLevel = parseFloat(canvas.dataset.zoomLevel || '1');
-
-    const deltaX = (e.clientX - dragStart.x) / zoomLevel;
-    const deltaY = (e.clientY - dragStart.y) / zoomLevel;
-
-    let newWidth = elementInitialPos.width;
-    let newHeight = elementInitialPos.height;
-    let newX = elementInitialPos.x;
-    let newY = elementInitialPos.y;
-
-    if (resizeDirection.includes('e')) {
-      newWidth = snapToGrid(Math.max(50, elementInitialPos.width + deltaX));
-    }
-    if (resizeDirection.includes('w')) {
-      const possibleWidth = snapToGrid(Math.max(50, elementInitialPos.width - deltaX));
-      newX = snapToGrid(elementInitialPos.x + (elementInitialPos.width - possibleWidth));
-      newWidth = possibleWidth;
-    }
-    if (resizeDirection.includes('s')) {
-      newHeight = snapToGrid(Math.max(20, elementInitialPos.height + deltaY));
-    }
-    if (resizeDirection.includes('n')) {
-      const possibleHeight = snapToGrid(Math.max(20, elementInitialPos.height - deltaY));
-      newY = snapToGrid(elementInitialPos.y + (elementInitialPos.height - possibleHeight));
-      newHeight = possibleHeight;
-    }
-
-    // Aplicar restrições para manter o elemento dentro dos limites
-    if (element.inContainer && element.parentId) {
-      const parentElement = elements.find(el => el.id === element.parentId);
-      if (parentElement) {
-        if (newX < 0) {
-          newX = 0;
-          newWidth = elementInitialPos.width;
-        }
-        if (newY < 0) {
-          newY = 0;
-          newHeight = elementInitialPos.height;
-        }
-        if (newX + newWidth > parentElement.style.width) {
-          newWidth = parentElement.style.width - newX;
-        }
-        if (newY + newHeight > parentElement.style.height) {
-          newHeight = parentElement.style.height - newY;
-        }
-      }
-    } else {
-      // Restrições para elementos fora de contêineres (no artboard principal)
-      if (newX < 0) {
-        newX = 0;
-        newWidth = elementInitialPos.width;
-      }
-      if (newY < 0) {
-        newY = 0;
-        newHeight = elementInitialPos.height;
-      }
-      if (newX + newWidth > selectedSize.width) {
-        newWidth = selectedSize.width - newX;
-      }
-      if (newY + newHeight > selectedSize.height) {
-        newHeight = selectedSize.height - newY;
-      }
-    }
-
-    // Calcular percentagens para responsividade
-    const widthPercent = (newWidth / selectedSize.width) * 100;
-    const heightPercent = (newHeight / selectedSize.height) * 100;
-    const xPercent = (newX / selectedSize.width) * 100;
-    const yPercent = (newY / selectedSize.height) * 100;
-
-    // Manter proporção de aspecto para imagens
-    if ((element.type === "image" || element.type === "logo") && 
-        (resizeDirection === 'nw' || resizeDirection === 'ne' || 
-         resizeDirection === 'sw' || resizeDirection === 'se')) {
-      const aspectRatio = elementInitialPos.width / elementInitialPos.height;
-      
-      if (resizeDirection === 'se' || resizeDirection === 'ne') {
-        newHeight = newWidth / aspectRatio;
-      } else {
-        newWidth = newHeight * aspectRatio;
-      }
-    }
-    
-    return { newX, newY, newWidth, newHeight, xPercent, yPercent, widthPercent, heightPercent };
-  };
-
   const handleMouseMove = (e: React.MouseEvent) => {
     if (isPanning) {
       setPanPosition({
@@ -282,15 +193,10 @@ export const useDragAndResize = ({
     if (!element) return;
 
     if (isDragging) {
-      // Usar o código atualizado para drag que já foi implementado
-      // ... implementação do drag
-      
-      // Get the canvas element and zoom level
       const canvas = e.currentTarget as HTMLElement;
       const canvasRect = canvas.getBoundingClientRect();
-      const zoomLevel = parseFloat(canvas.dataset.zoomLevel || '1');
+      const zoomLevel = parseFloat(canvas.style.transform?.match(/scale\((.+)\)/)?.[1] || '1');
       
-      // Calcular a nova posição com base no deslocamento do mouse e no offset inicial
       const mouseX = (e.clientX - canvasRect.left) / zoomLevel;
       const mouseY = (e.clientY - canvasRect.top) / zoomLevel;
       
@@ -299,7 +205,6 @@ export const useDragAndResize = ({
       let newWidth = element.style.width;
       let newHeight = element.style.height;
 
-      // Aplicar restrições para elementos dentro de contêineres
       const parentElement = element.inContainer ?
         elements.find(el => el.id === element.parentId) : null;
 
@@ -318,23 +223,19 @@ export const useDragAndResize = ({
           newY = Math.max(0, Math.min(newY, parentElement.style.height - element.style.height));
         }
       } else {
-        // Permitir um pequeno overflow para elementos fora de contêineres
         const overflowAllowance = 0;
         newX = Math.max(-overflowAllowance, Math.min(newX, selectedSize.width - element.style.width + overflowAllowance));
         newY = Math.max(-overflowAllowance, Math.min(newY, selectedSize.height - element.style.height + overflowAllowance));
       }
 
-      // Aplicar snap to grid para melhor posicionamento
       newX = snapToGrid(newX);
       newY = snapToGrid(newY);
 
-      // Calcular porcentagens para posicionamento responsivo
       const widthPercent = (newWidth / selectedSize.width) * 100;
       const heightPercent = (newHeight / selectedSize.height) * 100;
       const xPercent = (newX / selectedSize.width) * 100;
       const yPercent = (newY / selectedSize.height) * 100;
 
-      // Manter a proporção para imagens durante o redimensionamento
       if ((element.type === "image" || element.type === "logo")) {
         if (resizeDirection === 'nw' || resizeDirection === 'ne' || 
             resizeDirection === 'sw' || resizeDirection === 'se') {
@@ -353,60 +254,18 @@ export const useDragAndResize = ({
         }
       }
 
-      // Atualizar elementos
-      updateElementPosition(element, newX, newY, newWidth, newHeight, xPercent, yPercent, widthPercent, heightPercent);
+      let updatedElements = [...elements];
       
-    } else if (isResizing) {
-      // Obter os novos valores de redimensionamento
-      const {
-        newX, newY, newWidth, newHeight, 
-        xPercent, yPercent, widthPercent, heightPercent
-      } = handleResizingLogic(e, element);
-      
-      // Atualizar elementos
-      updateElementPosition(element, newX, newY, newWidth, newHeight, xPercent, yPercent, widthPercent, heightPercent);
-    }
-  };
+      const isIndividualUpdate = editingMode === 'individual' || !element.linkedElementId;
 
-  // Função auxiliar para atualizar a posição do elemento
-  const updateElementPosition = (
-    element: EditorElement,
-    newX: number, newY: number, 
-    newWidth: number, newHeight: number,
-    xPercent: number, yPercent: number,
-    widthPercent: number, heightPercent: number
-  ) => {
-    let updatedElements = [...elements];
-    
-    const isIndividualUpdate = editingMode === 'individual' || !element.linkedElementId;
-
-    if (!isIndividualUpdate) {
-      updatedElements = updateLinkedElementsIntelligently(
-        updatedElements,
-        {
-          ...element,
-          style: {
-            ...element.style,
-            x: newX,
-            y: newY,
-            xPercent,
-            yPercent,
-            width: newWidth,
-            height: newHeight,
-            widthPercent,
-            heightPercent
-          }
-        },
-        activeSizes
-      );
-    } else {
-      updatedElements = updatedElements.map(el => {
-        if (el.id === element.id) {
-          return { 
-            ...el, 
-            style: { 
-              ...el.style, 
-              x: newX, 
+      if (!isIndividualUpdate) {
+        updatedElements = updateLinkedElementsIntelligently(
+          updatedElements,
+          {
+            ...element,
+            style: {
+              ...element.style,
+              x: newX,
               y: newY,
               xPercent,
               yPercent,
@@ -414,60 +273,254 @@ export const useDragAndResize = ({
               height: newHeight,
               widthPercent,
               heightPercent
-            },
-            isIndividuallyPositioned: true
-          };
-        }
+            }
+          },
+          activeSizes
+        );
+      } else {
+        updatedElements = updatedElements.map(el => {
+          if (el.id === element.id) {
+            return { 
+              ...el, 
+              style: { 
+                ...el.style, 
+                x: newX, 
+                y: newY,
+                xPercent,
+                yPercent,
+                width: newWidth,
+                height: newHeight,
+                widthPercent,
+                heightPercent
+              },
+              isIndividuallyPositioned: true
+            };
+          }
 
-        if (el.childElements && element.parentId === el.id) {
-          return {
-            ...el,
-            childElements: el.childElements.map(child =>
-              child.id === element.id
-                ? { 
-                    ...child, 
-                    style: { 
-                      ...child.style, 
-                      x: newX, 
+          if (el.childElements && element.parentId === el.id) {
+            return {
+              ...el,
+              childElements: el.childElements.map(child =>
+                child.id === element.id
+                  ? { 
+                      ...child, 
+                      style: { 
+                        ...child.style, 
+                        x: newX, 
+                        y: newY,
+                        xPercent,
+                        yPercent,
+                        width: newWidth,
+                        height: newHeight,
+                        widthPercent,
+                        heightPercent
+                      },
+                      isIndividuallyPositioned: true
+                    }
+                  : child
+              )
+            };
+          }
+
+          return el;
+        });
+      }
+
+      setElements(updatedElements);
+
+      const updatedElement = {
+        ...element,
+        style: { 
+          ...element.style, 
+          x: newX, 
+          y: newY,
+          xPercent,
+          yPercent,
+          width: newWidth,
+          height: newHeight,
+          widthPercent,
+          heightPercent
+        },
+        isIndividuallyPositioned: isIndividualUpdate
+      };
+      
+      selectedElementRef.current = updatedElement;
+      setSelectedElement(updatedElement);
+      
+    } else if (isResizing) {
+      const canvas = e.currentTarget as HTMLElement;
+      const zoomLevel = parseFloat(canvas.style.transform?.match(/scale\((.+)\)/)?.[1] || '1');
+
+      const deltaX = (e.clientX - dragStart.x) / zoomLevel;
+      const deltaY = (e.clientY - dragStart.y) / zoomLevel;
+
+      let newWidth = elementInitialPos.width;
+      let newHeight = elementInitialPos.height;
+      let newX = elementInitialPos.x;
+      let newY = elementInitialPos.y;
+
+      if (resizeDirection.includes('e')) {
+        newWidth = snapToGrid(Math.max(50, elementInitialPos.width + deltaX));
+      }
+      if (resizeDirection.includes('w')) {
+        const possibleWidth = snapToGrid(Math.max(50, elementInitialPos.width - deltaX));
+        newX = snapToGrid(elementInitialPos.x + (elementInitialPos.width - possibleWidth));
+        newWidth = possibleWidth;
+      }
+      if (resizeDirection.includes('s')) {
+        newHeight = snapToGrid(Math.max(20, elementInitialPos.height + deltaY));
+      }
+      if (resizeDirection.includes('n')) {
+        const possibleHeight = snapToGrid(Math.max(20, elementInitialPos.height - deltaY));
+        newY = snapToGrid(elementInitialPos.y + (elementInitialPos.height - possibleHeight));
+        newHeight = possibleHeight;
+      }
+
+      if (element.inContainer && element.parentId) {
+        const parentElement = elements.find(el => el.id === element.parentId);
+        if (parentElement) {
+          if (newX < 0) {
+            newX = 0;
+            newWidth = elementInitialPos.width;
+          }
+          if (newY < 0) {
+            newY = 0;
+            newHeight = elementInitialPos.height;
+          }
+          if (newX + newWidth > parentElement.style.width) {
+            newWidth = parentElement.style.width - newX;
+          }
+          if (newY + newHeight > parentElement.style.height) {
+            newHeight = parentElement.style.height - newY;
+          }
+        }
+      } else {
+        if (newX < 0) {
+          newX = 0;
+          newWidth = elementInitialPos.width;
+        }
+        if (newY < 0) {
+          newY = 0;
+          newHeight = elementInitialPos.height;
+        }
+        if (newX + newWidth > selectedSize.width) {
+          newWidth = selectedSize.width - newX;
+        }
+        if (newY + newHeight > selectedSize.height) {
+          newHeight = selectedSize.height - newY;
+        }
+      }
+
+      const widthPercent = (newWidth / selectedSize.width) * 100;
+      const heightPercent = (newHeight / selectedSize.height) * 100;
+      const xPercent = (newX / selectedSize.width) * 100;
+      const yPercent = (newY / selectedSize.height) * 100;
+
+      if ((element.type === "image" || element.type === "logo") && 
+          (resizeDirection === 'nw' || resizeDirection === 'ne' || 
+           resizeDirection === 'sw' || resizeDirection === 'se')) {
+        const aspectRatio = elementInitialPos.width / elementInitialPos.height;
+        
+        if (resizeDirection === 'se' || resizeDirection === 'ne') {
+          newHeight = newWidth / aspectRatio;
+        } else {
+          newWidth = newHeight * aspectRatio;
+        }
+      }
+
+      let updatedElements;
+      
+      const isIndividualUpdate = editingMode === 'individual' || !element.linkedElementId;
+
+      if (!isIndividualUpdate) {
+        updatedElements = updateLinkedElementsIntelligently(
+          elements,
+          {
+            ...element,
+            style: {
+              ...element.style,
+              x: newX,
+              y: newY,
+              width: newWidth,
+              height: newHeight,
+              xPercent,
+              yPercent,
+              widthPercent,
+              heightPercent
+            }
+          },
+          activeSizes
+        );
+      } else {
+        updatedElements = elements.map(el => {
+          if (el.id === element.id) {
+            return { 
+              ...el, 
+              style: { 
+                ...el.style, 
+                x: newX, 
+                y: newY, 
+                width: newWidth, 
+                height: newHeight,
+                xPercent,
+                yPercent,
+                widthPercent,
+                heightPercent
+              },
+              isIndividuallyPositioned: true
+            };
+          }
+
+          if (el.childElements && element.parentId === el.id) {
+            return {
+              ...el,
+              childElements: el.childElements.map(child =>
+                child.id === element.id
+                  ? {
+                    ...child,
+                    style: {
+                      ...child.style,
+                      x: newX,
                       y: newY,
-                      xPercent,
-                      yPercent,
                       width: newWidth,
                       height: newHeight,
+                      xPercent,
+                      yPercent,
                       widthPercent,
                       heightPercent
                     },
                     isIndividuallyPositioned: true
                   }
-                : child
-            )
-          };
-        }
+                  : child
+              )
+            };
+          }
 
-        return el;
-      });
+          return el;
+        });
+      }
+
+      setElements(updatedElements);
+
+      const updatedElement = {
+        ...element,
+        style: { 
+          ...element.style, 
+          x: newX, 
+          y: newY, 
+          width: newWidth, 
+          height: newHeight,
+          xPercent,
+          yPercent,
+          widthPercent,
+          heightPercent
+        },
+        isIndividuallyPositioned: isIndividualUpdate
+      };
+      
+      selectedElementRef.current = updatedElement;
+      setSelectedElement(updatedElement);
     }
-
-    setElements(updatedElements);
-
-    const updatedElement = {
-      ...element,
-      style: { 
-        ...element.style, 
-        x: newX, 
-        y: newY,
-        xPercent,
-        yPercent,
-        width: newWidth,
-        height: newHeight,
-        widthPercent,
-        heightPercent
-      },
-      isIndividuallyPositioned: isIndividualUpdate
-    };
-    
-    selectedElementRef.current = updatedElement;
-    setSelectedElement(updatedElement);
   };
 
   const handleMouseUp = () => {

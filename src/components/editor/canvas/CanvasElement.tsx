@@ -1,4 +1,3 @@
-
 import { BannerSize, CanvasNavigationMode, EditorElement } from "../types";
 import { ElementRenderer } from "../ElementRenderer";
 import { ElementHandles } from "./ElementHandles";
@@ -97,6 +96,17 @@ export const CanvasElement = ({
   // Optimized mouse down handler for text elements
   const handleElementMouseDown = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    // Capture mouse position at the beginning of the drag relative to the element
+    if (elementRef.current) {
+      const rect = elementRef.current.getBoundingClientRect();
+      const offsetX = e.clientX - rect.left;
+      const offsetY = e.clientY - rect.top;
+      
+      // Store information in the event object for use in the drag handler
+      (e as any).elementOffset = { x: offsetX, y: offsetY };
+    }
+    
     handleMouseDown(e, element);
   }, [element, handleMouseDown]);
 
@@ -130,7 +140,8 @@ export const CanvasElement = ({
       draggable={false}
       data-element-id={element.id}
       data-element-type={element.type}
-      data-zoom-level="1"
+      data-zoom-level={1}
+      data-canvas-wrapper="true"
       onMouseEnter={(e) => {
         if (isContainer) {
           handleContainerHover(e, element.id);
