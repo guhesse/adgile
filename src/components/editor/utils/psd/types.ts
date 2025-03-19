@@ -4,22 +4,22 @@
 export interface PSDFileData {
   /** The original filename of the PSD */
   fileName: string;
-  
+
   /** The width of the PSD in pixels */
   width: number;
-  
+
   /** The height of the PSD in pixels */
   height: number;
-  
+
   /** The date when the PSD was uploaded */
   uploadDate: string;
-  
+
   /** Key used to store the PSD data */
   storageKey: string;
-  
+
   /** Background color extracted from the PSD */
   backgroundColor?: string;
-  
+
   /** Information about layers in the PSD */
   layers: PSDLayer[];
 }
@@ -30,7 +30,7 @@ export interface PSDFileData {
 export interface PSDMetadata {
   /** List of PSD file storage keys */
   storageKeys: string[];
-  
+
   /** Date when the metadata was last updated */
   lastUpdated: string;
 }
@@ -41,13 +41,13 @@ export interface PSDMetadata {
 export interface PSDLayerInfo {
   /** The ID assigned to this layer in the editor */
   id: string;
-  
+
   /** The name of the layer in the PSD */
   name: string;
-  
+
   /** The type of the layer (text, image, etc.) */
   type: string;
-  
+
   /** The position and dimensions of the layer */
   position: {
     x: number;
@@ -55,16 +55,16 @@ export interface PSDLayerInfo {
     width: number;
     height: number;
   };
-  
+
   /** For text layers, the text content */
   content?: string;
-  
+
   /** For image layers, the URL of the image */
   imageUrl?: string;
-  
+
   /** For image layers, the storage key of the image */
   imageKey?: string;
-  
+
   /** Text styling information */
   textStyle?: {
     fontSize?: number;
@@ -80,19 +80,18 @@ export interface PSDLayerInfo {
 }
 
 /**
- * Interface for text layer style
+ * Representa o estilo de uma camada de texto
  */
 export interface TextLayerStyle {
   text: string;
   fontFamily: string;
   fontSize: number;
+  fontWeight: 'normal' | 'bold' | string;
+  fontStyle: 'normal' | 'italic' | string;
   color: string;
   alignment: 'left' | 'center' | 'right' | 'justify' | string;
-  bold: boolean;
-  italic: boolean;
-  underline: boolean;
-  letterSpacing: number;
-  lineHeight: number;
+  letterSpacing: number; // em EM
+  lineHeight: number; // multiplicador da altura da fonte
 }
 
 /**

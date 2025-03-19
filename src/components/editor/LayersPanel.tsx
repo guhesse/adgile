@@ -1,9 +1,8 @@
-
 import { EditorElement } from "./types";
 import {
   ChevronDown,
   ChevronRight,
-  TextIcon, 
+  TextIcon,
   ImageIcon,
   Square,
   LayoutGrid,
@@ -36,13 +35,13 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
 
   // Find all container/layout elements
   const containers = elements.filter(el => el.type === "layout" || el.type === "container");
-  
+
   // Find elements not inside any container, excluding artboard backgrounds
-  const standaloneElements = elements.filter(el => 
-    el.type !== "layout" && 
+  const standaloneElements = elements.filter(el =>
+    el.type !== "layout" &&
     el.type !== "container" &&
     el.type !== "artboard-background" &&
-    !containers.some(container => 
+    !containers.some(container =>
       container.childElements?.some(child => child.id === el.id)
     )
   );
@@ -78,9 +77,9 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
   const handleDragOver = (e: React.DragEvent, targetId: string) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     setDragTargetId(targetId);
-    
+
     if (collapsedContainers[targetId]) {
       setCollapsedContainers(prev => ({
         ...prev,
@@ -93,20 +92,20 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
   const handleDrop = (e: React.DragEvent, targetContainerId: string) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     setDragTargetId(null);
-    
+
     if (!draggedElement) return;
-    
+
     moveElementToContainer(draggedElement, targetContainerId);
-    
+
     setDraggedElement(null);
   };
 
   // Move element to a different container
   const moveElementToContainer = (element: EditorElement, targetContainerId: string) => {
     const updatedElements = [...elements];
-    
+
     // If element is in a container, remove it from there
     if (element.inContainer && element.parentId) {
       const sourceContainerIndex = updatedElements.findIndex(el => el.id === element.parentId);
@@ -123,7 +122,7 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
         updatedElements.splice(elementIndex, 1);
       }
     }
-    
+
     // Handle drop to standalone area
     if (targetContainerId === 'standalone') {
       const updatedElement = {
@@ -136,22 +135,22 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
           y: 100
         }
       };
-      
+
       updatedElements.push(updatedElement);
       setElements(updatedElements);
-      
+
       if (selectedElement?.id === element.id) {
         setSelectedElement(updatedElement);
       }
       return;
     }
-    
+
     // Add element to target container
     const targetContainerIndex = updatedElements.findIndex(el => el.id === targetContainerId);
     if (targetContainerIndex === -1) return;
-    
+
     const targetChildren = updatedElements[targetContainerIndex].childElements || [];
-    
+
     const updatedElement = {
       ...element,
       inContainer: true,
@@ -162,14 +161,14 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
         y: 0
       }
     };
-    
+
     updatedElements[targetContainerIndex] = {
       ...updatedElements[targetContainerIndex],
       childElements: [...targetChildren, updatedElement]
     };
-    
+
     setElements(updatedElements);
-    
+
     if (selectedElement?.id === element.id) {
       setSelectedElement(updatedElement);
     }
@@ -179,26 +178,26 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
   const moveElementUp = (elementId: string) => {
     const updatedElements = [...elements];
     const elementIndex = updatedElements.findIndex(el => el.id === elementId);
-    
+
     if (elementIndex > 0) {
-      // Swap with the element above
-      [updatedElements[elementIndex], updatedElements[elementIndex - 1]] = 
-      [updatedElements[elementIndex - 1], updatedElements[elementIndex]];
-      
+      // Swap with the element above (which appears below in the canvas)
+      [updatedElements[elementIndex], updatedElements[elementIndex - 1]] =
+        [updatedElements[elementIndex - 1], updatedElements[elementIndex]];
+
       setElements(updatedElements);
     }
   };
-  
+
   // Move element down in the layers panel (decrease z-index)
   const moveElementDown = (elementId: string) => {
     const updatedElements = [...elements];
     const elementIndex = updatedElements.findIndex(el => el.id === elementId);
-    
+
     if (elementIndex < updatedElements.length - 1 && elementIndex !== -1) {
-      // Swap with the element below
-      [updatedElements[elementIndex], updatedElements[elementIndex + 1]] = 
-      [updatedElements[elementIndex + 1], updatedElements[elementIndex]];
-      
+      // Swap with the element below (which appears above in the canvas)
+      [updatedElements[elementIndex], updatedElements[elementIndex + 1]] =
+        [updatedElements[elementIndex + 1], updatedElements[elementIndex]];
+
       setElements(updatedElements);
     }
   };
@@ -217,28 +216,28 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
     const childElements = container.childElements || [];
 
     return (
-      <div 
-        key={container.id} 
+      <div
+        key={container.id}
         className={`mb-2 overflow-hidden ${isDropTarget ? 'bg-blue-50' : ''}`}
         onDragOver={(e) => handleDragOver(e, container.id)}
         onDrop={(e) => handleDrop(e, container.id)}
         onDragLeave={() => setDragTargetId(null)}
       >
-        <div 
+        <div
           className={`flex items-center gap-2 px-2 py-1 cursor-pointer rounded-md ${isSelected ? 'bg-purple-100 text-purple-700' : 'hover:bg-gray-50'}`}
           onClick={() => setSelectedElement(container)}
           draggable
           onDragStart={(e) => handleDragStart(e, container)}
         >
-          <button 
+          <button
             className="focus:outline-none"
             onClick={(e) => {
               e.stopPropagation();
               toggleCollapse(container.id);
             }}
           >
-            {isCollapsed ? 
-              <ChevronRight className="h-4 w-4 text-[#414651]" /> : 
+            {isCollapsed ?
+              <ChevronRight className="h-4 w-4 text-[#414651]" /> :
               <ChevronDown className="h-4 w-4 text-[#414651]" />
             }
           </button>
@@ -249,7 +248,7 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
             </span>
           </div>
           <div className="flex items-center">
-            <button 
+            <button
               className="p-1 text-gray-400 hover:text-gray-600"
               onClick={(e) => {
                 e.stopPropagation();
@@ -259,7 +258,7 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
             >
               <ArrowUpIcon className="h-3 w-3" />
             </button>
-            <button 
+            <button
               className="p-1 text-gray-400 hover:text-gray-600"
               onClick={(e) => {
                 e.stopPropagation();
@@ -269,7 +268,7 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
             >
               <ArrowDownIcon className="h-3 w-3" />
             </button>
-            <button 
+            <button
               className="ml-1 text-gray-400 hover:text-gray-600 p-1"
               onClick={(e) => {
                 e.stopPropagation();
@@ -281,11 +280,11 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
             </button>
           </div>
         </div>
-        
+
         {!isCollapsed && (
           <div className="ml-6 pl-2 border-l border-gray-200 py-1">
             {childElements.map((child) => (
-              <div 
+              <div
                 key={child.id}
                 className={`flex items-center gap-2 px-2 py-1 text-sm rounded-md cursor-pointer my-1 ${selectedElement?.id === child.id ? 'bg-purple-100 text-purple-700' : 'hover:bg-gray-50'} ${draggedElement?.id === child.id ? 'opacity-50' : ''}`}
                 onClick={() => setSelectedElement(child)}
@@ -297,7 +296,7 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
                   {truncateName(child.content) || child.type}
                 </span>
                 <div className="flex items-center">
-                  <button 
+                  <button
                     className="p-1 text-gray-400 hover:text-gray-600"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -308,14 +307,14 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
                         const childIndex = updatedElements[containerIndex].childElements!.findIndex(c => c.id === child.id);
                         if (childIndex > 0) {
                           const childElements = [...updatedElements[containerIndex].childElements!];
-                          [childElements[childIndex], childElements[childIndex - 1]] = 
-                          [childElements[childIndex - 1], childElements[childIndex]];
-                          
+                          [childElements[childIndex], childElements[childIndex - 1]] =
+                            [childElements[childIndex - 1], childElements[childIndex]];
+
                           updatedElements[containerIndex] = {
                             ...updatedElements[containerIndex],
                             childElements: childElements
                           };
-                          
+
                           setElements(updatedElements);
                         }
                       }
@@ -324,7 +323,7 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
                   >
                     <ArrowUpIcon className="h-3 w-3" />
                   </button>
-                  <button 
+                  <button
                     className="p-1 text-gray-400 hover:text-gray-600"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -334,17 +333,17 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
                       if (containerIndex !== -1 && updatedElements[containerIndex].childElements) {
                         const childElements = updatedElements[containerIndex].childElements!;
                         const childIndex = childElements.findIndex(c => c.id === child.id);
-                        
+
                         if (childIndex < childElements.length - 1) {
                           const newChildElements = [...childElements];
-                          [newChildElements[childIndex], newChildElements[childIndex + 1]] = 
-                          [newChildElements[childIndex + 1], newChildElements[childIndex]];
-                          
+                          [newChildElements[childIndex], newChildElements[childIndex + 1]] =
+                            [newChildElements[childIndex + 1], newChildElements[childIndex]];
+
                           updatedElements[containerIndex] = {
                             ...updatedElements[containerIndex],
                             childElements: newChildElements
                           };
-                          
+
                           setElements(updatedElements);
                         }
                       }
@@ -353,7 +352,7 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
                   >
                     <ArrowDownIcon className="h-3 w-3" />
                   </button>
-                  <button 
+                  <button
                     className="ml-1 text-gray-400 hover:text-gray-600 p-1"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -399,23 +398,23 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
       {/* Layer content */}
       <div className="flex-1 overflow-y-auto px-4 py-2">
         <h3 className="font-medium text-sm mb-2">Camadas</h3>
-        
+
         {/* Container elements */}
         <div className="space-y-1 mb-4">
           {containers.map(renderContainer)}
         </div>
-        
+
         {/* Standalone elements section */}
-        <div 
+        <div
           className={`border rounded-md p-2 bg-gray-50 ${dragTargetId === 'standalone' ? 'bg-blue-50 border-blue-300' : ''}`}
           onDragOver={(e) => handleDragOver(e, 'standalone')}
           onDrop={(e) => handleDrop(e, 'standalone')}
           onDragLeave={() => setDragTargetId(null)}
         >
           <div className="text-sm font-medium mb-2 text-gray-500">Elementos sem container</div>
-          
+
           {standaloneElements.map((element, index) => (
-            <div 
+            <div
               key={element.id}
               className={`flex items-center gap-2 px-2 py-1 text-sm rounded-md cursor-pointer my-1 ${selectedElement?.id === element.id ? 'bg-purple-100' : 'hover:bg-gray-50'} ${draggedElement?.id === element.id ? 'opacity-50' : ''}`}
               onClick={() => setSelectedElement(element)}
@@ -427,7 +426,7 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
                 {truncateName(element.content) || element.type}
               </span>
               <div className="flex items-center">
-                <button 
+                <button
                   className="p-1 text-gray-400 hover:text-gray-600"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -437,7 +436,7 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
                 >
                   <ArrowUpIcon className="h-3 w-3" />
                 </button>
-                <button 
+                <button
                   className="p-1 text-gray-400 hover:text-gray-600"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -447,7 +446,7 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
                 >
                   <ArrowDownIcon className="h-3 w-3" />
                 </button>
-                <button 
+                <button
                   className="ml-1 text-gray-400 hover:text-gray-600 p-1"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -460,7 +459,7 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
               </div>
             </div>
           ))}
-          
+
           {standaloneElements.length === 0 && (
             <div className="text-sm text-gray-400 text-center py-2">
               Arraste elementos para aqui

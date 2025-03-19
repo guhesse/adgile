@@ -87,8 +87,9 @@ export const parsePSDFile = async (file: File): Promise<{
                     const textData = node.layer.typeTool();
                     console.log("Text data obtained:", textData);
 
+                    // Removendo stringify que está causando o erro
                     // Log adicional para ajudar a debugar a estrutura
-                    console.log("Text data structure:", JSON.stringify(textData, null, 2));
+                    console.log("Text data structure available");
                     
                     // Tentar acessar métodos auxiliares da biblioteca
                     if (textData) {
@@ -122,6 +123,84 @@ export const parsePSDFile = async (file: File): Promise<{
                     }
                   } catch (textError) {
                     console.error(`Error extracting text data from ${node.name}:`, textError);
+                    
+                    // Tentar método alternativo se o primeiro falhar
+                    try {
+                      // Tentar extrair usando os métodos diretamente, sem depender da estrutura completa
+                      const alternativeTextStyle: TextLayerStyle = {
+                        text: '',
+                        fontFamily: 'Arial',
+                        fontSize: 14,
+                        fontWeight: 'normal',
+                        fontStyle: 'normal',
+                        color: '#000000',
+                        alignment: 'left',
+                        letterSpacing: 0,
+                        lineHeight: 1.2
+                      };
+                      
+                      const textData = node.layer.typeTool();
+                      
+                      // Tentar extrair texto
+                      if (typeof textData.value === 'function') {
+                        alternativeTextStyle.text = textData.value() || '';
+                      } else if (textData.textValue) {
+                        alternativeTextStyle.text = textData.textValue;
+                      } else {
+                        // Se não conseguir encontrar o texto, usar o nome da camada como fallback
+                        alternativeTextStyle.text = node.name;
+                      }
+                      
+                      // Tentar extrair estilo usando métodos auxiliares
+                      if (typeof textData.fonts === 'function') {
+                        const fonts = textData.fonts();
+                        if (fonts && fonts.length > 0) alternativeTextStyle.fontFamily = fonts[0];
+                      }
+                      
+                      if (typeof textData.sizes === 'function') {
+                        const sizes = textData.sizes();
+                        if (sizes && sizes.length > 0) alternativeTextStyle.fontSize = sizes[0];
+                      }
+                      
+                      if (typeof textData.colors === 'function') {
+                        const colors = textData.colors();
+                        if (colors && colors.length > 0 && Array.isArray(colors[0])) {
+                          const [r, g, b] = colors[0].slice(0, 3);
+                          alternativeTextStyle.color = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+                        }
+                      }
+                      
+                      if (typeof textData.alignment === 'function') {
+                        const align = textData.alignment();
+                        if (align) {
+                          const alignMap: {[key: string]: string} = {
+                            '0': 'left',
+                            '1': 'right',
+                            '2': 'center',
+                            '3': 'justify'
+                          };
+                          alternativeTextStyle.alignment = alignMap[align.toString()] || 'left';
+                        }
+                      }
+                      
+                      console.log(`Extracted alternative text style for ${node.name}:`, alternativeTextStyle);
+                      
+                      textLayers.set(node.name, alternativeTextStyle);
+                      
+                      psdData.layers.push({
+                        id: generateLayerId(node.name),
+                        name: node.name,
+                        type: 'text',
+                        x: node.left || 0,
+                        y: node.top || 0,
+                        width: (node.right || 0) - (node.left || 0),
+                        height: (node.bottom || 0) - (node.top || 0),
+                        textContent: alternativeTextStyle.text,
+                        textStyle: alternativeTextStyle
+                      });
+                    } catch (alternativeError) {
+                      console.error(`Alternative method also failed for ${node.name}:`, alternativeError);
+                    }
                   }
                 }
 
@@ -135,7 +214,18 @@ export const parsePSDFile = async (file: File): Promise<{
 
                   // Extrair estilo de texto desta camada
                   const typeToolData = node.get('typeTool');
-                  const textStyle = extractTextLayerStyle(typeToolData, node);
+                  
+                  // Se o typeTool é uma função, executá-la para obter os dados
+                  let processedTypeToolData = typeToolData;
+                  if (typeof typeToolData === 'function') {
+                    try {
+                      processedTypeToolData = typeToolData();
+                    } catch (error) {
+                      console.error(`Error executing typeTool function for ${node.name}:`, error);
+                    }
+                  }
+                  
+                  const textStyle = extractTextLayerStyle(processedTypeToolData, node);
 
                   if (textStyle) {
                     textLayers.set(node.name, textStyle);

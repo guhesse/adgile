@@ -1,4 +1,3 @@
-
 import { UploadIcon } from "lucide-react";
 import { useCanvas } from "./CanvasContext";
 import { importPSDFile } from "./utils/psd/importPSD";
@@ -6,6 +5,7 @@ import { Button } from "../ui/button";
 import { toast } from "sonner";
 import { useState } from "react";
 import { BannerSize } from "./types";
+import { convertTextStyleToCSS } from './utils/psd/textRenderer';
 
 export const PSDImport = () => {
   const { selectedSize, setElements, addCustomSize, setSelectedSize } = useCanvas();
