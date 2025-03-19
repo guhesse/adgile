@@ -7,7 +7,7 @@
 export const convertPSDColorToHex = (colors: any): string => {
   try {
     if (Array.isArray(colors) && colors.length >= 3) {
-      const [r, g, b] = colors.map(val => Math.min(255, Math.max(0, Math.round(val))));
+      const [r, g, b] = colors;
       return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     }
     return '#000000';

@@ -1,6 +1,5 @@
 
 import { TextLayerStyle } from './types';
-import { mapPSDFontToWebFont } from './fontMapper';
 
 /**
  * Extrai o estilo de texto de uma camada PSD
@@ -20,7 +19,7 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
         // Inicializar o objeto de estilo de texto com valores padrão
         const textStyle: TextLayerStyle = {
             text: '',
-            fontFamily: 'Roboto, sans-serif', // Default to Roboto
+            fontFamily: 'Arial',
             fontSize: 14,
             fontWeight: 'normal',
             fontStyle: 'normal',
@@ -49,10 +48,8 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
                     if (validFonts.length > 0) {
                         console.log(`Fonte válida encontrada: ${validFonts[0]}`);
                         
-                        // Mapear a fonte do PSD para uma fonte web
-                        const mappedFont = mapPSDFontToWebFont(validFonts[0]);
-                        textStyle.fontFamily = mappedFont;
-                        console.log(`Fonte mapeada: ${validFonts[0]} -> ${mappedFont}`);
+                        // Armazenar o nome completo da fonte incluindo variantes
+                        textStyle.fontFamily = validFonts[0];
                         
                         // Detectar variantes da fonte para definir o estilo e o peso corretamente
                         if (validFonts[0].includes('-Bold')) {
@@ -136,10 +133,10 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
                         const fontName = textData.engineData.ResourceDict.FontSet[0].Name;
                         if (fontName) {
                             console.log(`Fonte encontrada no ResourceDict: ${fontName}`);
-                            // Mapear a fonte do ResourceDict
-                            const mappedFont = mapPSDFontToWebFont(fontName);
-                            console.log(`Fonte mapeada do ResourceDict: ${fontName} -> ${mappedFont}`);
-                            textStyle.fontFamily = mappedFont;
+                            // Só atualizar se ainda não encontramos uma fonte válida
+                            if (textStyle.fontFamily === 'Arial') {
+                                textStyle.fontFamily = fontName;
+                            }
                         }
                     }
 
