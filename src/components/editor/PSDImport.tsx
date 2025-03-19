@@ -66,6 +66,7 @@ export const PSDImport = () => {
         
         // Pré-carregar as fontes que provavelmente serão usadas
         // Carregamos Roboto explicitamente, já que é a fonte mais comum em PSDs
+        console.log("Pré-carregando fonte Roboto antes de processamento");
         addFontImportToDocument('Roboto, sans-serif');
         
         // Add the custom size to active sizes and select it
@@ -102,6 +103,7 @@ export const PSDImport = () => {
             
             // Garantir que a fonte específica deste elemento seja carregada
             if (textElement.style.fontFamily) {
+              console.log(`Carregando fonte específica para texto "${textElement.content}": ${textElement.style.fontFamily}`);
               addFontImportToDocument(textElement.style.fontFamily);
             }
           });

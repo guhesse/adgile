@@ -20,7 +20,7 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
         // Inicializar o objeto de estilo de texto com valores padrão
         const textStyle: TextLayerStyle = {
             text: '',
-            fontFamily: 'Arial',
+            fontFamily: 'Roboto, sans-serif', // Default to Roboto
             fontSize: 14,
             fontWeight: 'normal',
             fontStyle: 'normal',
