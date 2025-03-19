@@ -64,8 +64,9 @@ export const PSDImport = () => {
         
         console.log("Criando tamanho personalizado:", customSizeName, `(${width}×${height}px)`);
         
-        // Pré-carregar as fontes Roboto que provavelmente serão usadas
-        addFontImportToDocument('Roboto');
+        // Pré-carregar as fontes que provavelmente serão usadas
+        // Carregamos Roboto explicitamente, já que é a fonte mais comum em PSDs
+        addFontImportToDocument('Roboto, sans-serif');
         
         // Add the custom size to active sizes and select it
         addCustomSize(customSize);
@@ -98,6 +99,11 @@ export const PSDImport = () => {
               lineHeight: textElement.style.lineHeight || 'Não definido',
               letterSpacing: textElement.style.letterSpacing || 'Não definido'
             });
+            
+            // Garantir que a fonte específica deste elemento seja carregada
+            if (textElement.style.fontFamily) {
+              addFontImportToDocument(textElement.style.fontFamily);
+            }
           });
         }
         
