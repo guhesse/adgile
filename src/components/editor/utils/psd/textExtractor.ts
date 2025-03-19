@@ -1,3 +1,4 @@
+
 import { TextLayerStyle } from './types';
 
 /**
@@ -45,27 +46,29 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
                         font !== 'AdobeInvisFont' && font !== 'MyriadPro-Regular');
                     
                     if (validFonts.length > 0) {
-                        // Limpar o nome da fonte para obter apenas o nome base
-                        let fontName = validFonts[0];
+                        console.log(`Fonte válida encontrada: ${validFonts[0]}`);
                         
-                        // Remover variantes como "Bold", "Italic", etc.
-                        fontName = fontName.replace(/-Bold|-Light|-Regular|-Italic|-Medium|-Black/gi, '');
-                        
-                        textStyle.fontFamily = fontName;
+                        // Armazenar o nome completo da fonte incluindo variantes
+                        textStyle.fontFamily = validFonts[0];
                         
                         // Detectar variantes da fonte para definir o estilo e o peso corretamente
                         if (validFonts[0].includes('-Bold')) {
                             textStyle.fontWeight = 'bold';
+                            console.log('Fonte em negrito detectada');
                         } else if (validFonts[0].includes('-Light')) {
                             textStyle.fontWeight = '300';
+                            console.log('Fonte light detectada');
                         } else if (validFonts[0].includes('-Medium')) {
                             textStyle.fontWeight = '500';
+                            console.log('Fonte medium detectada');
                         } else if (validFonts[0].includes('-Black')) {
                             textStyle.fontWeight = '900';
+                            console.log('Fonte black detectada');
                         }
                         
                         if (validFonts[0].includes('-Italic')) {
                             textStyle.fontStyle = 'italic';
+                            console.log('Fonte itálica detectada');
                         }
                     }
                 }
@@ -77,6 +80,7 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
                 const sizes = textData.sizes();
                 if (sizes && sizes.length > 0) {
                     textStyle.fontSize = sizes[0];
+                    console.log(`Tamanho de fonte aplicado: ${textStyle.fontSize}px`);
                 }
                 console.log(`Tamanhos encontrados via método sizes(): ${sizes}`);
             }
@@ -91,6 +95,7 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
                         const g = Math.min(255, Math.max(0, Math.round(color[1])));
                         const b = Math.min(255, Math.max(0, Math.round(color[2])));
                         textStyle.color = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+                        console.log(`Cor aplicada: ${textStyle.color} [R:${r}, G:${g}, B:${b}]`);
                     }
                 }
                 console.log(`Cores encontradas via método colors(): ${colors}`);
@@ -107,6 +112,7 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
                         '3': 'justify'
                     };
                     textStyle.alignment = alignmentMap[alignment.toString()] || 'left';
+                    console.log(`Alinhamento aplicado: ${textStyle.alignment}`);
                 }
                 console.log(`Alinhamento encontrado via método alignment(): ${alignment}`);
             }
@@ -124,7 +130,14 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
                     if (textData.engineData.ResourceDict &&
                         textData.engineData.ResourceDict.FontSet &&
                         textData.engineData.ResourceDict.FontSet.length > 0) {
-                        textStyle.fontFamily = textData.engineData.ResourceDict.FontSet[0].Name;
+                        const fontName = textData.engineData.ResourceDict.FontSet[0].Name;
+                        if (fontName) {
+                            console.log(`Fonte encontrada no ResourceDict: ${fontName}`);
+                            // Só atualizar se ainda não encontramos uma fonte válida
+                            if (textStyle.fontFamily === 'Arial') {
+                                textStyle.fontFamily = fontName;
+                            }
+                        }
                     }
 
                     // Extrair informações de estilo da fonte do StyleRun
@@ -140,26 +153,31 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
                             // Tamanho da fonte
                             if (styleData.FontSize !== undefined) {
                                 textStyle.fontSize = parseFloat(styleData.FontSize);
+                                console.log(`Tamanho de fonte do engineData: ${textStyle.fontSize}px`);
                             }
 
                             // Negrito/Peso
                             if (styleData.FauxBold !== undefined) {
                                 textStyle.fontWeight = styleData.FauxBold ? "bold" : "normal";
+                                console.log(`Peso da fonte do engineData: ${textStyle.fontWeight}`);
                             }
 
                             // Itálico
                             if (styleData.FauxItalic !== undefined) {
                                 textStyle.fontStyle = styleData.FauxItalic ? "italic" : "normal";
+                                console.log(`Estilo da fonte do engineData: ${textStyle.fontStyle}`);
                             }
 
                             // Espaçamento entre letras
                             if (styleData.Tracking !== undefined) {
                                 textStyle.letterSpacing = parseFloat(styleData.Tracking) / 1000; // Convertendo para em
+                                console.log(`Espaçamento de letras do engineData: ${textStyle.letterSpacing}em`);
                             }
 
                             // Altura da linha
                             if (styleData.Leading !== undefined) {
                                 textStyle.lineHeight = parseFloat(styleData.Leading) / textStyle.fontSize;
+                                console.log(`Altura da linha do engineData: ${textStyle.lineHeight}`);
                             }
                         }
                     }

@@ -2,7 +2,7 @@
 import { EditorElement, BannerSize } from '../../types';
 import { detectLayerType } from './layerDetection';
 import { createTextElement, createImageElement, createFallbackElement } from './elementCreation';
-import { PSDFileData, PSDLayerInfo } from './types';
+import { PSDFileData, PSDLayerInfo, PSDLayer } from './types';
 import { saveImageToStorage } from './storage';
 import { convertPSDColorToHex, convertPSDAlignmentToCSS } from './formatters';
 
@@ -261,27 +261,24 @@ export const processLayer = async (
           }
           
           // Store text style info in PSD data
-          const layerInfo: PSDLayerInfo = {
+          const layerInfo: PSDLayer = {
             id: element.id,
             name: layer.name || 'Text Layer',
             type: 'text',
-            position: {
-              x: element.style.x,
-              y: element.style.y,
-              width: element.style.width,
-              height: element.style.height
-            },
-            content: element.content as string,
+            x: element.style.x,
+            y: element.style.y,
+            width: element.style.width,
+            height: element.style.height,
+            textContent: element.content as string,
             textStyle: {
-              fontSize: element.style.fontSize,
-              fontFamily: element.style.fontFamily,
-              fontWeight: element.style.fontWeight,
-              color: element.style.color,
-              textAlign: element.style.textAlign,
-              lineHeight: element.style.lineHeight,
-              letterSpacing: element.style.letterSpacing,
-              fontStyle: element.style.fontStyle,
-              textDecoration: element.style.textDecoration
+              fontSize: element.style.fontSize || 14,
+              fontFamily: element.style.fontFamily || 'Arial',
+              fontWeight: element.style.fontWeight || 'normal',
+              color: element.style.color || '#000000',
+              alignment: element.style.textAlign || 'left',
+              lineHeight: element.style.lineHeight || 1.2,
+              letterSpacing: element.style.letterSpacing || 0,
+              fontStyle: element.style.fontStyle || 'normal'
             }
           };
           
@@ -291,17 +288,15 @@ export const processLayer = async (
           console.error('Erro ao extrair estilos de texto:', textStyleError);
           
           // Still add basic layer info to PSD data
-          const layerInfo: PSDLayerInfo = {
+          const layerInfo: PSDLayer = {
             id: element.id,
             name: layer.name || 'Text Layer',
             type: 'text',
-            position: {
-              x: element.style.x,
-              y: element.style.y,
-              width: element.style.width,
-              height: element.style.height
-            },
-            content: element.content as string
+            x: element.style.x,
+            y: element.style.y,
+            width: element.style.width,
+            height: element.style.height,
+            textContent: element.content as string
           };
           
           psdData.layers.push(layerInfo);
@@ -326,18 +321,15 @@ export const processLayer = async (
           console.log(`Imagem salva no storage com chave: ${imageKey}`);
           
           // Add to PSD data
-          const layerInfo: PSDLayerInfo = {
+          const layerInfo: PSDLayer = {
             id: element.id,
             name: layer.name || 'Image Layer',
             type: 'image',
-            position: {
-              x: element.style.x,
-              y: element.style.y,
-              width: element.style.width,
-              height: element.style.height
-            },
-            imageUrl: element.content as string,
-            imageKey: imageKey
+            x: element.style.x,
+            y: element.style.y,
+            width: element.style.width,
+            height: element.style.height,
+            imageData: element.content as string,
           };
           
           psdData.layers.push(layerInfo);
@@ -345,17 +337,15 @@ export const processLayer = async (
           console.error('Erro ao salvar imagem no storage:', storageError);
           
           // Still add the element but without storage reference
-          const layerInfo: PSDLayerInfo = {
+          const layerInfo: PSDLayer = {
             id: element.id,
             name: layer.name || 'Image Layer',
             type: 'image',
-            position: {
-              x: element.style.x,
-              y: element.style.y,
-              width: element.style.width,
-              height: element.style.height
-            },
-            imageUrl: element.content as string
+            x: element.style.x,
+            y: element.style.y,
+            width: element.style.width,
+            height: element.style.height,
+            imageData: element.content as string
           };
           
           psdData.layers.push(layerInfo);
@@ -390,26 +380,23 @@ export const processLayer = async (
       
       if (element) {
         // Add to PSD data
-        const layerInfo: PSDLayerInfo = {
+        const layerInfo: PSDLayer = {
           id: element.id,
           name: layer.name || 'Generic Layer',
-          type: element.type,
-          position: {
-            x: element.style.x,
-            y: element.style.y,
-            width: element.style.width,
-            height: element.style.height
-          }
+          type: element.type as 'image' | 'text' | 'shape' | 'group',
+          x: element.style.x,
+          y: element.style.y,
+          width: element.style.width,
+          height: element.style.height
         };
         
         if (element.type === 'image' && element.content) {
           try {
-            layerInfo.imageUrl = element.content as string;
-            layerInfo.imageKey = saveImageToStorage(element.content as string, layer.name || 'image');
+            layerInfo.imageData = element.content as string;
             console.log(`Imagem de camada genérica salva no storage`);
           } catch (storageError) {
             console.error('Erro ao salvar imagem de camada genérica no storage:', storageError);
-            layerInfo.imageUrl = element.content as string;
+            layerInfo.imageData = element.content as string;
           }
         }
         

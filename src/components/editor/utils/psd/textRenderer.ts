@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { TextLayerStyle } from './types';
 import { mapPSDFontToWebFont, addFontImportToDocument } from './fontMapper';
@@ -8,11 +9,17 @@ import { mapPSDFontToWebFont, addFontImportToDocument } from './fontMapper';
  * @returns Objeto de estilo CSS para React
  */
 export const convertTextStyleToCSS = (textStyle: TextLayerStyle): React.CSSProperties => {
+    // Log the input text style for debugging
+    console.log(`Convertendo estilo de texto para CSS:`, textStyle);
+    
     // Mapear a fonte do PSD para uma fonte web
     const webFontFamily = mapPSDFontToWebFont(textStyle.fontFamily);
     
     // Adicionar importação da fonte ao documento se necessário
     addFontImportToDocument(webFontFamily.split(',')[0].trim());
+    
+    // Log the mapped font
+    console.log(`Fonte mapeada de "${textStyle.fontFamily}" para "${webFontFamily}"`);
     
     return {
         fontFamily: webFontFamily,
@@ -47,13 +54,13 @@ export const PSDText: React.FC<PSDTextProps> = ({
 
     return (
         <div 
-      className= { className }
-    style = { cssStyle }
-    onClick = { onClick }
+            className={className}
+            style={cssStyle}
+            onClick={onClick}
         >
-        { textStyle.text || '' }
+            {textStyle.text || ''}
         </div>
-  );
+    );
 };
 
 /**
@@ -81,21 +88,21 @@ export const EditablePSDText: React.FC<EditablePSDTextProps> = ({
 
     return (
         <div 
-      className= { className }
-    style = {{
-        ...cssStyle,
-    outline: editable ? 'none' : undefined,
-        userSelect: editable ? 'text' : undefined,
-            cursor: editable ? 'text' : undefined,
-      }}
-contentEditable = { editable }
-suppressContentEditableWarning = { true }
-onInput = { handleInput }
-onClick = { onClick }
-    >
-    { textStyle.text || '' }
-    </div>
-  );
+            className={className}
+            style={{
+                ...cssStyle,
+                outline: editable ? 'none' : undefined,
+                userSelect: editable ? 'text' : undefined,
+                cursor: editable ? 'text' : undefined,
+            }}
+            contentEditable={editable}
+            suppressContentEditableWarning={true}
+            onInput={handleInput}
+            onClick={onClick}
+        >
+            {textStyle.text || ''}
+        </div>
+    );
 };
 
 /**
