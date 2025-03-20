@@ -43,7 +43,7 @@ export const CanvasArea = ({
 }: CanvasAreaProps) => {
   const { artboardBackgroundColor = '#ffffff' } = useCanvas();
   
-  // Use provided background color directly
+  // Use provided background color directly, no need to search for an element
   const backgroundColor = artboardBackgroundColor;
 
   // Filter elements that should appear in this specific size or globally
@@ -88,7 +88,6 @@ export const CanvasArea = ({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        data-canvas-size={`${size.width}x${size.height}`}
       >
         {elementsToShow
           .filter(el => !el.inContainer)
@@ -107,7 +106,6 @@ export const CanvasArea = ({
               hoveredContainer={hoveredContainer}
               canvasNavMode={canvasNavMode}
               zIndex={index} // Pass the index to control z-index
-              zoomLevel={zoomLevel}
             />
           ))}
       </Card>
