@@ -1,4 +1,3 @@
-
 export type BannerSize = {
   name: string;
   width: number;
@@ -9,6 +8,7 @@ export type EditorElement = {
   id: string;
   type: "text" | "image" | "button" | "layout" | "container" | "paragraph" | "divider" | "spacer" | "logo" | "video" | "artboard-background";
   content: string;
+  _layerName?: string; // Campo específico para o nome da camada no painel, não afeta os atributos do elemento
   style: {
     x: number;
     y: number;

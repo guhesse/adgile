@@ -1,4 +1,4 @@
-import { EditorElement } from "./types";
+import { EditorElement, BANNER_SIZES } from "./types";
 import {
   ChevronDown,
   ChevronRight,
@@ -24,19 +24,23 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
   const editInputRef = useRef<HTMLInputElement>(null);
   const { setElements } = useCanvas();
 
-  // Agrupar elementos por artboard/tamanho
+  // Usar BANNER_SIZES para obter nome do artboard a partir do tamanho
   const getArtboardName = (size: string) => {
-    // Mapear tamanhos para nomes mais descritivos
-    const sizeToName: Record<string, string> = {
-      '300x250': 'MPU 300x250',
-      '728x90': 'Leaderboard 728x90',
-      '970x250': 'Billboard 970x250',
-      '320x100': 'Mobile Leaderboard 320x100',
-      '600x800': 'Email Template 600x800',
-      // Adicione mais mapeamentos conforme necessário
-    };
+    if (!size) return 'Sem tamanho';
     
-    return sizeToName[size] || size;
+    // Extrair largura e altura do formato "widthxheight"
+    const dimensions = size.split('x');
+    if (dimensions.length !== 2) return size;
+    
+    const width = parseInt(dimensions[0]);
+    const height = parseInt(dimensions[1]);
+    
+    // Encontrar o tamanho correspondente em BANNER_SIZES
+    const bannerSize = BANNER_SIZES.find(
+      bs => bs.width === width && bs.height === height
+    );
+    
+    return bannerSize ? bannerSize.name : size;
   };
   
   // Extrair artboards dos elementos
@@ -322,10 +326,33 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
     return name.length > maxLength ? `${name.substring(0, maxLength)}...` : name;
   };
 
+  // Obter nome padrão com base no tipo de elemento
+  const getDefaultNameByType = (type: string, element: EditorElement) => {
+    switch (type) {
+      case 'text':
+      case 'paragraph':
+        return 'Texto';
+      case 'image':
+        return 'Imagem';
+      case 'logo':
+        return 'Logo';
+      case 'button':
+        return 'Botão';
+      case 'container':
+      case 'layout':
+        return `Container ${element.columns || 1}×`;
+      default:
+        return type.charAt(0).toUpperCase() + type.slice(1);
+    }
+  };
+
   // Iniciar edição de nome da camada
   const startEditing = (element: EditorElement) => {
     setEditingLayerId(element.id);
-    setLayerName(element.content || element.name || element.type);
+    
+    // Usar o nome personalizado da camada se existir, ou o nome padrão
+    const displayName = element._layerName || getDefaultNameByType(element.type, element);
+    setLayerName(displayName);
     
     // Focar no input após renderização
     setTimeout(() => {
@@ -336,20 +363,27 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
     }, 10);
   };
 
+  // Obter o nome para exibição no painel de camadas
+  const getLayerDisplayName = (element: EditorElement) => {
+    return element._layerName || getDefaultNameByType(element.type, element);
+  };
+
   // Salvar nome da camada
   const saveLayerName = () => {
     if (!editingLayerId) return;
     
     const updatedElements = elements.map(el => {
       if (el.id === editingLayerId) {
-        return { ...el, content: layerName, name: layerName };
+        // Adicionar somente o campo _layerName sem modificar outros atributos
+        return { ...el, _layerName: layerName };
       }
       
       // Verificar também elementos dentro de containers
       if (el.childElements) {
         const updatedChildren = el.childElements.map(child => {
           if (child.id === editingLayerId) {
-            return { ...child, content: layerName, name: layerName };
+            // Adicionar somente o campo _layerName sem modificar outros atributos
+            return { ...child, _layerName: layerName };
           }
           return child;
         });
@@ -482,7 +516,7 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
           />
         ) : (
           <div className="flex-1 overflow-hidden text-[#414651] font-sans text-xs font-normal leading-5">
-            {truncateName(element.content || element.name) || element.type}
+            {truncateName(getLayerDisplayName(element))}
           </div>
         )}
         
@@ -569,7 +603,7 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
             />
           ) : (
             <div className="flex-1 overflow-hidden text-[#414651] font-sans text-xs font-normal leading-5">
-              {truncateName(container.content || container.name) || `Container ${container.columns || 1}×`}
+              {truncateName(getLayerDisplayName(container))}
             </div>
           )}
           
