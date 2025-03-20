@@ -1,15 +1,8 @@
-
 /**
  * Mapeia fontes do Photoshop para fontes web equivalentes
  */
 const fontMappings: Record<string, string> = {
   'Roboto': 'Roboto, sans-serif',
-  'Roboto-Regular': 'Roboto, sans-serif',
-  'Roboto-Bold': 'Roboto, sans-serif',
-  'Roboto-Light': 'Roboto, sans-serif',
-  'Roboto-Medium': 'Roboto, sans-serif',
-  'Roboto-Black': 'Roboto, sans-serif',
-  'Roboto-Italic': 'Roboto, sans-serif',
   'Arial': 'Arial, sans-serif',
   'Helvetica': 'Helvetica, Arial, sans-serif',
   'Times': 'Times New Roman, serif',
@@ -38,26 +31,11 @@ const fontMappings: Record<string, string> = {
 export const mapPSDFontToWebFont = (psdFontName: string): string => {
   if (!psdFontName) return 'Arial, sans-serif';
 
-  console.log(`Mapeando fonte PSD: "${psdFontName}"`);
-
-  // Verificar se existe um mapeamento direto para esta fonte
-  if (fontMappings[psdFontName]) {
-    console.log(`Mapeamento direto encontrado: "${fontMappings[psdFontName]}"`);
-    return fontMappings[psdFontName];
-  }
-
-  // Extrair nome base da fonte (removendo variantes como Bold, Light, etc.)
+  // Limpar o nome da fonte para obter apenas o nome base
   const baseFontName = psdFontName.replace(/-Bold|-Light|-Regular|-Italic|-Medium|-Black/gi, '');
-  
-  // Verificar se existe um mapeamento para o nome base
-  if (fontMappings[baseFontName]) {
-    console.log(`Mapeamento de nome base encontrado: "${fontMappings[baseFontName]}"`);
-    return fontMappings[baseFontName];
-  }
-  
-  // Se não encontrou mapeamento, retornar a fonte original com fallbacks
-  console.log(`Nenhum mapeamento encontrado, usando fonte original com fallbacks: "${psdFontName}, Arial, sans-serif"`);
-  return `${psdFontName}, Arial, sans-serif`;
+
+  // Verificar se existe um mapeamento para esta fonte
+  return fontMappings[baseFontName] || `${psdFontName}, Arial, sans-serif`;
 };
 
 /**
@@ -65,16 +43,10 @@ export const mapPSDFontToWebFont = (psdFontName: string): string => {
  * @param fontFamily Nome da família de fonte
  */
 export const addFontImportToDocument = (fontFamily: string): void => {
-  // Extrair o nome principal da fonte (antes da primeira vírgula)
-  const primaryFont = fontFamily.split(',')[0].trim();
-  
   // Prevenção para não adicionar a mesma fonte várias vezes
-  const fontId = `font-import-${primaryFont.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
+  const fontId = `font-import-${fontFamily.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
 
-  if (document.getElementById(fontId)) {
-    console.log(`Fonte já importada: ${primaryFont}`);
-    return;
-  }
+  if (document.getElementById(fontId)) return;
 
   const commonWebFonts = [
     'Arial', 'Helvetica', 'Times New Roman', 'Times', 'Courier New',
@@ -83,31 +55,18 @@ export const addFontImportToDocument = (fontFamily: string): void => {
   ];
 
   // Se for uma fonte padrão do sistema, não precisa importar
-  if (commonWebFonts.some(font => primaryFont.includes(font))) {
-    console.log(`Fonte padrão do sistema, não necessita importação: ${primaryFont}`);
-    return;
-  }
+  if (commonWebFonts.some(font => fontFamily.includes(font))) return;
 
   // Para fontes do Google Fonts
   const googleFonts = ['Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Inter', 'Poppins'];
 
-  if (googleFonts.some(font => primaryFont.includes(font))) {
-    const fontName = googleFonts.find(font => primaryFont.includes(font));
-    
-    if (fontName) {
-      const link = document.createElement('link');
-      link.id = fontId;
-      link.rel = 'stylesheet';
-      
-      // Incluir várias variantes de peso para Roboto
-      if (fontName === 'Roboto') {
-        link.href = `https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap`;
-      } else {
-        link.href = `https://fonts.googleapis.com/css2?family=${fontName}:wght@300;400;500;700&display=swap`;
-      }
-      
-      document.head.appendChild(link);
-      console.log(`Adicionada importação de fonte: ${fontName}`);
-    }
+  if (googleFonts.some(font => fontFamily.includes(font))) {
+    const fontName = googleFonts.find(font => fontFamily.includes(font));
+    const link = document.createElement('link');
+    link.id = fontId;
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${fontName}:wght@300;400;500;700&display=swap`;
+    document.head.appendChild(link);
+    console.log(`Adicionada importação de fonte: ${fontName}`);
   }
 };

@@ -1,4 +1,3 @@
-
 import { UploadIcon } from "lucide-react";
 import { useCanvas } from "./CanvasContext";
 import { importPSDFile } from "./utils/psd/importPSD";
@@ -6,7 +5,7 @@ import { Button } from "../ui/button";
 import { toast } from "sonner";
 import { useState } from "react";
 import { BannerSize } from "./types";
-import { addFontImportToDocument } from './utils/psd/fontMapper';
+import { convertTextStyleToCSS } from './utils/psd/textRenderer';
 
 export const PSDImport = () => {
   const { selectedSize, setElements, addCustomSize, setSelectedSize } = useCanvas();
@@ -63,9 +62,6 @@ export const PSDImport = () => {
         };
         
         console.log("Criando tamanho personalizado:", customSizeName, `(${width}×${height}px)`);
-        
-        // Pré-carregar as fontes Roboto que provavelmente serão usadas
-        addFontImportToDocument('Roboto');
         
         // Add the custom size to active sizes and select it
         addCustomSize(customSize);

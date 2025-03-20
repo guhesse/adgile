@@ -37,7 +37,6 @@ export interface PSDMetadata {
 
 /**
  * Interface for storing information about a layer in a PSD file
- * Deprecated - use PSDLayer instead
  */
 export interface PSDLayerInfo {
   /** The ID assigned to this layer in the editor */
