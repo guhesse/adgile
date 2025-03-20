@@ -4,11 +4,10 @@ import { EditorElement } from "../types";
 interface ElementHandlesProps {
   element: EditorElement;
   handleResizeStart: (e: React.MouseEvent, direction: string, element: EditorElement) => void;
-  zoomLevel?: number;
 }
 
-export const ElementHandles = ({ element, handleResizeStart, zoomLevel = 1 }: ElementHandlesProps) => {
-  // Define consistent handle style
+export const ElementHandles = ({ element, handleResizeStart }: ElementHandlesProps) => {
+  // Definir estilo consistente para manipuladores
   const handleStyle = {
     width: '10px', 
     height: '10px',
@@ -22,7 +21,7 @@ export const ElementHandles = ({ element, handleResizeStart, zoomLevel = 1 }: El
     cursor: 'pointer'
   };
 
-  // Use stopPropagation to prevent click events from propagating
+  // Usar stopPropagation para evitar que eventos de clique se propaguem
   const handleMouseDown = (e: React.MouseEvent, direction: string) => {
     e.stopPropagation();
     e.preventDefault();
@@ -31,7 +30,7 @@ export const ElementHandles = ({ element, handleResizeStart, zoomLevel = 1 }: El
 
   return (
     <>
-      {/* North */}
+      {/* Norte */}
       <div 
         className="resize-handle resize-handle-n" 
         onMouseDown={(e) => handleMouseDown(e, 'n')}
@@ -43,7 +42,7 @@ export const ElementHandles = ({ element, handleResizeStart, zoomLevel = 1 }: El
         }}
       />
       
-      {/* East */}
+      {/* Leste */}
       <div 
         className="resize-handle resize-handle-e" 
         onMouseDown={(e) => handleMouseDown(e, 'e')}
@@ -55,7 +54,7 @@ export const ElementHandles = ({ element, handleResizeStart, zoomLevel = 1 }: El
         }}
       />
       
-      {/* South */}
+      {/* Sul */}
       <div 
         className="resize-handle resize-handle-s" 
         onMouseDown={(e) => handleMouseDown(e, 's')}
@@ -67,7 +66,7 @@ export const ElementHandles = ({ element, handleResizeStart, zoomLevel = 1 }: El
         }}
       />
       
-      {/* West */}
+      {/* Oeste */}
       <div 
         className="resize-handle resize-handle-w" 
         onMouseDown={(e) => handleMouseDown(e, 'w')}
@@ -79,7 +78,7 @@ export const ElementHandles = ({ element, handleResizeStart, zoomLevel = 1 }: El
         }}
       />
       
-      {/* Northwest */}
+      {/* Noroeste */}
       <div 
         className="resize-handle resize-handle-nw" 
         onMouseDown={(e) => handleMouseDown(e, 'nw')}
@@ -91,7 +90,7 @@ export const ElementHandles = ({ element, handleResizeStart, zoomLevel = 1 }: El
         }}
       />
       
-      {/* Northeast */}
+      {/* Nordeste */}
       <div 
         className="resize-handle resize-handle-ne" 
         onMouseDown={(e) => handleMouseDown(e, 'ne')}
@@ -103,7 +102,7 @@ export const ElementHandles = ({ element, handleResizeStart, zoomLevel = 1 }: El
         }}
       />
       
-      {/* Southeast */}
+      {/* Sudeste */}
       <div 
         className="resize-handle resize-handle-se" 
         onMouseDown={(e) => handleMouseDown(e, 'se')}
@@ -115,7 +114,7 @@ export const ElementHandles = ({ element, handleResizeStart, zoomLevel = 1 }: El
         }}
       />
       
-      {/* Southwest */}
+      {/* Sudoeste */}
       <div 
         className="resize-handle resize-handle-sw" 
         onMouseDown={(e) => handleMouseDown(e, 'sw')}

@@ -3,15 +3,15 @@ import { EditorElement, BannerSize } from "../../types";
 import { snapToGrid } from "./gridCore";
 
 /**
- * Calculates the ideal position for a linked element across different canvas sizes
- * based on percentages, respecting canvas boundaries
+ * Calcula a posição ideal para um elemento vinculado em diferentes tamanhos de canvas
+ * com base em porcentagens, respeitando os limites do canvas
  */
 export const calculateSmartPosition = (
   element: EditorElement,
   sourceSize: BannerSize,
   targetSize: BannerSize
 ): { x: number; y: number; width: number; height: number } => {
-  // First, ensure we have percentage values
+  // Primeiro, garantir que temos valores percentuais
   const xPercent = element.style.xPercent !== undefined 
     ? element.style.xPercent 
     : (element.style.x / sourceSize.width) * 100;
@@ -28,42 +28,42 @@ export const calculateSmartPosition = (
     ? element.style.heightPercent 
     : (element.style.height / sourceSize.height) * 100;
 
-  // Calculate position based on percentages - maintain proportion relative to canvas
+  // Calcular posição baseada em porcentagens - manter proporção relativa à prancheta
   let x = (xPercent * targetSize.width) / 100;
   let y = (yPercent * targetSize.height) / 100;
   let width = (widthPercent * targetSize.width) / 100;
   let height = (heightPercent * targetSize.height) / 100;
 
-  // Ensure minimum dimensions
+  // Garantir dimensões mínimas
   width = Math.max(width, 10);
   height = Math.max(height, 10);
 
-  // Special handling for images to preserve aspect ratio
+  // Tratamento especial para imagens para preservar proporção
   if (element.type === "image" || element.type === "logo") {
-    // Get original aspect ratio
+    // Obter a proporção original
     const originalAspectRatio = 
       (element.style.originalWidth && element.style.originalHeight) 
         ? element.style.originalWidth / element.style.originalHeight
         : element.style.width / element.style.height;
     
-    // If original aspect ratio is available, use it to maintain proportion
+    // Se a proporção original está disponível, usá-la para manter a proporção
     if (originalAspectRatio) {
       height = width / originalAspectRatio;
     }
   }
 
-  // Bottom alignment detection and preservation
+  // Detecção e preservação de alinhamento inferior
   const isBottomAligned = Math.abs((element.style.y + element.style.height) - sourceSize.height) < 20;
   if (isBottomAligned) {
     y = targetSize.height - height;
   }
 
-  // Ensure the element stays within canvas boundaries
-  const margin = 0; // No margin for overflow
+  // Garantir que o elemento permaneça dentro dos limites do canvas
+  const margin = 0; // Sem margem para overflow
   x = Math.max(margin * -1, Math.min(x, targetSize.width - width - margin));
   y = Math.max(margin * -1, Math.min(y, targetSize.height - height - margin));
 
-  // Snap to grid
+  // Ajustar à grade
   x = snapToGrid(x);
   y = snapToGrid(y);
   width = snapToGrid(width);
@@ -73,8 +73,8 @@ export const calculateSmartPosition = (
 };
 
 /**
- * Maintains element position relative to cursor during drag operations
- * across different canvas sizes
+ * Mantém a posição do elemento em relação ao cursor durante operações de arrastar
+ * em diferentes tamanhos de canvas
  */
 export const calculateDragPosition = (
   mouseX: number,
@@ -84,18 +84,18 @@ export const calculateDragPosition = (
   element: EditorElement,
   canvasSize: BannerSize
 ): { x: number; y: number } => {
-  // Calculate new position based on mouse and offset
+  // Calcular nova posição com base no mouse e no deslocamento
   let newX = mouseX - dragOffsetX;
   let newY = mouseY - dragOffsetY;
 
-  // Restrict to canvas
+  // Restringir ao canvas
   const maxX = canvasSize.width - element.style.width;
   const maxY = canvasSize.height - element.style.height;
   
   newX = Math.max(0, Math.min(newX, maxX));
   newY = Math.max(0, Math.min(newY, maxY));
 
-  // Snap to grid
+  // Ajustar à grade
   newX = snapToGrid(newX);
   newY = snapToGrid(newY);
 
@@ -103,8 +103,8 @@ export const calculateDragPosition = (
 };
 
 /**
- * Intelligently updates linked elements when one is modified,
- * maintaining relative proportions and positions
+ * Atualiza elementos vinculados de forma inteligente quando um é modificado,
+ * mantendo proporções e posições relativas
  */
 export const updateLinkedElementsIntelligently = (
   elements: EditorElement[],
@@ -113,62 +113,62 @@ export const updateLinkedElementsIntelligently = (
 ): EditorElement[] => {
   if (!sourceElement.linkedElementId) return elements;
 
-  // Find the source size
+  // Encontrar o tamanho do elemento fonte
   const sourceSize = activeSizes.find(size => size.name === sourceElement.sizeId) || activeSizes[0];
 
-  // Check if source element is bottom-aligned
+  // Verificar se o elemento fonte está alinhado ao fundo
   const isBottomAligned = Math.abs((sourceElement.style.y + sourceElement.style.height) - sourceSize.height) < 20;
 
-  // Calculate percentage values from source element
-  const xPercent = (sourceElement.style.x / sourceSize.width) * 100;
-  const yPercent = (sourceElement.style.y / sourceSize.height) * 100;
-  const widthPercent = (sourceElement.style.width / sourceSize.width) * 100;
-  const heightPercent = (sourceElement.style.height / sourceSize.height) * 100;
-
-  // Update all linked elements
+  // Atualizar todos os elementos vinculados
   return elements.map(el => {
-    // Skip if not linked to source element, is the source element, or is individually positioned
+    // Pular se não estiver vinculado ao elemento fonte, for o próprio elemento fonte ou estiver posicionado individualmente
     if (el.linkedElementId !== sourceElement.linkedElementId || 
         el.id === sourceElement.id || 
         el.isIndividuallyPositioned) {
       return el;
     }
 
-    // Find the target size
+    // Encontrar o tamanho do elemento alvo
     const targetSize = activeSizes.find(size => size.name === el.sizeId) || activeSizes[0];
     
-    // Apply percentage values to target size
+    // Atualizar os valores percentuais com base no elemento fonte
+    const xPercent = (sourceElement.style.x / sourceSize.width) * 100;
+    const yPercent = (sourceElement.style.y / sourceSize.height) * 100;
+    const widthPercent = (sourceElement.style.width / sourceSize.width) * 100;
+    const heightPercent = (sourceElement.style.height / sourceSize.height) * 100;
+    
+    // Aplicar essas porcentagens ao tamanho da prancheta alvo
     let x = (xPercent * targetSize.width) / 100;
     let y = (yPercent * targetSize.height) / 100;
     let width = (widthPercent * targetSize.width) / 100;
     let height = (heightPercent * targetSize.height) / 100;
     
-    // Ensure minimum dimensions
+    // Assegurar que as dimensões mínimas são mantidas
     width = Math.max(width, 10);
     height = Math.max(height, 10);
     
-    // Special handling for images
+    // Tratamento especial para imagens
     if (el.type === "image" || el.type === "logo") {
       const aspectRatio = sourceElement.style.width / sourceElement.style.height;
       height = width / aspectRatio;
     }
     
-    // If source element is bottom-aligned, ensure target is also
+    // Se o elemento original estiver alinhado ao fundo, garantir que este também esteja
     if (isBottomAligned) {
       y = targetSize.height - height;
     }
     
-    // Ensure element stays within boundaries
+    // Garantir que o elemento permanece dentro dos limites
     x = Math.max(0, Math.min(x, targetSize.width - width));
     y = Math.max(0, Math.min(y, targetSize.height - height));
     
-    // Snap to grid
+    // Ajustar à grade
     x = snapToGrid(x);
     y = snapToGrid(y);
     width = snapToGrid(width);
     height = snapToGrid(height);
     
-    // Update element with new positions
+    // Atualizar elemento com novas posições
     return {
       ...el,
       style: {
@@ -177,7 +177,7 @@ export const updateLinkedElementsIntelligently = (
         y: y,
         width: width,
         height: height,
-        // Update percentage values
+        // Atualizar valores percentuais
         xPercent: xPercent,
         yPercent: yPercent,
         widthPercent: widthPercent,

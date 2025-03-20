@@ -201,7 +201,6 @@ export const createLinkedVersions = (
   // Update the original element with the linked ID and percentage values
   const updatedElement = {
     ...element,
-    sizeId: selectedSize.name,
     linkedElementId: linkedId,
     style: {
       ...element.style,

@@ -1,4 +1,3 @@
-
 import { BannerSize, CanvasNavigationMode, EditorElement } from "../types";
 import { ElementRenderer } from "../ElementRenderer";
 import { ElementHandles } from "./ElementHandles";
@@ -19,7 +18,6 @@ interface CanvasElementProps {
   hoveredContainer: string | null;
   canvasNavMode: CanvasNavigationMode;
   zIndex?: number;
-  zoomLevel?: number;
 }
 
 export const CanvasElement = ({
@@ -35,8 +33,7 @@ export const CanvasElement = ({
   handleContainerHoverEnd,
   hoveredContainer,
   canvasNavMode,
-  zIndex = 1,
-  zoomLevel = 1
+  zIndex = 1
 }: CanvasElementProps) => {
   
   const isHovered = hoveredContainer === element.id;
@@ -64,20 +61,17 @@ export const CanvasElement = ({
   };
   
   // If element has percentage values and needs to be adjusted for this canvas size
-  if ((element.style.xPercent !== undefined && 
+  if (element.style.xPercent !== undefined && 
       element.style.yPercent !== undefined && 
       element.style.widthPercent !== undefined && 
       element.style.heightPercent !== undefined &&
-      element.sizeId !== canvasSize.name) || 
-      (element.linkedElementId && element.sizeId !== canvasSize.name)) {
+      element.sizeId !== canvasSize.name) {
     
     // Find the source size (the size this element was originally created for)
     const sourceSize = {
       name: element.sizeId || 'unknown',
-      width: element.style.xPercent !== undefined ? 
-        (element.style.width / (element.style.widthPercent / 100)) : canvasSize.width,
-      height: element.style.yPercent !== undefined ? 
-        (element.style.height / (element.style.heightPercent / 100)) : canvasSize.height
+      width: canvasSize.width, // Fallback to current size if unknown
+      height: canvasSize.height
     };
     
     // Use calculateSmartPosition to adjust to this canvas
@@ -146,9 +140,8 @@ export const CanvasElement = ({
       draggable={false}
       data-element-id={element.id}
       data-element-type={element.type}
-      data-zoom-level={zoomLevel}
+      data-zoom-level={1}
       data-canvas-wrapper="true"
-      data-canvas-size={`${canvasSize.width}x${canvasSize.height}`}
       onMouseEnter={(e) => {
         if (isContainer) {
           handleContainerHover(e, element.id);
@@ -186,7 +179,6 @@ export const CanvasElement = ({
               hoveredContainer={hoveredContainer}
               canvasNavMode={canvasNavMode}
               zIndex={childIndex + 1}
-              zoomLevel={zoomLevel}
             />
           ))}
         </div>
@@ -196,7 +188,6 @@ export const CanvasElement = ({
         <ElementHandles 
           element={element} 
           handleResizeStart={handleResizeStart}
-          zoomLevel={zoomLevel}
         />
       )}
     </div>
