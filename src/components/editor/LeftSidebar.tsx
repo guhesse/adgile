@@ -36,7 +36,7 @@ import { useCanvas } from "./CanvasContext";
 import { EditorElement } from "./types";
 
 interface LeftSidebarProps {
-  editorMode: "email" | "banner";
+  editorMode: "email" | "banner" | "social" | "impressos";
 }
 
 // Navigation menu items data
@@ -44,8 +44,8 @@ const navItems = [
   { icon: <Crown className="w-4 h-4" />, label: "Brand", id: "brand" },
   { icon: <LayoutTemplate className="w-4 h-4" />, label: "Templates", id: "templates" },
   { icon: <Layers2 className="w-4 h-4" />, label: "Layers", id: "layers" },
-  { icon: <PictureInPicture2 className="w-4 h-4" />, label: "Slides", id: "slides" },
-  { icon: <Play className="w-4 h-4" />, label: "Animator", id: "animator" },
+  // { icon: <PictureInPicture2 className="w-4 h-4" />, label: "Slides", id: "slides" },
+  // { icon: <Play className="w-4 h-4" />, label: "Animator", id: "animator" },
   { icon: <File className="w-4 h-4" />, label: "Sizes", id: "sizes" },
 ];
 
@@ -66,11 +66,11 @@ const componentIcons = {
 
 export const LeftSidebar = ({ editorMode }: LeftSidebarProps) => {
   const [activePanel, setActivePanel] = useState<string>("elements"); // Default to elements panel
-  const { 
+  const {
     elements,
-    selectedElement, 
+    selectedElement,
     setSelectedElement,
-    removeElement, 
+    removeElement,
     handleAddElement,
     handleAddLayout,
     updateElementStyle
@@ -79,7 +79,7 @@ export const LeftSidebar = ({ editorMode }: LeftSidebarProps) => {
   // Show sizes panel automatically when in banner mode
   useEffect(() => {
     if (editorMode === "banner" && activePanel !== "sizes") {
-      setActivePanel("sizes");
+      setActivePanel("add");
     }
   }, [editorMode]);
 
