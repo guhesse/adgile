@@ -7,6 +7,7 @@ import { useCanvasKeyboardShortcuts } from "./canvas/hooks/useCanvasKeyboardShor
 import { useCanvasZoomAndPan } from "./canvas/hooks/useCanvasZoomAndPan";
 import { useCanvasInitialization } from "./canvas/hooks/useCanvasInitialization";
 import { constrainAllElements } from "./utils/containerUtils";
+import { createLinkedVersions } from "./context/responsiveOperations";
 
 export const CanvasWorkspace = () => {
   const {
@@ -83,7 +84,7 @@ export const CanvasWorkspace = () => {
     activeSizes
   });
 
-  // Effect to ensure all elements stay within the bounds of the artboard
+  // Effect to ensure all elements stay within artboard bounds
   useEffect(() => {
     if (elements.length > 0) {
       const constrainedElements = constrainAllElements(elements, selectedSize.width, selectedSize.height);
@@ -95,7 +96,39 @@ export const CanvasWorkspace = () => {
     }
   }, [selectedSize, elements.length]);
 
-  // Modify the handleCanvasMouseDown to clear the selection when clicking on the canvas
+  // Create linked versions for elements without sizeId when adding new sizes
+  useEffect(() => {
+    if (activeSizes.length > 1 && elements.length > 0) {
+      let elementsNeedUpdate = false;
+      const updatedElements = [...elements];
+      
+      // Check for elements created before additional sizes were added
+      elements.forEach((element, index) => {
+        if (!element.linkedElementId && (!element.sizeId || element.sizeId === activeSizes[0].name)) {
+          // Create linked versions for this element
+          const linkedElements = createLinkedVersions(element, activeSizes, activeSizes[0]);
+          
+          if (linkedElements.length > 1) {
+            // Replace the original element with its updated version (first in the array)
+            updatedElements[index] = linkedElements[0];
+            
+            // Add the newly created linked versions
+            linkedElements.slice(1).forEach(linkedEl => {
+              updatedElements.push(linkedEl);
+            });
+            
+            elementsNeedUpdate = true;
+          }
+        }
+      });
+      
+      if (elementsNeedUpdate) {
+        setElements(updatedElements);
+      }
+    }
+  }, [activeSizes.length, elements]);
+
+  // Modify the handleCanvasMouseDown to clear selection when clicking on canvas
   const handleCanvasClick = (e: React.MouseEvent) => {
     // Prevent default browser behavior
     e.preventDefault();
