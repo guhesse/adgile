@@ -1,4 +1,3 @@
-
 import { EditorElement, BannerSize } from '../../types';
 import { toast } from 'sonner';
 import { parsePSDFile } from './psdParser';
@@ -21,7 +20,11 @@ export type { PSDFileData } from './types';
 export const importPSDFile = async (file: File, selectedSize: BannerSize): Promise<EditorElement[]> => {
   try {
     // Parse the PSD file
-    const { psd, psdData, extractedImages } = await parsePSDFile(file);
+    const { psd, psdData, extractedImages, textLayers } = await parsePSDFile(file);
+    
+    // Log summary of extracted assets
+    console.log(`PSD Parser extraiu ${extractedImages.size} imagens e ${textLayers?.size || 0} camadas de texto`);
+    console.log(`Imagens extraídas: ${Array.from(extractedImages.keys()).join(', ')}`);
     
     // Extract background color if available
     let backgroundColor = '#ffffff'; // Default white
@@ -80,14 +83,17 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
     // try to use the tree() to get layers
     if (elements.length === 0 && psd.tree && typeof psd.tree === 'function') {
       const tree = psd.tree();
+      console.log("Processando árvore do PSD para extração de camadas");
       
       // Check if the tree has descendants method
       if (tree.descendants && typeof tree.descendants === 'function') {
         const descendants = tree.descendants();
+        console.log(`Encontrados ${descendants.length} descendentes na árvore do PSD`);
         
         for (const node of descendants) {
           if (!node.isGroup || (typeof node.isGroup === 'function' && !node.isGroup())) {
-            const element = await processLayer(node.layer || node, selectedSize, psdData, extractedImages);
+            console.log(`Processando nó: ${node.name}`);
+            const element = await processLayer(node, selectedSize, psdData, extractedImages);
             if (element) {
               // Assign 'global' sizeId for visibility in all artboards
               element.sizeId = 'global';
@@ -100,7 +106,8 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
         const processChildrenRecursively = async (children: any[]) => {
           for (const child of children) {
             if (!child.isGroup || (typeof child.isGroup === 'function' && !child.isGroup())) {
-              const element = await processLayer(child.layer || child, selectedSize, psdData, extractedImages);
+              console.log(`Processando filho: ${child.name}`);
+              const element = await processLayer(child, selectedSize, psdData, extractedImages);
               if (element) {
                 // Assign 'global' sizeId for visibility in all artboards
                 element.sizeId = 'global';
@@ -173,6 +180,8 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
     // Log summary of imported elements
     const textElements = elements.filter(el => el.type === 'text').length;
     const imageElements = elements.filter(el => el.type === 'image').length;
+    
+    console.log(`Importação finalizada: ${elements.length} elementos (${textElements} textos, ${imageElements} imagens)`);
     
     if (elements.length === 0) {
       toast.warning("Nenhuma camada visível encontrada no arquivo PSD.");

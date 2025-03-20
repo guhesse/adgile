@@ -1,101 +1,129 @@
+import { PSDFileData } from './types';
 
-import { PSDFileData, PSDMetadata } from "./types";
+/**
+ * Prefixo para chaves no localStorage
+ */
+const PSD_DATA_PREFIX = 'adgile_psd_data_';
+const PSD_IMAGE_PREFIX = 'adgile_psd_image_';
 
-// Get PSD metadata from storage
-export const getPSDMetadata = (): string[] => {
+/**
+ * Salva os dados do PSD no localStorage
+ * @param filename Nome do arquivo PSD
+ * @param data Dados do PSD a serem salvos
+ * @returns A chave usada para salvar os dados
+ */
+export const savePSDDataToStorage = (filename: string, data: PSDFileData): string => {
+  const cleanName = filename.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+  const key = `${PSD_DATA_PREFIX}${cleanName}_${Date.now()}`;
+  
   try {
-    const keys = localStorage.getItem('psd_metadata');
-    return keys ? JSON.parse(keys) : [];
-  } catch (error) {
-    console.error('Error reading PSD metadata from storage:', error);
-    return [];
-  }
-};
-
-// Save PSD metadata to storage
-export const savePSDMetadata = (storageKeys: string[]): void => {
-  try {
-    localStorage.setItem('psd_metadata', JSON.stringify(storageKeys));
-  } catch (error) {
-    console.error('Error saving PSD metadata to storage:', error);
-  }
-};
-
-// For backward compatibility
-export const getPSDStorageKeys = getPSDMetadata;
-
-// Save PSD data to storage
-export const savePSDDataToStorage = (key: string, data: PSDFileData): string => {
-  try {
-    localStorage.setItem(key, JSON.stringify(data));
+    // Limitar o tamanho dos dados a serem armazenados
+    const safeData = {
+      ...data,
+      layers: data.layers.map(layer => ({
+        ...layer,
+        // Limitar tamanho dos dados de imagem para evitar estouro de armazenamento
+        imageData: layer.imageData && layer.imageData.length > 1000 ? 
+          layer.imageData.substring(0, 100) + '...[truncated]' : 
+          layer.imageData
+      }))
+    };
     
-    // Update metadata list
-    const metadataList = getPSDMetadata();
-    if (!metadataList.includes(key)) {
-      metadataList.push(key);
-      savePSDMetadata(metadataList);
+    localStorage.setItem(key, JSON.stringify(safeData));
+    console.log(`PSD data saved to localStorage with key: ${key}`);
+    
+    // Atualizar o registro de metadados
+    updatePSDMetadata(key, filename);
+    
+    return key;
+  } catch (error) {
+    console.error('Error saving PSD data to localStorage:', error);
+    
+    // Em caso de erro, tentar uma versão ainda mais simplificada sem os dados de imagem
+    try {
+      const minimalData = {
+        ...data,
+        layers: data.layers.map(layer => ({
+          ...layer,
+          imageData: undefined
+        }))
+      };
+      
+      localStorage.setItem(key, JSON.stringify(minimalData));
+      updatePSDMetadata(key, filename);
+      return key;
+    } catch (minimalError) {
+      console.error('Erro ao salvar dados mínimos do PSD:', minimalError);
+      throw minimalError;
     }
-    return key;
-  } catch (error) {
-    console.error('Error saving PSD data to storage:', error);
-    return key;
   }
 };
 
-// Get PSD data from storage
-export const getPSDDataFromStorage = (key: string): PSDFileData | null => {
+/**
+ * Salva uma imagem no localStorage
+ * @param imageData Dados da imagem (base64 ou URL)
+ * @param layerName Nome da camada que contém a imagem
+ * @returns A chave usada para salvar a imagem
+ */
+export const saveImageToStorage = (imageData: string, layerName: string): string => {
+  const cleanName = layerName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+  const key = `${PSD_IMAGE_PREFIX}${cleanName}_${Date.now()}`;
+  
   try {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : null;
-  } catch (error) {
-    console.error('Error reading PSD data from storage:', error);
-    return null;
-  }
-};
-
-// Remove PSD data from storage
-export const removePSDData = (key: string): void => {
-  try {
-    localStorage.removeItem(key);
-    
-    // Update metadata list
-    const metadataList = getPSDMetadata();
-    savePSDMetadata(metadataList.filter(k => k !== key));
-  } catch (error) {
-    console.error('Error removing PSD data from storage:', error);
-  }
-};
-
-// For backward compatibility
-export const removePSDDataFromStorage = removePSDData;
-
-// Save image data to storage and return a key
-export const saveImageToStorage = (imageData: string, name: string): string => {
-  try {
-    const key = `img_${Date.now()}_${name.replace(/[^a-zA-Z0-9]/g, '_')}`;
     localStorage.setItem(key, imageData);
-    
-    // Update an image index if needed
-    const imageIndex = localStorage.getItem('image_index');
-    const index = imageIndex ? JSON.parse(imageIndex) : [];
-    if (!index.includes(key)) {
-      index.push(key);
-      localStorage.setItem('image_index', JSON.stringify(index));
-    }
-    
+    console.log(`Image saved to localStorage with key: ${key}`);
     return key;
   } catch (error) {
-    console.error('Error saving image to storage:', error);
-    return '';
+    console.error('Error saving image to localStorage:', error);
+    throw error;
   }
 };
 
-// Get image data from storage
+/**
+ * Recupera uma imagem do localStorage
+ * @param key Chave da imagem no localStorage
+ * @returns Dados da imagem ou null se não encontrada
+ */
 export const getImageFromStorage = (key: string): string | null => {
-  try {
-    return localStorage.getItem(key);
-  } catch (error) {
-    console.error('Error getting image from storage:', error);
-    return null;
+  return localStorage.getItem(key);
+};
+
+/**
+ * Atualiza os metadados dos PSDs salvos
+ * @param key Chave do PSD no localStorage
+ * @param filename Nome do arquivo PSD
+ */
+const updatePSDMetadata = (key: string, filename: string): void => {
+  const metadata = getPSDMetadata();
+  metadata.push({
+    key,
+    filename,
+    date: new Date().toISOString()
+  });
+  
+  // Manter apenas os 10 mais recentes
+  while (metadata.length > 10) {
+    metadata.shift();
   }
+  
+  localStorage.setItem('adgile_psd_metadata', JSON.stringify(metadata));
+};
+
+/**
+ * Recupera metadados dos PSDs salvos
+ * @returns Lista de metadados dos PSDs
+ */
+export const getPSDMetadata = (): Array<{key: string, filename: string, date: string}> => {
+  const metadata = localStorage.getItem('adgile_psd_metadata');
+  return metadata ? JSON.parse(metadata) : [];
+};
+
+/**
+ * Recupera dados de um PSD do localStorage
+ * @param key Chave do PSD no localStorage
+ * @returns Dados do PSD ou null se não encontrado
+ */
+export const getPSDDataFromStorage = (key: string): PSDFileData | null => {
+  const data = localStorage.getItem(key);
+  return data ? JSON.parse(data) : null;
 };

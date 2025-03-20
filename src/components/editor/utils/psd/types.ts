@@ -1,4 +1,3 @@
-
 /**
  * Interface for storing information about a PSD file
  */
@@ -82,27 +81,27 @@ export interface PSDLayerInfo {
 }
 
 /**
- * Representa o estilo de uma camada de texto
+ * Interface representando o estilo de uma camada de texto
  */
 export interface TextLayerStyle {
   text: string;
   fontFamily: string;
   fontSize: number;
-  fontWeight: 'normal' | 'bold' | string;
-  fontStyle: 'normal' | 'italic' | string;
+  fontWeight: string;
+  fontStyle: string;
   color: string;
-  alignment: 'left' | 'center' | 'right' | 'justify' | string;
-  letterSpacing: number; // em EM
-  lineHeight: number; // multiplicador da altura da fonte
+  alignment: string;
+  letterSpacing: number;
+  lineHeight: number;
 }
 
 /**
- * Interface for PSD layer
+ * Interface para uma camada de PSD
  */
 export interface PSDLayer {
   id: string;
   name: string;
-  type: 'image' | 'text' | 'shape' | 'group';
+  type: 'text' | 'image' | 'shape' | 'group';
   x: number;
   y: number;
   width: number;

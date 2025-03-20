@@ -1,307 +1,195 @@
-
 import { EditorElement, BannerSize } from '../../types';
-import { detectLayerType } from './layerDetection';
-import { createTextElement, createImageElement, createFallbackElement } from './elementCreation';
-import { PSDFileData, PSDLayerInfo, PSDLayer } from './types';
+import { PSDFileData, TextLayerStyle } from './types';
+import { addFontImportToDocument } from './fontMapper';
 import { saveImageToStorage } from './storage';
-import { convertPSDColorToHex, convertPSDAlignmentToCSS } from './formatters';
 
 /**
- * Process a single PSD layer into an editor element
- * @param layer The PSD layer
- * @param selectedSize The selected banner size
- * @param psdData The PSD data to update with layer info
- * @param extractedImages Optional map of pre-extracted images
- * @returns The created element, or null if creation failed
+ * Gera um ID único usando timestamp e um valor aleatório
+ * @returns Um ID único para o elemento
  */
-export const processLayer = async (
+const generateUniqueId = (): string => {
+  return `layer_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 9)}`;
+};
+
+/**
+ * Cria um elemento de imagem a partir de uma camada
+ * @param layer A camada do PSD
+ * @param selectedSize O tamanho do banner selecionado
+ * @param preExtractedImage Imagem pré-extraída, se disponível
+ */
+const createImageElement = async (
   layer: any, 
   selectedSize: BannerSize, 
-  psdData: PSDFileData,
-  extractedImages?: Map<string, string>
+  preExtractedImage?: string
 ): Promise<EditorElement | null> => {
   try {
-    // Skip hidden layers
-    if (layer.hidden && typeof layer.hidden !== 'function') {
-      console.log(`Ignorando camada oculta: ${layer.name || 'sem nome'}`);
-      return null;
-    }
-    if (typeof layer.hidden === 'function' && layer.hidden()) {
-      console.log(`Ignorando camada oculta (função): ${layer.name || 'sem nome'}`);
-      return null;
-    }
+    const id = generateUniqueId();
     
-    // Check if this is a group layer with no dimensions
-    if (layer.isGroup && typeof layer.isGroup === 'function' && layer.isGroup()) {
-      console.log(`Ignorando camada de grupo: ${layer.name || 'sem nome'}`);
-      return null;
+    // Extrair posição e dimensões
+    let x = 0, y = 0, width = 100, height = 100;
+    
+    // Tentar obter coordenadas a partir da camada
+    if (layer.left !== undefined && layer.top !== undefined &&
+        layer.right !== undefined && layer.bottom !== undefined) {
+      x = layer.left;
+      y = layer.top;
+      width = layer.right - layer.left;
+      height = layer.bottom - layer.top;
     }
     
-    console.log(`Processando camada: ${layer.name || 'sem nome'}`);
-    
-    // Get layer export data to check dimensions
-    let exportData;
-    try {
-      exportData = layer.export();
-      console.log(`Dados de exportação da camada:`, exportData);
-      
-      if (!exportData.width || !exportData.height || exportData.width <= 0 || exportData.height <= 0) {
-        console.log(`Ignorando camada com dimensões inválidas: ${layer.name || 'sem nome'}`);
-        return null;
-      }
-    } catch (exportError) {
-      console.error(`Erro ao exportar dados da camada: ${layer.name || 'sem nome'}`, exportError);
-      return null;
-    }
-    
-    // Check layer type
-    console.log(`Detectando tipo da camada: ${layer.name || 'sem nome'}`);
-    const layerType = detectLayerType(layer);
-    console.log(`Tipo detectado: ${layerType}`);
-    
-    // Create element based on type
-    let element: EditorElement | null = null;
-    
-    if (layerType === 'text') {
-      console.log(`Criando elemento de texto para camada: ${layer.name || 'sem nome'}`);
-      element = await createTextElement(layer, selectedSize);
-      
-      if (element) {
-        // Extract text styling with enhanced logging
-        console.log(`Extraindo estilos de texto para: ${layer.name || 'sem nome'}`);
+    // Se não temos uma imagem pré-extraída e não conseguimos extrair uma nova, retornar null
+    if (!preExtractedImage) {
+      if (layer.layer && layer.layer.image) {
         try {
-          // Log raw layer object for better debugging
-          console.log(`Camada de texto completa:`, layer);
-          
-          // Extract text information directly from layer if possible
-          if (layer.text) {
-            console.log(`Propriedades de texto (layer.text):`, layer.text);
-            
-            // NEW: Check if text is in the format we're looking for from the example
-            if (typeof layer.text === 'object' && layer.text.value && layer.text.font) {
-              console.log(`FOUND EXACT TEXT FORMAT WE'RE LOOKING FOR:`, layer.text);
-              console.log(`Text Value: "${layer.text.value}"`);
-              console.log(`Font Name: ${layer.text.font.name}`);
-              console.log(`Font Sizes:`, layer.text.font.sizes);
-              console.log(`Font Colors:`, layer.text.font.colors);
-              console.log(`Text Alignment:`, layer.text.font.alignment);
-              
-              // Update the element content with text value
-              element.content = layer.text.value;
-              
-              // Apply font styling
-              if (layer.text.font.name) {
-                element.style.fontFamily = layer.text.font.name;
-                console.log(`Applying fontFamily: ${element.style.fontFamily}`);
-              }
-              
-              // Apply font size (use first size in the array)
-              if (layer.text.font.sizes && layer.text.font.sizes.length > 0) {
-                element.style.fontSize = layer.text.font.sizes[0];
-                console.log(`Applying fontSize: ${element.style.fontSize}`);
-              }
-              
-              // Apply color (use first color in the array)
-              if (layer.text.font.colors && layer.text.font.colors.length > 0) {
-                const colorArray = layer.text.font.colors[0];
-                element.style.color = convertPSDColorToHex(colorArray);
-                console.log(`Applying color: ${element.style.color}`);
-              }
-              
-              // Apply text alignment (use first alignment in the array)
-              if (layer.text.font.alignment && layer.text.font.alignment.length > 0) {
-                const alignment = layer.text.font.alignment[0];
-                element.style.textAlign = convertPSDAlignmentToCSS(alignment);
-                console.log(`Applying textAlign: ${element.style.textAlign}`);
-              }
-            }
+          const png = layer.layer.image.toPng();
+          if (png) {
+            preExtractedImage = png.src || png;
+            console.log(`Imagem extraída diretamente da camada: ${layer.name}`);
           }
-          
-          // If we haven't found the exact format, try other methods
-          if (!element.style.fontFamily) {
-            // Check if the layer has the text property in the expected format from psd.js
-            if (layer.text && layer.text.value) {
-              console.log(`Texto encontrado: "${layer.text.value}"`);
-              
-              // Update element content with the actual text
-              element.content = layer.text.value;
-              
-              // Extract font information
-              if (layer.text.font) {
-                console.log(`Informações de fonte encontradas:`, layer.text.font);
-                
-                // Font family
-                if (layer.text.font.name) {
-                  element.style.fontFamily = layer.text.font.name;
-                  console.log(`Aplicando fontFamily: ${element.style.fontFamily}`);
-                }
-                
-                // Font size - get first size from sizes array
-                if (layer.text.font.sizes && layer.text.font.sizes.length > 0) {
-                  const fontSize = layer.text.font.sizes[0];
-                  element.style.fontSize = fontSize;
-                  console.log(`Aplicando fontSize: ${element.style.fontSize}`);
-                }
-                
-                // Font color - get first color from colors array and convert to hex
-                if (layer.text.font.colors && layer.text.font.colors.length > 0) {
-                  const colorArray = layer.text.font.colors[0];
-                  element.style.color = convertPSDColorToHex(colorArray);
-                  console.log(`Aplicando color: ${element.style.color}`);
-                }
-                
-                // Text alignment - get from alignment array
-                if (layer.text.font.alignment && layer.text.font.alignment.length > 0) {
-                  const alignment = layer.text.font.alignment[0].toLowerCase();
-                  // Convert to our supported alignment values
-                  element.style.textAlign = convertPSDAlignmentToCSS(alignment);
-                  console.log(`Aplicando textAlign: ${element.style.textAlign}`);
-                }
-              }
-            } else {
-              // Fallback to old style extraction method
-              console.log(`Usando método alternativo de extração de estilo`);
-              
-              // Get text styling information if available
-              if (layer.text) {
-                const textStyle = {
-                  fontSize: layer.text.fontSize || layer.text.size,
-                  fontFamily: layer.text.font,
-                  fontWeight: layer.text.fontWeight,
-                  color: layer.text.color,
-                  textAlign: layer.text.alignment,
-                  lineHeight: layer.text.leading,
-                  letterSpacing: layer.text.tracking,
-                  fontStyle: layer.text.italic ? 'italic' : 'normal',
-                  textDecoration: layer.text.underline ? 'underline' : 'none'
-                };
-                
-                console.log(`Estilos de texto encontrados:`, textStyle);
-                
-                // Apply text styles to the element
-                if (textStyle.fontSize) {
-                  element.style.fontSize = typeof textStyle.fontSize === 'number' 
-                    ? textStyle.fontSize 
-                    : parseInt(textStyle.fontSize);
-                  console.log(`Aplicando fontSize: ${element.style.fontSize}`);
-                }
-                
-                if (textStyle.fontFamily) {
-                  element.style.fontFamily = textStyle.fontFamily;
-                  console.log(`Aplicando fontFamily: ${element.style.fontFamily}`);
-                }
-                
-                if (textStyle.fontWeight) {
-                  // Convert PSD font weight to CSS weight
-                  const weight = typeof textStyle.fontWeight === 'string' 
-                    ? textStyle.fontWeight.toLowerCase()
-                    : textStyle.fontWeight;
-                    
-                  // Convert named weights to values
-                  if (weight === 'bold' || weight >= 700) {
-                    element.style.fontWeight = 'bold';
-                  } else if (weight === 'medium' || (weight >= 500 && weight < 700)) {
-                    element.style.fontWeight = 'medium';
-                  } else {
-                    element.style.fontWeight = 'normal';
-                  }
-                  
-                  console.log(`Aplicando fontWeight: ${element.style.fontWeight}`);
-                }
-                
-                if (textStyle.color) {
-                  element.style.color = textStyle.color;
-                  console.log(`Aplicando color: ${element.style.color}`);
-                }
-                
-                if (textStyle.textAlign) {
-                  // Convert PSD alignment to editor alignment
-                  const alignment = textStyle.textAlign.toString().toLowerCase();
-                  if (alignment.includes('left')) {
-                    element.style.textAlign = 'left';
-                  } else if (alignment.includes('right')) {
-                    element.style.textAlign = 'right';
-                  } else if (alignment.includes('center')) {
-                    element.style.textAlign = 'center';
-                  }
-                  // Remove 'justify' as it's not a supported option in our type
-                  
-                  console.log(`Aplicando textAlign: ${element.style.textAlign}`);
-                }
-                
-                if (textStyle.lineHeight) {
-                  // Convert to number if needed
-                  element.style.lineHeight = typeof textStyle.lineHeight === 'number'
-                    ? textStyle.lineHeight
-                    : parseFloat(textStyle.lineHeight);
-                  
-                  console.log(`Aplicando lineHeight: ${element.style.lineHeight}`);
-                }
-                
-                if (textStyle.letterSpacing) {
-                  // Convert to number if needed
-                  element.style.letterSpacing = typeof textStyle.letterSpacing === 'number'
-                    ? textStyle.letterSpacing
-                    : parseFloat(textStyle.letterSpacing);
-                  
-                  console.log(`Aplicando letterSpacing: ${element.style.letterSpacing}`);
-                }
-                
-                if (textStyle.fontStyle) {
-                  element.style.fontStyle = textStyle.fontStyle;
-                  console.log(`Aplicando fontStyle: ${element.style.fontStyle}`);
-                }
-                
-                if (textStyle.textDecoration) {
-                  element.style.textDecoration = textStyle.textDecoration;
-                  console.log(`Aplicando textDecoration: ${element.style.textDecoration}`);
-                }
-              }
-            }
-          }
-          
-          // Store text style info in PSD data
-          const layerInfo: PSDLayer = {
-            id: element.id,
-            name: layer.name || 'Text Layer',
-            type: 'text',
-            x: element.style.x,
-            y: element.style.y,
-            width: element.style.width,
-            height: element.style.height,
-            textContent: element.content as string,
-            textStyle: {
-              fontSize: element.style.fontSize || 14,
-              fontFamily: element.style.fontFamily || 'Arial',
-              fontWeight: element.style.fontWeight || 'normal',
-              color: element.style.color || '#000000',
-              alignment: element.style.textAlign || 'left',
-              lineHeight: element.style.lineHeight || 1.2,
-              letterSpacing: element.style.letterSpacing || 0,
-              fontStyle: element.style.fontStyle || 'normal'
-            }
-          };
-          
-          psdData.layers.push(layerInfo);
-          console.log(`Estilos de texto salvos nos dados do PSD`);
-        } catch (textStyleError) {
-          console.error('Erro ao extrair estilos de texto:', textStyleError);
-          
-          // Still add basic layer info to PSD data
-          const layerInfo: PSDLayer = {
-            id: element.id,
-            name: layer.name || 'Text Layer',
-            type: 'text',
-            x: element.style.x,
-            y: element.style.y,
-            width: element.style.width,
-            height: element.style.height,
-            textContent: element.content as string
-          };
-          
-          psdData.layers.push(layerInfo);
+        } catch (error) {
+          console.error(`Erro ao extrair imagem da camada: ${layer.name}`, error);
         }
       }
+      
+      if (!preExtractedImage && layer.toPng) {
+        try {
+          const png = layer.toPng();
+          if (png) {
+            preExtractedImage = png.src || png;
+            console.log(`Imagem extraída via toPng(): ${layer.name}`);
+          }
+        } catch (error) {
+          console.error(`Erro ao extrair imagem via toPng() da camada: ${layer.name}`, error);
+        }
+      }
+      
+      // Se ainda não temos uma imagem, não podemos criar um elemento de imagem
+      if (!preExtractedImage) {
+        console.log(`Não foi possível extrair imagem da camada: ${layer.name}`);
+        return null;
+      }
+    }
+    
+    console.log(`Criando elemento de imagem para: ${layer.name}`);
+    
+    // Criar elemento de imagem com os dados extraídos
+    return {
+      id,
+      type: 'image',
+      src: preExtractedImage,
+      alt: layer.name,
+      content: preExtractedImage, // Importante: isso garante que a imagem seja usada corretamente
+      sizeId: 'global',
+      style: {
+        x,
+        y,
+        width,
+        height,
+        rotation: 0,
+        opacity: 1,
+        zIndex: 0,
+        xPercent: 0,
+        yPercent: 0,
+        widthPercent: 0,
+        heightPercent: 0
+      }
+    };
+  } catch (error) {
+    console.error(`Erro ao criar elemento de imagem para ${layer.name}:`, error);
+    return null;
+  }
+};
+
+
+/**
+ * Processa uma camada do PSD e a converte em um elemento de editor
+ * @param layer A camada do PSD
+ * @param selectedSize O tamanho do banner selecionado
+ * @param psdData Dados do arquivo PSD
+ * @param extractedImages Imagens extraídas do PSD
+ * @returns Um elemento de editor ou null se a camada não puder ser processada
+ */
+export const processLayer = async (
+  layer: any,
+  selectedSize: BannerSize,
+  psdData: PSDFileData,
+  extractedImages: Map<string, string>
+): Promise<EditorElement | null> => {
+  try {
+    // Se a camada não tiver nome, não podemos processá-la corretamente
+    if (!layer.name) {
+      console.log("Camada sem nome, ignorando");
+      return null;
+    }
+
+    console.log(`Processando camada: "${layer.name}"`);
+    
+    // Encontrar a camada correspondente nos dados do PSD
+    const psdLayer = psdData.layers.find(l => l.name === layer.name); 
+    
+    // Determinar o tipo de camada
+    let layerType = 'unknown';
+    
+    if (psdLayer && psdLayer.type === 'text') {
+      layerType = 'text';
+    } else if (extractedImages && extractedImages.has(layer.name)) {
+      layerType = 'image';
+    }
+    
+    console.log(`Tipo de camada determinado para "${layer.name}": ${layerType}`);
+    
+    let element: EditorElement | null = null;
+    
+    // Processar camada de texto
+    if (layerType === 'text') {
+      console.log(`Processando camada de texto: ${layer.name}`);
+      
+      const textStyle = psdLayer?.textStyle as TextLayerStyle;
+      if (!textStyle) {
+        console.error(`Estilo de texto não encontrado para ${layer.name}`);
+        return null;
+      }
+
+      // Pré-carregar a fonte encontrada na camada de texto
+      if (textStyle.fontFamily) {
+        console.log(`Pré-carregando fonte: ${textStyle.fontFamily}`);
+        addFontImportToDocument(textStyle.fontFamily);
+      }
+      
+      // Extrair valores de posição e tamanho (com valores padrão de segurança)
+      const x = psdLayer?.x || 0;
+      const y = psdLayer?.y || 0;
+      const width = psdLayer?.width || 100;
+      const height = psdLayer?.height || 20;
+      
+      // Criar elemento de texto
+      element = {
+        id: generateUniqueId(),
+        type: 'text',
+        content: textStyle.text || layer.name,
+        sizeId: 'global',
+        style: {
+          x,
+          y,
+          width,
+          height,
+          rotation: 0,
+          fontFamily: textStyle.fontFamily || 'Roboto',
+          fontSize: textStyle.fontSize || 16,
+          fontWeight: textStyle.fontWeight || 'normal',
+          fontStyle: textStyle.fontStyle || 'normal',
+          textAlign: textStyle.alignment || 'left',
+          color: textStyle.color || '#000000',
+          opacity: 1,
+          zIndex: 1,
+          letterSpacing: textStyle.letterSpacing || 0,
+          lineHeight: textStyle.lineHeight || 1.2,
+          xPercent: 0,
+          yPercent: 0,
+          widthPercent: 0,
+          heightPercent: 0
+        }
+      };
     } else if (layerType === 'image') {
       // Check if we already have this image pre-extracted
       let preExtractedImage: string | undefined;
@@ -321,7 +209,7 @@ export const processLayer = async (
           console.log(`Imagem salva no storage com chave: ${imageKey}`);
           
           // Add to PSD data
-          const layerInfo: PSDLayer = {
+          const layerInfo = {
             id: element.id,
             name: layer.name || 'Image Layer',
             type: 'image',
@@ -332,12 +220,15 @@ export const processLayer = async (
             imageData: element.content as string,
           };
           
-          psdData.layers.push(layerInfo);
+          // Só adiciona se não existir ainda
+          if (!psdData.layers.some(l => l.name === layerInfo.name)) {
+            psdData.layers.push(layerInfo);
+          }
         } catch (storageError) {
           console.error('Erro ao salvar imagem no storage:', storageError);
           
           // Still add the element but without storage reference
-          const layerInfo: PSDLayer = {
+          const layerInfo = {
             id: element.id,
             name: layer.name || 'Image Layer',
             type: 'image',
@@ -348,7 +239,10 @@ export const processLayer = async (
             imageData: element.content as string
           };
           
-          psdData.layers.push(layerInfo);
+          // Só adiciona se não existir ainda
+          if (!psdData.layers.some(l => l.name === layerInfo.name)) {
+            psdData.layers.push(layerInfo);
+          }
         }
       }
     } else {
@@ -370,17 +264,12 @@ export const processLayer = async (
         // First check if it could be treated as an image
         console.log(`Tentando extrair imagem da camada genérica`);
         element = await createImageElement(layer, selectedSize);
-        
-        // If image creation failed, create a fallback element
-        if (!element) {
-          console.log(`Criando elemento de fallback para camada genérica`);
-          element = createFallbackElement(layer, selectedSize);
-        }
+      
       }
       
       if (element) {
         // Add to PSD data
-        const layerInfo: PSDLayer = {
+        const layerInfo = {
           id: element.id,
           name: layer.name || 'Generic Layer',
           type: element.type as 'image' | 'text' | 'shape' | 'group',
@@ -392,33 +281,59 @@ export const processLayer = async (
         
         if (element.type === 'image' && element.content) {
           try {
-            layerInfo.imageData = element.content as string;
+            const imageInfo = {
+              ...layerInfo,
+              imageData: element.content as string
+            };
+            
+            // Só adiciona se não existir ainda
+            if (!psdData.layers.some(l => l.name === layerInfo.name)) {
+              psdData.layers.push(imageInfo);
+            }
+            
             console.log(`Imagem de camada genérica salva no storage`);
           } catch (storageError) {
             console.error('Erro ao salvar imagem de camada genérica no storage:', storageError);
-            layerInfo.imageData = element.content as string;
+            
+            const imageInfo = {
+              ...layerInfo,
+              imageData: element.content as string
+            };
+            
+            // Só adiciona se não existir ainda
+            if (!psdData.layers.some(l => l.name === layerInfo.name)) {
+              psdData.layers.push(imageInfo);
+            }
+          }
+        } else {
+          // Só adiciona se não existir ainda
+          if (!psdData.layers.some(l => l.name === layerInfo.name)) {
+            psdData.layers.push(layerInfo);
           }
         }
-        
-        psdData.layers.push(layerInfo);
-        console.log(`Informações da camada genérica adicionadas aos dados do PSD`);
       }
     }
     
     return element;
-  } catch (layerError) {
-    console.error(`Erro ao processar camada ${layer?.name || 'sem nome'}:`, layerError);
+  } catch (error) {
+    console.error(`Erro ao processar camada ${layer?.name || 'desconhecida'}:`, error);
     return null;
   }
 };
 
 /**
- * Calculate percentage values for element positioning
- * @param elements Array of editor elements
- * @param selectedSize The selected banner size
+ * Calcula os valores percentuais para posição e tamanho dos elementos
+ * @param elements Os elementos a serem processados
+ * @param selectedSize O tamanho do banner selecionado
  */
-export const calculatePercentageValues = (elements: EditorElement[], selectedSize: BannerSize): void => {
-  elements.forEach((element) => {
+export const calculatePercentageValues = (
+  elements: EditorElement[],
+  selectedSize: BannerSize
+): void => {
+  elements.forEach(element => {
+    if (!element.style) return;
+    
+    // Calcular valores percentuais em relação ao tamanho do banner
     element.style.xPercent = (element.style.x / selectedSize.width) * 100;
     element.style.yPercent = (element.style.y / selectedSize.height) * 100;
     element.style.widthPercent = (element.style.width / selectedSize.width) * 100;
