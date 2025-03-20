@@ -60,7 +60,6 @@ interface TextStyle {
   style: {
     fontSize: number;
     fontWeight: string;
-    color: string;
     fontFamily: string;
     lineHeight?: number;
     letterSpacing?: number;

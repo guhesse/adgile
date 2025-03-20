@@ -2,13 +2,13 @@
 import { Button } from "@/components/ui/button";
 import { EditorElement } from "./types";
 import { useState } from "react";
-import { 
+import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { 
+import {
   ChevronDown,
   Type as TextIcon,
   Image as ImageIcon,
@@ -35,14 +35,14 @@ export const ElementsPanel = ({ addElement, addLayout }: ElementsPanelProps) => 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, type: EditorElement["type"]) => {
     e.dataTransfer.setData("elementType", type);
     setDraggedElementType(type);
-    
+
     // Set drag image
     const dragImage = document.createElement('div');
     dragImage.className = 'py-2 px-4 bg-purple-100 text-purple-800 rounded-sm border border-purple-300';
     dragImage.textContent = getElementTypeName(type);
     document.body.appendChild(dragImage);
     e.dataTransfer.setDragImage(dragImage, 25, 25);
-    
+
     // Make sure to remove the element afterward
     setTimeout(() => {
       document.body.removeChild(dragImage);
@@ -72,7 +72,7 @@ export const ElementsPanel = ({ addElement, addLayout }: ElementsPanelProps) => 
       addElement(type);
       return;
     }
-    
+
     addElement(type);
   };
 
@@ -103,7 +103,7 @@ export const ElementsPanel = ({ addElement, addLayout }: ElementsPanelProps) => 
 
   // Element card component
   const ElementCard = ({ type, icon, label, disabled = false }: { type: EditorElement["type"], icon: JSX.Element, label: string, disabled?: boolean }) => (
-    <div 
+    <div
       className={`flex flex-col items-center justify-center p-3 border rounded-md bg-white ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-grab hover:border-purple-400 hover:shadow-sm transition-all'}`}
       style={{ width: '102px', minHeight: '80px' }}
       draggable={!disabled}
@@ -114,7 +114,7 @@ export const ElementsPanel = ({ addElement, addLayout }: ElementsPanelProps) => 
         {icon}
       </div>
       <div className="text-xs text-center">{label}</div>
-      
+
       {/* Dots for drag handle visual */}
       <div className="flex justify-center mt-2">
         <svg width="23" height="15" viewBox="0 0 23 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-50">
@@ -135,7 +135,7 @@ export const ElementsPanel = ({ addElement, addLayout }: ElementsPanelProps) => 
     <div className="h-full overflow-y-auto">
       <div className="p-4">
         <div className="text-lg font-medium mb-4">Elementos</div>
-        
+
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="containers">
             <AccordionTrigger className="py-2 text-left text-sm font-medium">
@@ -145,36 +145,36 @@ export const ElementsPanel = ({ addElement, addLayout }: ElementsPanelProps) => 
               </div>
             </AccordionTrigger>
             <AccordionContent className="space-y-2 pt-2">
-              <Button 
-                variant="outline" 
-                className="w-full justify-between" 
+              <Button
+                variant="outline"
+                className="w-full justify-between"
                 onClick={() => handleAddContainer(1)}
               >
                 1 Coluna
                 <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">1</div>
               </Button>
-              
-              <Button 
-                variant="outline" 
-                className="w-full justify-between" 
+
+              <Button
+                variant="outline"
+                className="w-full justify-between"
                 onClick={() => handleAddContainer(2)}
               >
                 2 Colunas iguais
                 <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">2</div>
               </Button>
-              
-              <Button 
-                variant="outline" 
-                className="w-full justify-between" 
+
+              <Button
+                variant="outline"
+                className="w-full justify-between"
                 onClick={() => handleAddContainer(3)}
               >
                 3 Colunas iguais
                 <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">3</div>
               </Button>
-              
-              <Button 
-                variant="outline" 
-                className="w-full justify-between" 
+
+              <Button
+                variant="outline"
+                className="w-full justify-between"
                 onClick={() => handleAddContainer(4)}
               >
                 4 Colunas iguais
@@ -182,7 +182,7 @@ export const ElementsPanel = ({ addElement, addLayout }: ElementsPanelProps) => 
               </Button>
             </AccordionContent>
           </AccordionItem>
-          
+
           <AccordionItem value="presets">
             <AccordionTrigger className="py-2 text-left text-sm font-medium">
               <div className="flex items-center">
@@ -191,36 +191,36 @@ export const ElementsPanel = ({ addElement, addLayout }: ElementsPanelProps) => 
               </div>
             </AccordionTrigger>
             <AccordionContent className="space-y-2 pt-2">
-              <Button 
-                variant="outline" 
-                className="w-full justify-between" 
+              <Button
+                variant="outline"
+                className="w-full justify-between"
                 onClick={() => handleAddPresetLayout("preset-image-text")}
               >
                 Imagem e texto
                 <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">IT</div>
               </Button>
-              
-              <Button 
-                variant="outline" 
-                className="w-full justify-between" 
+
+              <Button
+                variant="outline"
+                className="w-full justify-between"
                 onClick={() => handleAddPresetLayout("preset-text-text")}
               >
                 Texto e texto
                 <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">TT</div>
               </Button>
-              
-              <Button 
-                variant="outline" 
-                className="w-full justify-between" 
+
+              <Button
+                variant="outline"
+                className="w-full justify-between"
                 disabled
               >
                 Cabeçalho
                 <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">H</div>
               </Button>
-              
-              <Button 
-                variant="outline" 
-                className="w-full justify-between" 
+
+              <Button
+                variant="outline"
+                className="w-full justify-between"
                 disabled
               >
                 Rodapé
@@ -228,7 +228,7 @@ export const ElementsPanel = ({ addElement, addLayout }: ElementsPanelProps) => 
               </Button>
             </AccordionContent>
           </AccordionItem>
-          
+
           <AccordionItem value="elements" defaultValue="elements">
             <AccordionTrigger className="py-2 text-left text-sm font-medium">
               <div className="flex items-center">
@@ -238,58 +238,58 @@ export const ElementsPanel = ({ addElement, addLayout }: ElementsPanelProps) => 
             </AccordionTrigger>
             <AccordionContent className="pt-2">
               <div className="grid grid-cols-2 gap-2 p-2">
-                <ElementCard 
-                  type="text" 
+                <ElementCard
+                  type="text"
                   icon={<TextIcon size={24} className="text-gray-700" />}
                   label="Texto"
                 />
-                
-                <ElementCard 
-                  type="paragraph" 
+
+                <ElementCard
+                  type="paragraph"
                   icon={<svg width="24" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M17.5 6.1001H3.5M21.5 12.1001H3.5M15.6 18H3.5" stroke="#414651" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M17.5 6.1001H3.5M21.5 12.1001H3.5M15.6 18H3.5" stroke="#414651" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>}
                   label="Parágrafo"
                 />
-                
-                <ElementCard 
-                  type="button" 
+
+                <ElementCard
+                  type="button"
                   icon={<Square size={24} className="text-gray-700" />}
                   label="Botão"
                 />
-                
-                <ElementCard 
-                  type="divider" 
+
+                <ElementCard
+                  type="divider"
                   icon={<DivideIcon size={24} className="text-gray-700" />}
                   label="Divisor"
                 />
-                
-                <ElementCard 
-                  type="spacer" 
+
+                <ElementCard
+                  type="spacer"
                   icon={<AlignVerticalSpaceBetween size={24} className="text-gray-700" />}
                   label="Espaçador"
                 />
-                
-                <ElementCard 
-                  type="image" 
+
+                <ElementCard
+                  type="image"
                   icon={<ImageIcon size={24} className="text-gray-700" />}
                   label="Imagem"
                 />
-                
-                <ElementCard 
-                  type="logo" 
+
+                <ElementCard
+                  type="logo"
                   icon={<Pentagon size={24} className="text-gray-700" />}
                   label="Logotipo"
                 />
-                
-                <ElementCard 
-                  type="video" 
+
+                <ElementCard
+                  type="video"
                   icon={<ListVideo size={24} className="text-gray-700" />}
                   label="Vídeo"
                 />
-                
-                <ElementCard 
-                  type="container" 
+
+                <ElementCard
+                  type="container"
                   icon={<Grid2X2 size={24} className="text-gray-700" />}
                   label="Container"
                 />
