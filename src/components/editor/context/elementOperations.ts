@@ -11,56 +11,56 @@ export const createNewElement = (
   const newElement: EditorElement = {
     id: Date.now().toString(),
     type,
-    content: type === "text" || type === "paragraph" ? "Text Element" : 
-             type === "button" ? "Button Element" : 
-             type === "divider" ? "" : 
-             type === "spacer" ? "" : 
-             type === "logo" ? "" : 
-             type === "video" ? "" : "",
+    content: type === "text" || type === "paragraph" ? "Text Element" :
+      type === "button" ? "Button Element" :
+        type === "divider" ? "" :
+          type === "spacer" ? "" :
+            type === "logo" ? "" :
+              type === "video" ? "" : "",
     inContainer: false,
     style: {
       x: snapToGrid(100),
       y: snapToGrid(100),
       width: snapToGrid(
-        type === "text" || type === "paragraph" ? 200 : 
-        type === "image" || type === "logo" ? 150 : 
-        type === "video" ? 320 : 
-        type === "divider" ? 300 : 
-        type === "spacer" ? 100 : 200
+        type === "text" || type === "paragraph" ? 200 :
+          type === "image" || type === "logo" ? 150 :
+            type === "video" ? 320 :
+              type === "divider" ? 300 :
+                type === "spacer" ? 100 : 200
       ),
       height: snapToGrid(
-        type === "text" ? 40 : 
-        type === "paragraph" ? 100 : 
-        type === "image" || type === "logo" ? 150 : 
-        type === "video" ? 180 : 
-        type === "divider" ? 2 : 
-        type === "spacer" ? 50 : 50
+        type === "text" ? 40 :
+          type === "paragraph" ? 100 :
+            type === "image" || type === "logo" ? 150 :
+              type === "video" ? 180 :
+                type === "divider" ? 2 :
+                  type === "spacer" ? 50 : 50
       ),
       fontSize: type === "text" || type === "paragraph" ? 16 : undefined,
       color: type === "text" || type === "paragraph" ? "#000000" : undefined,
       fontFamily: type === "text" || type === "paragraph" ? "Inter" : undefined,
       lineHeight: type === "text" || type === "paragraph" ? 1.5 : undefined,
       textAlign: type === "text" || type === "paragraph" ? "left" : undefined,
-      backgroundColor: type === "button" ? "#1a1f2c" : 
-                       type === "divider" ? "#d1d5db" : 
-                       type === "spacer" ? undefined : undefined,
+      backgroundColor: type === "button" ? "#1a1f2c" :
+        type === "divider" ? "#d1d5db" :
+          type === "spacer" ? undefined : undefined,
       padding: type === "button" ? "8px 16px" : undefined,
     },
     sizeId: selectedSize.name,
   };
-  
+
   // Calculate percentage values for the element
   const xPercent = (newElement.style.x / selectedSize.width) * 100;
   const yPercent = (newElement.style.y / selectedSize.height) * 100;
   const widthPercent = (newElement.style.width / selectedSize.width) * 100;
   const heightPercent = (newElement.style.height / selectedSize.height) * 100;
-  
+
   // Add percentage values
   newElement.style.xPercent = xPercent;
   newElement.style.yPercent = yPercent;
   newElement.style.widthPercent = widthPercent;
   newElement.style.heightPercent = heightPercent;
-  
+
   return newElement;
 };
 
@@ -70,7 +70,7 @@ export const createLayoutElement = (
   selectedSize: BannerSize,
   elements: EditorElement[]
 ): EditorElement => {
-  const lastY = elements.length > 0 
+  const lastY = elements.length > 0
     ? Math.max(...elements.map(el => el.style.y + el.style.height)) + 20
     : 20;
 

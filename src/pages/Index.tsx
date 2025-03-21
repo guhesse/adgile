@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { CanvasProvider } from "@/components/editor/CanvasContext";
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState<"email" | "banner">("email");
+  const [activeTab, setActiveTab] = useState<"email" | "banner">("banner");
   
   useEffect(() => {
     // Handle spacebar for temporary pan mode

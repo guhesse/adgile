@@ -1,24 +1,17 @@
-export interface ColorGroup {
+export interface BrandGroup {
   id: number;
   name: string;
-  colors: ColorItem[];
+  items: BrandItem[];
   isOpen?: boolean;
   icon?: string;
 }
 
-export interface ColorItem {
+export interface BrandItem {
   id: number;
   name: string;
-  color: string;
+  type: 'color' | 'textStyle';
+  color?: string;
   textStyle?: TextStyle;
-}
-
-export interface TextStyleGroup {
-  id: number;
-  name: string;
-  styles: TextStyle[];
-  isOpen?: boolean;
-  icon?: string;
 }
 
 export interface TextStyle {
