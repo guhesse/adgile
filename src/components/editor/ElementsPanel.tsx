@@ -1,6 +1,5 @@
-
 import { Button } from "@/components/ui/button";
-import { EditorElement } from "./types";
+import { EditorElement, EditorMode } from "./types";
 import { useState } from "react";
 import {
   Accordion,
@@ -25,9 +24,10 @@ import {
 interface ElementsPanelProps {
   addElement: (type: EditorElement["type"]) => void;
   addLayout: (template: any) => void;
+  editorMode?: EditorMode; // Adicionado editorMode como propriedade opcional
 }
 
-export const ElementsPanel = ({ addElement, addLayout }: ElementsPanelProps) => {
+export const ElementsPanel = ({ addElement, addLayout, editorMode = "email" }: ElementsPanelProps) => {
   const [activeContainer, setActiveContainer] = useState<string | null>(null);
   const [draggedElementType, setDraggedElementType] = useState<string | null>(null);
 
@@ -131,173 +131,224 @@ export const ElementsPanel = ({ addElement, addLayout }: ElementsPanelProps) => 
     </div>
   );
 
+  // Renderiza apenas os elementos básicos (para modos não-email)
+  const renderBasicElements = () => (
+    <div className="p-4">
+      <div className="text-lg font-medium mb-4">Elementos</div>
+      <div className="grid grid-cols-2 gap-2 p-2">
+        <ElementCard
+          type="text"
+          icon={<TextIcon size={24} className="text-gray-700" />}
+          label="Texto"
+        />
+
+        <ElementCard
+          type="paragraph"
+          icon={<svg width="24" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17.5 6.1001H3.5M21.5 12.1001H3.5M15.6 18H3.5" stroke="#414651" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>}
+          label="Parágrafo"
+        />
+
+        <ElementCard
+          type="button"
+          icon={<Square size={24} className="text-gray-700" />}
+          label="Botão"
+        />
+
+        <ElementCard
+          type="image"
+          icon={<ImageIcon size={24} className="text-gray-700" />}
+          label="Imagem"
+        />
+
+        <ElementCard
+          type="logo"
+          icon={<Pentagon size={24} className="text-gray-700" />}
+          label="Logotipo"
+        />
+
+        <ElementCard
+          type="video"
+          icon={<ListVideo size={24} className="text-gray-700" />}
+          label="Vídeo"
+        />
+      </div>
+    </div>
+  );
+
+  // Renderiza o painel completo com accordions (para o modo email)
+  const renderEmailElements = () => (
+    <div className="p-4">
+      <div className="text-lg font-medium mb-4">Elementos</div>
+
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="containers">
+          <AccordionTrigger className="py-2 text-left text-sm font-medium">
+            <div className="flex items-center">
+              <LayoutGrid className="h-4 w-4 mr-2" />
+              Containers
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="space-y-2 pt-2">
+            <Button
+              variant="outline"
+              className="w-full justify-between"
+              onClick={() => handleAddContainer(1)}
+            >
+              1 Coluna
+              <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">1</div>
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full justify-between"
+              onClick={() => handleAddContainer(2)}
+            >
+              2 Colunas iguais
+              <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">2</div>
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full justify-between"
+              onClick={() => handleAddContainer(3)}
+            >
+              3 Colunas iguais
+              <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">3</div>
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full justify-between"
+              onClick={() => handleAddContainer(4)}
+            >
+              4 Colunas iguais
+              <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">4</div>
+            </Button>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="presets">
+          <AccordionTrigger className="py-2 text-left text-sm font-medium">
+            <div className="flex items-center">
+              <LayoutGrid className="h-4 w-4 mr-2" />
+              Layouts predefinidos
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="space-y-2 pt-2">
+            <Button
+              variant="outline"
+              className="w-full justify-between"
+              onClick={() => handleAddPresetLayout("preset-image-text")}
+            >
+              Imagem e texto
+              <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">IT</div>
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full justify-between"
+              onClick={() => handleAddPresetLayout("preset-text-text")}
+            >
+              Texto e texto
+              <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">TT</div>
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full justify-between"
+              disabled
+            >
+              Cabeçalho
+              <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">H</div>
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full justify-between"
+              disabled
+            >
+              Rodapé
+              <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">F</div>
+            </Button>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="elements" defaultValue="elements">
+          <AccordionTrigger className="py-2 text-left text-sm font-medium">
+            <div className="flex items-center">
+              <LayersIcon className="h-4 w-4 mr-2" />
+              Elementos
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pt-2">
+            <div className="grid grid-cols-2 gap-2 p-2">
+              <ElementCard
+                type="text"
+                icon={<TextIcon size={24} className="text-gray-700" />}
+                label="Texto"
+              />
+
+              <ElementCard
+                type="paragraph"
+                icon={<svg width="24" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M17.5 6.1001H3.5M21.5 12.1001H3.5M15.6 18H3.5" stroke="#414651" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>}
+                label="Parágrafo"
+              />
+
+              <ElementCard
+                type="button"
+                icon={<Square size={24} className="text-gray-700" />}
+                label="Botão"
+              />
+
+              <ElementCard
+                type="divider"
+                icon={<DivideIcon size={24} className="text-gray-700" />}
+                label="Divisor"
+              />
+
+              <ElementCard
+                type="spacer"
+                icon={<AlignVerticalSpaceBetween size={24} className="text-gray-700" />}
+                label="Espaçador"
+              />
+
+              <ElementCard
+                type="image"
+                icon={<ImageIcon size={24} className="text-gray-700" />}
+                label="Imagem"
+              />
+
+              <ElementCard
+                type="logo"
+                icon={<Pentagon size={24} className="text-gray-700" />}
+                label="Logotipo"
+              />
+
+              <ElementCard
+                type="video"
+                icon={<ListVideo size={24} className="text-gray-700" />}
+                label="Vídeo"
+              />
+
+              <ElementCard
+                type="container"
+                icon={<Grid2X2 size={24} className="text-gray-700" />}
+                label="Container"
+              />
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </div>
+  );
+
   return (
     <div className="h-full overflow-y-auto">
-      <div className="p-4">
-        <div className="text-lg font-medium mb-4">Elementos</div>
-
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="containers">
-            <AccordionTrigger className="py-2 text-left text-sm font-medium">
-              <div className="flex items-center">
-                <LayoutGrid className="h-4 w-4 mr-2" />
-                Containers
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="space-y-2 pt-2">
-              <Button
-                variant="outline"
-                className="w-full justify-between"
-                onClick={() => handleAddContainer(1)}
-              >
-                1 Coluna
-                <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">1</div>
-              </Button>
-
-              <Button
-                variant="outline"
-                className="w-full justify-between"
-                onClick={() => handleAddContainer(2)}
-              >
-                2 Colunas iguais
-                <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">2</div>
-              </Button>
-
-              <Button
-                variant="outline"
-                className="w-full justify-between"
-                onClick={() => handleAddContainer(3)}
-              >
-                3 Colunas iguais
-                <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">3</div>
-              </Button>
-
-              <Button
-                variant="outline"
-                className="w-full justify-between"
-                onClick={() => handleAddContainer(4)}
-              >
-                4 Colunas iguais
-                <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">4</div>
-              </Button>
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="presets">
-            <AccordionTrigger className="py-2 text-left text-sm font-medium">
-              <div className="flex items-center">
-                <LayoutGrid className="h-4 w-4 mr-2" />
-                Layouts predefinidos
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="space-y-2 pt-2">
-              <Button
-                variant="outline"
-                className="w-full justify-between"
-                onClick={() => handleAddPresetLayout("preset-image-text")}
-              >
-                Imagem e texto
-                <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">IT</div>
-              </Button>
-
-              <Button
-                variant="outline"
-                className="w-full justify-between"
-                onClick={() => handleAddPresetLayout("preset-text-text")}
-              >
-                Texto e texto
-                <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">TT</div>
-              </Button>
-
-              <Button
-                variant="outline"
-                className="w-full justify-between"
-                disabled
-              >
-                Cabeçalho
-                <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">H</div>
-              </Button>
-
-              <Button
-                variant="outline"
-                className="w-full justify-between"
-                disabled
-              >
-                Rodapé
-                <div className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded">F</div>
-              </Button>
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="elements" defaultValue="elements">
-            <AccordionTrigger className="py-2 text-left text-sm font-medium">
-              <div className="flex items-center">
-                <LayersIcon className="h-4 w-4 mr-2" />
-                Elementos
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="pt-2">
-              <div className="grid grid-cols-2 gap-2 p-2">
-                <ElementCard
-                  type="text"
-                  icon={<TextIcon size={24} className="text-gray-700" />}
-                  label="Texto"
-                />
-
-                <ElementCard
-                  type="paragraph"
-                  icon={<svg width="24" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M17.5 6.1001H3.5M21.5 12.1001H3.5M15.6 18H3.5" stroke="#414651" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>}
-                  label="Parágrafo"
-                />
-
-                <ElementCard
-                  type="button"
-                  icon={<Square size={24} className="text-gray-700" />}
-                  label="Botão"
-                />
-
-                <ElementCard
-                  type="divider"
-                  icon={<DivideIcon size={24} className="text-gray-700" />}
-                  label="Divisor"
-                />
-
-                <ElementCard
-                  type="spacer"
-                  icon={<AlignVerticalSpaceBetween size={24} className="text-gray-700" />}
-                  label="Espaçador"
-                />
-
-                <ElementCard
-                  type="image"
-                  icon={<ImageIcon size={24} className="text-gray-700" />}
-                  label="Imagem"
-                />
-
-                <ElementCard
-                  type="logo"
-                  icon={<Pentagon size={24} className="text-gray-700" />}
-                  label="Logotipo"
-                />
-
-                <ElementCard
-                  type="video"
-                  icon={<ListVideo size={24} className="text-gray-700" />}
-                  label="Vídeo"
-                />
-
-                <ElementCard
-                  type="container"
-                  icon={<Grid2X2 size={24} className="text-gray-700" />}
-                  label="Container"
-                />
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </div>
+      {editorMode === "email" ? renderEmailElements() : renderBasicElements()}
     </div>
   );
 };

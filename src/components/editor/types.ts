@@ -65,6 +65,9 @@ export type EditorElement = {
   isIndividuallyPositioned?: boolean; // Whether this element has been individually positioned
 };
 
+// Novo tipo para compartilhar entre componentes
+export type EditorMode = "email" | "banner" | "social" | "impressos";
+
 export type CanvasNavigationMode = 'edit' | 'pan';
 export type EditingMode = 'global' | 'individual';
 

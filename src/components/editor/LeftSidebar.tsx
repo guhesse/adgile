@@ -1,4 +1,3 @@
-
 import {
   Box,
   Crown,
@@ -33,10 +32,10 @@ import { LayersPanel } from "./LayersPanel";
 import { BrandPanel } from "./panels/BrandPanel";
 import { SizesPanel } from "./panels/SizesPanel";
 import { useCanvas } from "./CanvasContext";
-import { EditorElement } from "./types";
+import { EditorElement, EditorMode } from "./types";
 
 interface LeftSidebarProps {
-  editorMode: "email" | "banner" | "social" | "impressos";
+  editorMode: EditorMode;
 }
 
 // Navigation menu items data
@@ -76,13 +75,6 @@ export const LeftSidebar = ({ editorMode }: LeftSidebarProps) => {
     updateElementStyle
   } = useCanvas();
 
-  // Show sizes panel automatically when in banner mode
-  useEffect(() => {
-    if (editorMode === "banner" && activePanel !== "sizes") {
-      setActivePanel("add");
-    }
-  }, [editorMode]);
-
   // Group elements by size for the layers view
   const groupedElements = elements.reduce((acc, element) => {
     const size = element.type === "layout" ? "Containers" : "Elements";
@@ -107,13 +99,14 @@ export const LeftSidebar = ({ editorMode }: LeftSidebarProps) => {
           />
         );
       case "sizes":
-        return editorMode === "banner" ? <SizesPanel /> : <ElementsPanel addElement={handleAddElement} addLayout={handleAddLayout} />;
+        return editorMode === "banner" ? <SizesPanel /> : <ElementsPanel addElement={handleAddElement} addLayout={handleAddLayout} editorMode={editorMode} />;
       case "elements":
       default:
         return (
           <ElementsPanel
             addElement={handleAddElement}
             addLayout={handleAddLayout}
+            editorMode={editorMode}
           />
         );
     }
@@ -164,21 +157,23 @@ export const LeftSidebar = ({ editorMode }: LeftSidebarProps) => {
           ))}
         </div>
 
-        {/* Timeline item at the bottom */}
-        <div className="flex flex-col items-center justify-end gap-2.5 relative self-stretch w-full mt-auto">
-          <div className="flex flex-col w-24 h-[67px] items-center justify-center gap-1.5 relative">
-            <Button
-              variant="outline"
-              className={`w-8 h-8 p-1.5 ${activePanel === timelineItem.id ? 'bg-purple-100 text-purple-600' : 'bg-[#252b37] text-white'} rounded-md`}
-              onClick={() => setActivePanel(timelineItem.id)}
-            >
-              {timelineItem.icon}
-            </Button>
-            <span className="text-xs text-[#181d27] leading-5">
-              {timelineItem.label}
-            </span>
+        {/* Timeline item at the bottom - visible only in banner and social modes */}
+        {(editorMode === "banner" || editorMode === "social") && (
+          <div className="flex flex-col items-center justify-end gap-2.5 relative self-stretch w-full mt-auto">
+            <div className="flex flex-col w-24 h-[67px] items-center justify-center gap-1.5 relative">
+              <Button
+                variant="outline"
+                className={`w-8 h-8 p-1.5 ${activePanel === timelineItem.id ? 'bg-purple-100 text-purple-600' : 'bg-[#252b37] text-white'} rounded-md`}
+                onClick={() => setActivePanel(timelineItem.id)}
+              >
+                {timelineItem.icon}
+              </Button>
+              <span className="text-xs text-[#181d27] leading-5">
+                {timelineItem.label}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Secondary sidebar with content based on active panel */}

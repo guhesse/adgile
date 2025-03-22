@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { CanvasProvider } from "@/components/editor/CanvasContext";
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState<"email" | "banner">("banner");
-  
+  const [activeTab, setActiveTab] = useState<"email" | "banner" | "social" | "impressos">("banner");
+
   useEffect(() => {
     // Handle spacebar for temporary pan mode
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -15,33 +15,33 @@ const Index = () => {
         e.preventDefault();
       }
     };
-    
+
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
         document.dispatchEvent(new CustomEvent('canvas-spacebar-up'));
         e.preventDefault();
       }
     };
-    
+
     // Prevent default browser behavior for Space key (page scroll)
     const preventSpacebarScroll = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
         e.preventDefault();
       }
     };
-    
+
     // Prevent the default browser behavior for Ctrl+wheel to avoid browser zoom
     const preventBrowserZoom = (e: WheelEvent) => {
       if (e.ctrlKey) {
         e.preventDefault();
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown, { passive: false });
     window.addEventListener('keyup', handleKeyUp, { passive: false });
     window.addEventListener('keydown', preventSpacebarScroll, { passive: false });
     window.addEventListener('wheel', preventBrowserZoom, { passive: false });
-    
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
@@ -53,100 +53,112 @@ const Index = () => {
   return (
     <div className="flex h-screen overflow-hidden">
       <Helmet>
-        <link 
-          rel="stylesheet" 
-          href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" 
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css"
         />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" 
-          rel="stylesheet" 
+        <link
+          href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
         />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" 
-          rel="stylesheet" 
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
         />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" 
-          rel="stylesheet" 
+        <link
+          href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+          rel="stylesheet"
         />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap" 
-          rel="stylesheet" 
+        <link
+          href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
         />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" 
-          rel="stylesheet" 
+        <link
+          href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
         />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" 
-          rel="stylesheet" 
+        <link
+          href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
         />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" 
-          rel="stylesheet" 
+        <link
+          href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap"
+          rel="stylesheet"
         />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap" 
-          rel="stylesheet" 
+        <link
+          href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
         />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" 
-          rel="stylesheet" 
+        <link
+          href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
         />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap" 
-          rel="stylesheet" 
+        <link
+          href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap"
+          rel="stylesheet"
         />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap" 
-          rel="stylesheet" 
+        <link
+          href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap"
+          rel="stylesheet"
         />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&display=swap" 
-          rel="stylesheet" 
+        <link
+          href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
         />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap" 
-          rel="stylesheet" 
+        <link
+          href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap"
+          rel="stylesheet"
         />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" 
-          rel="stylesheet" 
+        <link
+          href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
         />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap" 
-          rel="stylesheet" 
+        <link
+          href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
         />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&display=swap" 
-          rel="stylesheet" 
+        <link
+          href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
         />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&display=swap" 
-          rel="stylesheet" 
+        <link
+          href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
         />
       </Helmet>
-      
+
       <div className="flex flex-col flex-1 ml-0 overflow-hidden">
         <div className="flex items-center border-b h-12 px-4">
-          <div className="font-bold mr-6">AdSile</div>
+          <div className="font-bold mr-6">AdGile</div>
           <nav className="flex space-x-4">
-            <a 
-              href="#" 
+            <a
+              href="#"
               className={`px-3 py-2 text-sm font-medium rounded-md ${activeTab === "email" ? "bg-purple-100 text-purple-600" : "text-gray-600 hover:text-gray-900"}`}
               onClick={() => setActiveTab("email")}
             >
               Email
             </a>
-            <a 
-              href="#" 
+            <a
+              href="#"
               className={`px-3 py-2 text-sm font-medium rounded-md ${activeTab === "banner" ? "bg-purple-100 text-purple-600" : "text-gray-600 hover:text-gray-900"}`}
               onClick={() => setActiveTab("banner")}
             >
               Banner
             </a>
-            <a href="#" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">Social</a>
-            <a href="#" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">Impressos</a>
+            <a
+              href="#"
+              className={`px-3 py-2 text-sm font-medium rounded-md ${activeTab === "social" ? "bg-purple-100 text-purple-600" : "text-gray-600 hover:text-gray-900"}`}
+              onClick={() => setActiveTab("social")}
+            >
+              Social
+            </a>
+            <a
+              href="#"
+              className={`px-3 py-2 text-sm font-medium rounded-md ${activeTab === "impressos" ? "bg-purple-100 text-purple-600" : "text-gray-600 hover:text-gray-900"}`}
+              onClick={() => setActiveTab("impressos")}
+            >
+              Impressos
+            </a>
             <a href="#" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">Briefing</a>
           </nav>
           <div className="ml-auto flex items-center">
@@ -154,7 +166,7 @@ const Index = () => {
             <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
           </div>
         </div>
-        
+
         <style>
           {`
           .resize-handle {
@@ -276,7 +288,7 @@ const Index = () => {
           }
           `}
         </style>
-        
+
         <CanvasProvider>
           <Canvas editorMode={activeTab} />
         </CanvasProvider>
