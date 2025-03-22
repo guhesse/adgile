@@ -59,13 +59,6 @@ export const CanvasArea = ({
 
   return (
     <div className="relative">
-      {/* Canvas label positioned at the top */}
-      <div 
-        className="absolute -top-6 left-0 right-0 text-sm text-gray-600 font-medium text-center"
-      >
-        {size.name} ({size.width}×{size.height})
-      </div>
-      
       <Card
         ref={canvasRef}
         className="relative shadow-lg"

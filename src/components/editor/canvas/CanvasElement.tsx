@@ -1,195 +1,117 @@
-import { BannerSize, CanvasNavigationMode, EditorElement } from "../types";
-import { ElementRenderer } from "../ElementRenderer";
-import { ElementHandles } from "./ElementHandles";
-import { calculateSmartPosition } from "../utils/grid/responsivePosition";
-import { useCallback, useRef } from "react";
+
+import React from 'react';
+import { ElementHandles } from './ElementHandles';
+import { ElementRenderer } from '../ElementRenderer';
+import { BannerSize, CanvasNavigationMode, EditorElement } from '../types';
+import { useCanvas } from '../CanvasContext';
 
 interface CanvasElementProps {
   element: EditorElement;
   canvasSize: BannerSize;
   selectedElement: EditorElement | null;
-  isChild?: boolean;
-  isDragging?: boolean;
-  isElementOutsideContainer?: boolean;
+  isDragging: boolean;
+  isElementOutsideContainer: boolean;
   handleMouseDown: (e: React.MouseEvent, element: EditorElement) => void;
   handleResizeStart: (e: React.MouseEvent, direction: string, element: EditorElement) => void;
   handleContainerHover: (e: React.MouseEvent, containerId: string) => void;
   handleContainerHoverEnd: () => void;
   hoveredContainer: string | null;
   canvasNavMode: CanvasNavigationMode;
-  zIndex?: number;
+  zIndex: number;
 }
 
-export const CanvasElement = ({
+export const CanvasElement: React.FC<CanvasElementProps> = ({
   element,
   canvasSize,
   selectedElement,
-  isChild = false,
-  isDragging = false,
-  isElementOutsideContainer = false,
+  isDragging,
+  isElementOutsideContainer,
   handleMouseDown,
   handleResizeStart,
   handleContainerHover,
   handleContainerHoverEnd,
   hoveredContainer,
   canvasNavMode,
-  zIndex = 1
-}: CanvasElementProps) => {
+  zIndex
+}) => {
+  const { updateElementContent } = useCanvas();
   
-  const isHovered = hoveredContainer === element.id;
-  const isContainer = element.type === "container" || element.type === "layout";
-  const isExiting = isElementOutsideContainer && selectedElement?.id === element.id;
-  const isImage = element.type === "image" || element.type === "logo";
-  const isText = element.type === "text";
+  // Handle content change from ElementRenderer
+  const handleContentChange = (newContent: string) => {
+    updateElementContent(newContent, element.id);
+  };
+
   const isSelected = selectedElement?.id === element.id;
-  
-  // Reference to maintain a fixed point when dragging
-  const elementRef = useRef<HTMLDivElement>(null);
+  const isHoveredContainer = hoveredContainer === element.id;
 
-  // If the element doesn't belong to this canvas size, don't render it
-  // Global elements (sizeId = 'global') should appear in all canvases
-  if (element.sizeId && element.sizeId !== canvasSize.name && element.sizeId !== 'global') {
-    return null;
+  let containerClasses = "absolute";
+  if (element.inContainer) {
+    containerClasses += " transition-all";
+  }
+  
+  if (isHoveredContainer) {
+    containerClasses += " bg-blue-50 border-2 border-dashed border-blue-300";
   }
 
-  // Determine the position for this element
-  let position = { 
-    x: element.style.x, 
-    y: element.style.y, 
-    width: element.style.width, 
-    height: element.style.height 
-  };
-  
-  // If element has percentage values and needs to be adjusted for this canvas size
-  if (element.style.xPercent !== undefined && 
-      element.style.yPercent !== undefined && 
-      element.style.widthPercent !== undefined && 
-      element.style.heightPercent !== undefined &&
-      element.sizeId !== canvasSize.name) {
-    
-    // Find the source size (the size this element was originally created for)
-    const sourceSize = {
-      name: element.sizeId || 'unknown',
-      width: canvasSize.width, // Fallback to current size if unknown
-      height: canvasSize.height
-    };
-    
-    // Use calculateSmartPosition to adjust to this canvas
-    position = calculateSmartPosition(element, sourceSize, canvasSize);
-  }
+  const isContainer = element.type === 'container' || element.type === 'layout';
 
-  // Apply the final position style
-  let positionStyle: React.CSSProperties = {
-    position: "absolute",
-    left: position.x,
-    top: position.y,
-    width: position.width,
-    height: position.height
-  };
-
-  // Function to prevent default browser image dragging
-  const handleDragStart = (e: React.DragEvent) => {
-    e.preventDefault();
-    return false;
-  };
-
-  // Optimized mouse down handler for text elements
-  const handleElementMouseDown = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    // Capture mouse position at the beginning of the drag relative to the element
-    if (elementRef.current) {
-      const rect = elementRef.current.getBoundingClientRect();
-      const offsetX = e.clientX - rect.left;
-      const offsetY = e.clientY - rect.top;
-      
-      // Store information in the event object for use in the drag handler
-      (e as any).elementOffset = { x: offsetX, y: offsetY };
+  const handleContainerMouseOver = (e: React.MouseEvent) => {
+    if (isContainer && canvasNavMode !== 'pan' && selectedElement && selectedElement.id !== element.id) {
+      handleContainerHover(e, element.id);
     }
-    
-    handleMouseDown(e, element);
-  }, [element, handleMouseDown]);
+  };
+  
+  const elementStyle: React.CSSProperties = {
+    left: `${element.style.x}px`,
+    top: `${element.style.y}px`,
+    width: `${element.style.width}px`,
+    height: `${element.style.height}px`,
+    zIndex,
+    cursor: canvasNavMode === 'pan' ? 'auto' : isContainer ? 'default' : 'move',
+    opacity: isSelected && isElementOutsideContainer ? 0.5 : 1
+  };
 
   return (
     <div
-      ref={elementRef}
-      style={{
-        ...positionStyle,
-        animationPlayState: element.style.animationPlayState,
-        animationDelay: element.style.animationDelay != null ? `${element.style.animationDelay}s` : undefined,
-        animationDuration: element.style.animationDuration != null ? `${element.style.animationDuration}s` : undefined,
-        backgroundColor: isContainer
-          ? isHovered ? "rgba(200, 220, 255, 0.5)" : "rgba(240, 240, 240, 0.5)"
-          : element.style.backgroundColor,
-        border: isContainer
-          ? isHovered ? "1px dashed #4080ff" : "1px dashed #aaa"
-          : undefined,
-        zIndex: isDragging && isSelected ? 1000 : zIndex,
-        transition: isExiting ? "none" : (isDragging ? "none" : "all 0.1s ease-out"),
-        overflow: isContainer ? "hidden" : "visible",
-        cursor: canvasNavMode === 'pan' ? 'grab' : 'move',
-        userSelect: "none",
-        opacity: element.style.opacity !== undefined ? element.style.opacity : 1,
-        boxShadow: isSelected ? "0 0 0 2px #2563eb" : (isExiting ? "0 0 0 2px #ff4040" : undefined),
-        outline: "none",
-        touchAction: "none", // Prevents touch scrolling during drags
-      }}
-      className={`${isSelected ? "outline-2 outline-blue-600" : ""} ${element.style.animation || ""}`}
-      onMouseDown={handleElementMouseDown}
-      onDragStart={handleDragStart}
-      draggable={false}
+      className={containerClasses}
+      style={elementStyle}
+      onMouseDown={(e) => handleMouseDown(e, element)}
+      onMouseOver={handleContainerMouseOver}
+      onMouseLeave={handleContainerHoverEnd}
       data-element-id={element.id}
       data-element-type={element.type}
-      data-zoom-level={1}
-      data-canvas-wrapper="true"
-      onMouseEnter={(e) => {
-        if (isContainer) {
-          handleContainerHover(e, element.id);
-        }
-      }}
-      onMouseLeave={() => {
-        if (isContainer) {
-          handleContainerHoverEnd();
-        }
-      }}
     >
-      <div 
-        className="w-full h-full"
-        draggable={false}
-        onDragStart={handleDragStart}
-      >
-        <ElementRenderer element={element} />
-      </div>
-
-      {isContainer && element.childElements && (
-        <div className="absolute top-0 left-0 w-full h-full" draggable={false}>
-          {element.childElements.map((child: EditorElement, childIndex: number) => (
-            <CanvasElement
-              key={child.id}
-              element={child}
-              canvasSize={canvasSize}
-              selectedElement={selectedElement}
-              isChild={true}
-              isDragging={isDragging}
-              isElementOutsideContainer={isElementOutsideContainer}
-              handleMouseDown={handleMouseDown}
-              handleResizeStart={handleResizeStart}
-              handleContainerHover={handleContainerHover}
-              handleContainerHoverEnd={handleContainerHoverEnd}
-              hoveredContainer={hoveredContainer}
-              canvasNavMode={canvasNavMode}
-              zIndex={childIndex + 1}
-            />
-          ))}
-        </div>
-      )}
-
-      {isSelected && canvasNavMode !== 'pan' && (
-        <ElementHandles 
-          element={element} 
+      <ElementRenderer 
+        element={element} 
+        onContentChange={handleContentChange}
+      />
+      
+      {canvasNavMode !== 'pan' && (isSelected || isHoveredContainer) && !isDragging && (
+        <ElementHandles
+          element={element}
           handleResizeStart={handleResizeStart}
+          isContainer={isContainer}
+          isHoveredContainer={isHoveredContainer}
         />
       )}
+      
+      {element.childElements && element.childElements.map((childElement, index) => (
+        <CanvasElement
+          key={childElement.id}
+          element={childElement}
+          canvasSize={canvasSize}
+          selectedElement={selectedElement}
+          isDragging={isDragging}
+          isElementOutsideContainer={isElementOutsideContainer}
+          handleMouseDown={handleMouseDown}
+          handleResizeStart={handleResizeStart}
+          handleContainerHover={handleContainerHover}
+          handleContainerHoverEnd={handleContainerHoverEnd}
+          hoveredContainer={hoveredContainer}
+          canvasNavMode={canvasNavMode}
+          zIndex={index}
+        />
+      ))}
     </div>
   );
 };
