@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useRef, useEffect } from "react";
 import { 
   BannerSize, 
@@ -11,6 +12,7 @@ import { generateRandomId } from "./utils/idGenerator";
 import { CanvasContextType } from "./context/CanvasContextTypes";
 import { updateLinkedElementsIntelligently } from "./utils/grid/responsivePosition";
 import { toast } from "sonner";
+import { linkElementsToNewSizes } from "./context/responsiveOperations";
 
 interface CanvasProviderProps {
   children: React.ReactNode;
@@ -128,68 +130,32 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
   };
 
   const handleAddElement = (type: EditorElement["type"]) => {
-    const newId = `${type}-${generateRandomId()}`;
+    // Import the function from elementOperations.ts
+    const { createNewElement } = require('./context/elementOperations');
     
-    let newElement: EditorElement = {
-      id: newId,
-      type,
-      content: type === 'text' ? 'Add text here' : '',
-      style: {
-        x: 50,
-        y: 50,
-        width: type === 'text' ? 200 : 300,
-        height: type === 'text' ? 50 : 200,
-        fontSize: 16,
-        fontWeight: 'normal',
-        color: '#000000',
-        backgroundColor: type === 'button' ? '#3b82f6' : (type === 'container' ? '#f9fafb' : 'transparent'),
-        padding: type === 'button' ? '8px 16px' : '0px',
-        borderRadius: type === 'button' ? 4 : 0,
-      },
-      sizeId: selectedSize.name === 'All' ? 'global' : selectedSize.name,
-    };
+    // Create the new element(s) - this may return multiple elements if creating across sizes
+    const newElements = createNewElement(type, selectedSize, activeSizes);
     
-    if (type === 'button') {
-      newElement.content = 'Button';
-    } else if (type === 'image') {
-      newElement.content = 'https://via.placeholder.com/300x200';
-    } else if (type === 'container') {
-      newElement.style.width = 500;
-      newElement.style.height = 300;
-      newElement.style.backgroundColor = '#f9fafb';
-      newElement.style.borderWidth = 1;
-      newElement.style.borderColor = '#e5e7eb';
-      newElement.style.borderStyle = 'solid';
-    }
+    // Add the new elements to the state
+    setElements(prevElements => [...prevElements, ...newElements]);
     
-    setElements(prevElements => [...prevElements, newElement]);
-    setSelectedElement(newElement);
+    // Select the first element (the primary one)
+    setSelectedElement(newElements[0]);
   };
 
   const handleAddLayout = (template: any) => {
     console.log("Adding layout template:", template);
-    const containerId = `container-${generateRandomId()}`;
-    const containerElement: EditorElement = {
-      id: containerId,
-      type: 'container',
-      content: '',
-      style: {
-        x: 50,
-        y: 50,
-        width: 600,
-        height: 300,
-        backgroundColor: '#f9fafb',
-        borderWidth: 1,
-        borderColor: '#e5e7eb',
-        borderStyle: 'solid',
-        padding: '16px',
-      },
-      columns: template.columns,
-      sizeId: selectedSize.name === 'All' ? 'global' : selectedSize.name,
-    };
+    // Import the function from elementOperations.ts
+    const { createLayoutElement } = require('./context/elementOperations');
     
-    setElements(prevElements => [...prevElements, containerElement]);
-    setSelectedElement(containerElement);
+    // Create the new layout element(s) - may return multiple elements if creating across sizes
+    const newLayoutElements = createLayoutElement(template, selectedSize, elements, activeSizes);
+    
+    // Add the new elements to the state
+    setElements(prevElements => [...prevElements, ...newLayoutElements]);
+    
+    // Select the first element (the primary one)
+    setSelectedElement(newLayoutElements[0]);
   };
 
   const handlePreviewAnimation = () => {
@@ -280,12 +246,27 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
       if (prevSizes.find(s => s.name === size.name)) {
         return prevSizes;
       }
-      return [...prevSizes, size];
+      
+      const newSizes = [...prevSizes, size];
+      
+      // Link existing elements to the new size
+      setTimeout(() => {
+        setElements(prevElements => {
+          const updatedElements = linkElementsToNewSizes(prevElements, size, newSizes);
+          return updatedElements;
+        });
+      }, 100);
+      
+      return newSizes;
     });
   };
 
   const removeCustomSize = (size: BannerSize) => {
     setActiveSizes(prevSizes => {
+      // Filter out elements specific to this size when removing it
+      setElements(prevElements => 
+        prevElements.filter(el => el.sizeId !== size.name)
+      );
       return prevSizes.filter(s => s.name !== size.name);
     });
   };
@@ -317,7 +298,7 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
     console.log('Undo triggered');
     
     if (currentHistoryIndexRef.current <= 0) {
-      toast.info("Não há mais ações para desfazer");
+      toast.info("No more actions to undo");
       return;
     }
     
@@ -327,7 +308,7 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
     if (previousState) {
       setElements(previousState.elements);
       setSelectedElement(previousState.selectedElement);
-      toast.info("Última ação desfeita");
+      toast.info("Last action undone");
     }
   };
 

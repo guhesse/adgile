@@ -2,12 +2,14 @@
 import { EditorElement, BannerSize } from "../types";
 import { snapToGrid } from "../utils/gridUtils";
 import { toast } from "sonner";
+import { createLinkedVersions } from "./responsiveOperations";
 
 // Function to add a new element to the canvas
 export const createNewElement = (
   type: EditorElement["type"],
-  selectedSize: BannerSize
-): EditorElement => {
+  selectedSize: BannerSize,
+  activeSizes: BannerSize[]
+): EditorElement[] => {
   const newElement: EditorElement = {
     id: Date.now().toString(),
     type,
@@ -46,7 +48,7 @@ export const createNewElement = (
           type === "spacer" ? undefined : undefined,
       padding: type === "button" ? "8px 16px" : undefined,
     },
-    sizeId: selectedSize.name,
+    sizeId: selectedSize.name === "All" ? activeSizes[0].name : selectedSize.name,
   };
 
   // Calculate percentage values for the element
@@ -61,15 +63,22 @@ export const createNewElement = (
   newElement.style.widthPercent = widthPercent;
   newElement.style.heightPercent = heightPercent;
 
-  return newElement;
+  // If we're in All Sizes or if there are multiple sizes active,
+  // create linked versions for all sizes
+  if (selectedSize.name === "All" || activeSizes.length > 1) {
+    return createLinkedVersions(newElement, activeSizes, selectedSize.name === "All" ? activeSizes[0] : selectedSize);
+  }
+
+  return [newElement];
 };
 
 // Function to create a layout element
 export const createLayoutElement = (
   template: any,
   selectedSize: BannerSize,
-  elements: EditorElement[]
-): EditorElement => {
+  elements: EditorElement[],
+  activeSizes: BannerSize[]
+): EditorElement[] => {
   const lastY = elements.length > 0
     ? Math.max(...elements.map(el => el.style.y + el.style.height)) + 20
     : 20;
@@ -90,7 +99,7 @@ export const createLayoutElement = (
     },
     columns: template.columns,
     childElements: [],
-    sizeId: selectedSize.name,
+    sizeId: selectedSize.name === "All" ? activeSizes[0].name : selectedSize.name,
   };
 
   // Calculate percentage values
@@ -119,7 +128,7 @@ export const createLayoutElement = (
             widthPercent: ((layoutWidth / 2 - 5) / layoutWidth) * 100,
             heightPercent: (130 / 150) * 100
           },
-          sizeId: selectedSize.name
+          sizeId: layoutElement.sizeId
         },
         {
           id: Date.now().toString() + "-2",
@@ -142,7 +151,7 @@ export const createLayoutElement = (
             widthPercent: ((layoutWidth / 2 - 5) / layoutWidth) * 100,
             heightPercent: (130 / 150) * 100
           },
-          sizeId: selectedSize.name
+          sizeId: layoutElement.sizeId
         }
       ];
     } else if (template.id === "preset-text-text") {
@@ -197,7 +206,13 @@ export const createLayoutElement = (
     }
   }
 
-  return layoutElement;
+  // If we're in All Sizes or if there are multiple sizes active,
+  // create linked versions for all sizes
+  if (selectedSize.name === "All" || activeSizes.length > 1) {
+    return createLinkedVersions(layoutElement, activeSizes, selectedSize.name === "All" ? activeSizes[0] : selectedSize);
+  }
+
+  return [layoutElement];
 };
 
 // Function to handle image upload

@@ -3,15 +3,15 @@ import { EditorElement, BannerSize } from "../../types";
 import { snapToGrid } from "./gridCore";
 
 /**
- * Calcula a posição ideal para um elemento vinculado em diferentes tamanhos de canvas
- * com base em porcentagens, respeitando os limites do canvas
+ * Calculate the optimal position for a linked element across different canvas sizes
+ * based on percentages, respecting canvas limits
  */
 export const calculateSmartPosition = (
   element: EditorElement,
   sourceSize: BannerSize,
   targetSize: BannerSize
 ): { x: number; y: number; width: number; height: number } => {
-  // Primeiro, garantir que temos valores percentuais
+  // First, ensure we have percentage values
   const xPercent = element.style.xPercent !== undefined 
     ? element.style.xPercent 
     : (element.style.x / sourceSize.width) * 100;
@@ -28,42 +28,42 @@ export const calculateSmartPosition = (
     ? element.style.heightPercent 
     : (element.style.height / sourceSize.height) * 100;
 
-  // Calcular posição baseada em porcentagens - manter proporção relativa à prancheta
+  // Calculate position based on percentages - maintain relative proportion to the artboard
   let x = (xPercent * targetSize.width) / 100;
   let y = (yPercent * targetSize.height) / 100;
   let width = (widthPercent * targetSize.width) / 100;
   let height = (heightPercent * targetSize.height) / 100;
 
-  // Garantir dimensões mínimas
+  // Ensure minimum dimensions
   width = Math.max(width, 10);
   height = Math.max(height, 10);
 
-  // Tratamento especial para imagens para preservar proporção
+  // Special handling for images to preserve proportion
   if (element.type === "image" || element.type === "logo") {
-    // Obter a proporção original
+    // Get original aspect ratio
     const originalAspectRatio = 
       (element.style.originalWidth && element.style.originalHeight) 
         ? element.style.originalWidth / element.style.originalHeight
         : element.style.width / element.style.height;
     
-    // Se a proporção original está disponível, usá-la para manter a proporção
+    // If original aspect ratio is available, use it to maintain proportion
     if (originalAspectRatio) {
       height = width / originalAspectRatio;
     }
   }
 
-  // Detecção e preservação de alinhamento inferior
+  // Bottom alignment detection and preservation
   const isBottomAligned = Math.abs((element.style.y + element.style.height) - sourceSize.height) < 20;
   if (isBottomAligned) {
     y = targetSize.height - height;
   }
 
-  // Garantir que o elemento permaneça dentro dos limites do canvas
-  const margin = 0; // Sem margem para overflow
+  // Ensure element remains within canvas boundaries
+  const margin = 0; // No margin for overflow
   x = Math.max(margin * -1, Math.min(x, targetSize.width - width - margin));
   y = Math.max(margin * -1, Math.min(y, targetSize.height - height - margin));
 
-  // Ajustar à grade
+  // Snap to grid
   x = snapToGrid(x);
   y = snapToGrid(y);
   width = snapToGrid(width);
@@ -73,8 +73,8 @@ export const calculateSmartPosition = (
 };
 
 /**
- * Mantém a posição do elemento em relação ao cursor durante operações de arrastar
- * em diferentes tamanhos de canvas
+ * Maintains element position relative to cursor during drag operations
+ * across different canvas sizes
  */
 export const calculateDragPosition = (
   mouseX: number,
@@ -82,29 +82,38 @@ export const calculateDragPosition = (
   dragOffsetX: number,
   dragOffsetY: number,
   element: EditorElement,
-  canvasSize: BannerSize
+  canvasSize: BannerSize,
+  zoomLevel: number = 1
 ): { x: number; y: number } => {
-  // Calcular nova posição com base no mouse e no deslocamento
-  let newX = mouseX - dragOffsetX;
-  let newY = mouseY - dragOffsetY;
+  // Calculate new position based on mouse and offset, accounting for zoom level
+  let newX = (mouseX / zoomLevel) - dragOffsetX;
+  let newY = (mouseY / zoomLevel) - dragOffsetY;
 
-  // Restringir ao canvas
+  // Restrict to canvas
   const maxX = canvasSize.width - element.style.width;
   const maxY = canvasSize.height - element.style.height;
   
   newX = Math.max(0, Math.min(newX, maxX));
   newY = Math.max(0, Math.min(newY, maxY));
 
-  // Ajustar à grade
+  // Snap to grid
   newX = snapToGrid(newX);
   newY = snapToGrid(newY);
+
+  // Update percentage values
+  const xPercent = (newX / canvasSize.width) * 100;
+  const yPercent = (newY / canvasSize.height) * 100;
+
+  // Store the percentage values on the element
+  element.style.xPercent = xPercent;
+  element.style.yPercent = yPercent;
 
   return { x: newX, y: newY };
 };
 
 /**
- * Atualiza elementos vinculados de forma inteligente quando um é modificado,
- * mantendo proporções e posições relativas
+ * Intelligently updates linked elements when one is modified,
+ * maintaining relative proportions and positions
  */
 export const updateLinkedElementsIntelligently = (
   elements: EditorElement[],
@@ -113,75 +122,75 @@ export const updateLinkedElementsIntelligently = (
 ): EditorElement[] => {
   if (!sourceElement.linkedElementId) return elements;
 
-  // Encontrar o tamanho do elemento fonte
+  // Find the source element's size
   const sourceSize = activeSizes.find(size => size.name === sourceElement.sizeId) || activeSizes[0];
 
-  // Verificar se o elemento fonte está alinhado ao fundo
+  // Check if source element is bottom-aligned
   const isBottomAligned = Math.abs((sourceElement.style.y + sourceElement.style.height) - sourceSize.height) < 20;
-
-  // Atualizar todos os elementos vinculados
+  
+  // Update all linked elements
   return elements.map(el => {
-    // Pular se não estiver vinculado ao elemento fonte, for o próprio elemento fonte ou estiver posicionado individualmente
+    // Skip if not linked to source element, is the source element itself, or is individually positioned
     if (el.linkedElementId !== sourceElement.linkedElementId || 
         el.id === sourceElement.id || 
         el.isIndividuallyPositioned) {
       return el;
     }
 
-    // Encontrar o tamanho do elemento alvo
+    // Find target size
     const targetSize = activeSizes.find(size => size.name === el.sizeId) || activeSizes[0];
     
-    // Atualizar os valores percentuais com base no elemento fonte
-    const xPercent = (sourceElement.style.x / sourceSize.width) * 100;
-    const yPercent = (sourceElement.style.y / sourceSize.height) * 100;
-    const widthPercent = (sourceElement.style.width / sourceSize.width) * 100;
-    const heightPercent = (sourceElement.style.height / sourceSize.height) * 100;
+    // Update percentage values based on source element
+    const xPercent = sourceElement.style.xPercent || (sourceElement.style.x / sourceSize.width) * 100;
+    const yPercent = sourceElement.style.yPercent || (sourceElement.style.y / sourceSize.height) * 100;
+    const widthPercent = sourceElement.style.widthPercent || (sourceElement.style.width / sourceSize.width) * 100;
+    const heightPercent = sourceElement.style.heightPercent || (sourceElement.style.height / sourceSize.height) * 100;
     
-    // Aplicar essas porcentagens ao tamanho da prancheta alvo
+    // Apply percentages to target artboard size
     let x = (xPercent * targetSize.width) / 100;
     let y = (yPercent * targetSize.height) / 100;
     let width = (widthPercent * targetSize.width) / 100;
     let height = (heightPercent * targetSize.height) / 100;
     
-    // Assegurar que as dimensões mínimas são mantidas
+    // Ensure minimum dimensions are maintained
     width = Math.max(width, 10);
     height = Math.max(height, 10);
     
-    // Tratamento especial para imagens
+    // Special treatment for images
     if (el.type === "image" || el.type === "logo") {
       const aspectRatio = sourceElement.style.width / sourceElement.style.height;
       height = width / aspectRatio;
     }
     
-    // Se o elemento original estiver alinhado ao fundo, garantir que este também esteja
+    // If original element is bottom-aligned, ensure this one is too
     if (isBottomAligned) {
       y = targetSize.height - height;
     }
     
-    // Garantir que o elemento permanece dentro dos limites
+    // Ensure element remains within boundaries
     x = Math.max(0, Math.min(x, targetSize.width - width));
     y = Math.max(0, Math.min(y, targetSize.height - height));
     
-    // Ajustar à grade
+    // Snap to grid
     x = snapToGrid(x);
     y = snapToGrid(y);
     width = snapToGrid(width);
     height = snapToGrid(height);
     
-    // Atualizar elemento com novas posições
+    // Update element with new positions
     return {
       ...el,
       style: {
         ...el.style,
-        x: x,
-        y: y,
-        width: width,
-        height: height,
-        // Atualizar valores percentuais
-        xPercent: xPercent,
-        yPercent: yPercent,
-        widthPercent: widthPercent,
-        heightPercent: heightPercent
+        x,
+        y,
+        width,
+        height,
+        // Update percentage values
+        xPercent,
+        yPercent,
+        widthPercent,
+        heightPercent
       }
     };
   });

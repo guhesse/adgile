@@ -72,7 +72,7 @@ export const linkElementsAcrossSizes = (
     updatedElements.push(clone);
   });
   
-  toast.success('Elemento vinculado em todos os tamanhos');
+  toast.success('Element linked across all sizes');
   return updatedElements;
 };
 
@@ -95,7 +95,7 @@ export const unlinkElement = (
     return el;
   });
   
-  toast.success('Elemento desvinculado');
+  toast.success('Element unlinked');
   return updatedElements;
 };
 
@@ -213,10 +213,10 @@ export const createLinkedVersions = (
   
   linkedElements.push(updatedElement);
   
-  // Create linked elements for other sizes
+  // Create linked elements for all other sizes
   activeSizes.forEach(size => {
-    // Skip the current size
-    if (size.name === selectedSize.name) return;
+    // Skip the current size (element's own size)
+    if (size.name === element.sizeId) return;
     
     // Use calculateSmartPosition to get proper positioning based on percentages
     const { x, y, width, height } = calculateSmartPosition(
@@ -284,4 +284,126 @@ export const createLinkedVersions = (
   });
   
   return linkedElements;
+};
+
+// Link existing elements to newly added sizes
+export const linkElementsToNewSizes = (
+  elements: EditorElement[],
+  newSize: BannerSize,
+  activeSizes: BannerSize[]
+): EditorElement[] => {
+  const updatedElements = [...elements];
+  const elementsToLink: EditorElement[] = [];
+  
+  // Find elements that need to be linked to the new size
+  elements.forEach(element => {
+    // Skip elements that already have versions for the new size
+    const hasVersionForNewSize = elements.some(el => 
+      el.sizeId === newSize.name && 
+      ((el.linkedElementId && el.linkedElementId === element.linkedElementId) || 
+       (element.linkedElementId && el.id === element.id))
+    );
+    
+    if (!hasVersionForNewSize && !element.inContainer) {
+      // This element needs a version for the new size
+      elementsToLink.push(element);
+    }
+  });
+  
+  // Create linked versions for the new size
+  elementsToLink.forEach(element => {
+    // Find the source size for this element
+    const sourceSize = activeSizes.find(size => size.name === element.sizeId) || activeSizes[0];
+    
+    // Skip if this is a child element (we'll handle it with its parent)
+    if (element.inContainer) return;
+    
+    // If element doesn't have a linked ID yet, create one
+    const linkedId = element.linkedElementId || `linked-${Date.now()}-${element.id}`;
+    
+    // Update original element if it doesn't have a linked ID
+    if (!element.linkedElementId) {
+      const elementIndex = updatedElements.findIndex(el => el.id === element.id);
+      if (elementIndex !== -1) {
+        updatedElements[elementIndex] = {
+          ...updatedElements[elementIndex],
+          linkedElementId: linkedId
+        };
+      }
+    }
+    
+    // Calculate percentage values
+    const xPercent = element.style.xPercent || (element.style.x / sourceSize.width) * 100;
+    const yPercent = element.style.yPercent || (element.style.y / sourceSize.height) * 100;
+    const widthPercent = element.style.widthPercent || (element.style.width / sourceSize.width) * 100;
+    const heightPercent = element.style.heightPercent || (element.style.height / sourceSize.height) * 100;
+    
+    // Calculate position for new size
+    const { x, y, width, height } = calculateSmartPosition(
+      {
+        ...element,
+        style: {
+          ...element.style,
+          xPercent,
+          yPercent,
+          widthPercent,
+          heightPercent
+        }
+      },
+      sourceSize,
+      newSize
+    );
+    
+    // Create the new element
+    let newElement: EditorElement;
+    
+    if (element.type === 'layout' && element.childElements) {
+      newElement = {
+        ...element,
+        id: `${element.id}-${newSize.name.replace(/\s+/g, '-').toLowerCase()}`,
+        sizeId: newSize.name,
+        linkedElementId: linkedId,
+        style: {
+          ...element.style,
+          x,
+          y,
+          width,
+          height,
+          xPercent,
+          yPercent,
+          widthPercent,
+          heightPercent
+        },
+        childElements: element.childElements.map(child => ({
+          ...child,
+          id: `${child.id}-${newSize.name.replace(/\s+/g, '-').toLowerCase()}`,
+          parentId: `${element.id}-${newSize.name.replace(/\s+/g, '-').toLowerCase()}`,
+          sizeId: newSize.name,
+          linkedElementId: `${linkedId}-child-${child.id}`
+        }))
+      };
+    } else {
+      newElement = {
+        ...element,
+        id: `${element.id}-${newSize.name.replace(/\s+/g, '-').toLowerCase()}`,
+        sizeId: newSize.name,
+        linkedElementId: linkedId,
+        style: {
+          ...element.style,
+          x,
+          y,
+          width,
+          height,
+          xPercent,
+          yPercent,
+          widthPercent,
+          heightPercent
+        }
+      };
+    }
+    
+    updatedElements.push(newElement);
+  });
+  
+  return updatedElements;
 };
