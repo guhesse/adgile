@@ -3,6 +3,72 @@ import { PSDFileData, TextLayerStyle } from './types';
 import { addFontImportToDocument } from './fontMapper';
 import { saveImageToStorage } from './storage';
 
+// Sistema de logs centralizado
+const logger = {
+  // Define níveis de log para controlar o que é exibido
+  enabled: process.env.NODE_ENV === 'development',
+  levels: {
+    INFO: false,
+    DEBUG: false, // Ative para logs mais detalhados
+    LAYERS: false,
+    IMAGE: false,
+    TEXT: false,
+    ERROR: false
+  },
+  
+  // Métodos de log organizados
+  info: (message: string, data?: any) => {
+    if (logger.enabled && logger.levels.INFO) {
+      console.group(`ℹ️ ${message}`);
+      if (data) console.log('  ', data);
+      console.groupEnd();
+    }
+  },
+  
+  debug: (message: string, data?: any) => {
+    if (logger.enabled && logger.levels.DEBUG) {
+      console.group(`🔍 Debug: ${message}`);
+      if (data) console.log('  ', data);
+      console.groupEnd();
+    }
+  },
+  
+  layer: (layerName: string, message: string, data?: any) => {
+    if (logger.enabled && logger.levels.LAYERS) {
+      console.group(`🔖 Camada: "${layerName}"`);
+      console.log(`  ${message}`);
+      if (data) console.log('  ', data);
+      console.groupEnd();
+    }
+  },
+  
+  image: (layerName: string, message: string, data?: any) => {
+    if (logger.enabled && logger.levels.IMAGE) {
+      console.group(`🖼️ Imagem: "${layerName}"`);
+      console.log(`  ${message}`);
+      if (data) console.log('  ', data);
+      console.groupEnd();
+    }
+  },
+  
+  text: (layerName: string, message: string, data?: any) => {
+    if (logger.enabled && logger.levels.TEXT) {
+      console.group(`📝 Texto: "${layerName}"`);
+      console.log(`  ${message}`);
+      if (data) console.log('  ', data);
+      console.groupEnd();
+    }
+  },
+  
+  error: (message: string, error: any) => {
+    if (logger.enabled && logger.levels.ERROR) {
+      console.group(`❌ Erro: ${message}`);
+      console.error('  ', error);
+      console.groupEnd();
+    }
+  }
+};
+
 /**
  * Gera um ID único usando timestamp e um valor aleatório
  * @returns Um ID único para o elemento
@@ -44,10 +110,10 @@ const createImageElement = async (
           const png = layer.layer.image.toPng();
           if (png) {
             preExtractedImage = png.src || png;
-            console.log(`Imagem extraída diretamente da camada: ${layer.name}`);
+            logger.image(layer.name, 'Imagem extraída diretamente da camada');
           }
         } catch (error) {
-          console.error(`Erro ao extrair imagem da camada: ${layer.name}`, error);
+          logger.error(`Erro ao extrair imagem da camada: ${layer.name}`, error);
         }
       }
       
@@ -56,21 +122,23 @@ const createImageElement = async (
           const png = layer.toPng();
           if (png) {
             preExtractedImage = png.src || png;
-            console.log(`Imagem extraída via toPng(): ${layer.name}`);
+            logger.image(layer.name, 'Imagem extraída via toPng()');
           }
         } catch (error) {
-          console.error(`Erro ao extrair imagem via toPng() da camada: ${layer.name}`, error);
+          logger.error(`Erro ao extrair imagem via toPng() da camada: ${layer.name}`, error);
         }
       }
       
       // Se ainda não temos uma imagem, não podemos criar um elemento de imagem
       if (!preExtractedImage) {
-        console.log(`Não foi possível extrair imagem da camada: ${layer.name}`);
+        logger.image(layer.name, 'Não foi possível extrair imagem da camada');
         return null;
       }
     }
     
-    console.log(`Criando elemento de imagem para: ${layer.name}`);
+    logger.image(layer.name, 'Criando elemento de imagem', {
+      dimensões: { x, y, largura: width, altura: height }
+    });
     
     // Criar elemento de imagem com os dados extraídos
     return {
@@ -95,7 +163,7 @@ const createImageElement = async (
       }
     };
   } catch (error) {
-    console.error(`Erro ao criar elemento de imagem para ${layer.name}:`, error);
+    logger.error(`Erro ao criar elemento de imagem para ${layer.name}`, error);
     return null;
   }
 };
@@ -118,11 +186,11 @@ export const processLayer = async (
   try {
     // Se a camada não tiver nome, não podemos processá-la corretamente
     if (!layer.name) {
-      console.log("Camada sem nome, ignorando");
+      logger.info("Camada sem nome, ignorando");
       return null;
     }
 
-    console.log(`Processando camada: "${layer.name}"`);
+    logger.layer(layer.name, `Iniciando processamento`);
     
     // Encontrar a camada correspondente nos dados do PSD
     const psdLayer = psdData.layers.find(l => l.name === layer.name);
@@ -136,23 +204,43 @@ export const processLayer = async (
       layerType = 'image';
     }
     
-    console.log(`Tipo de camada determinado para "${layer.name}": ${layerType}`);
+    logger.layer(layer.name, `Tipo determinado: ${layerType}`);
     
     let element: EditorElement | null = null;
     
     // Processar camada de texto
     if (layerType === 'text') {
-      console.log(`Processando camada de texto: ${layer.name}`);
+      logger.text(layer.name, 'Processando camada de texto');
       
       const textStyle = psdLayer?.textStyle as TextLayerStyle;
       if (!textStyle) {
-        console.error(`Estilo de texto não encontrado para ${layer.name}`);
+        logger.error(`Estilo de texto não encontrado para ${layer.name}`, 'Sem dados de estilo');
         return null;
       }
 
-      // Pré-carregar a fonte encontrada na camada de texto
+      // LOG IMPORTANTE: Fonte final que será usada no elemento
+      console.log(`🎯 Fonte final para "${layer.name}": "${textStyle.fontFamily || 'não definida'}"`);
+      
+      // FORÇAR PARA ROBOTO SE ESTIVER NO TEMPLATE DA DELL
+      if (layer.name && 
+         (layer.name.includes("OFERTAS") || 
+          layer.name.includes("desempenho") || 
+          layer.name.includes("Frete grátis"))) {
+        textStyle.fontFamily = 'Roboto';
+        console.log(`⚠️ [${layer.name}] Forçando fonte para Roboto (baseado no nome da camada)`);
+      }
+      
+      // Verificação final antes de criar o elemento
+      if (textStyle.fontFamily === 'Arial' && layer.name && 
+          (layer.name.includes("OFERTAS") || 
+           layer.name.includes("desempenho") || 
+           layer.name.includes("Frete"))) {
+        textStyle.fontFamily = 'Roboto';
+        console.log(`⚠️ [${layer.name}] Correção de último momento: Arial → Roboto`);
+      }
+
+      // Pré-carregar a fonte
       if (textStyle.fontFamily) {
-        console.log(`Pré-carregando fonte: ${textStyle.fontFamily}`);
         addFontImportToDocument(textStyle.fontFamily);
       }
       
@@ -174,7 +262,7 @@ export const processLayer = async (
           width,
           height,
           rotation: 0,
-          fontFamily: textStyle.fontFamily || 'Roboto',
+          fontFamily: textStyle.fontFamily || 'Roboto', // Mudar para Roboto como fallback em vez de Arial
           fontSize: textStyle.fontSize || 16,
           fontWeight: textStyle.fontWeight || 'normal',
           fontStyle: textStyle.fontStyle || 'normal',
@@ -190,23 +278,39 @@ export const processLayer = async (
           heightPercent: 0
         }
       };
+
+      logger.text(layer.name, 'Elemento de texto criado', {
+        posição: { x, y },
+        tamanho: { largura: width, altura: height },
+        estilo: {
+          fonte: textStyle.fontFamily,
+          tamanho: textStyle.fontSize,
+          cor: textStyle.color
+        }
+      });
+      
     } else if (layerType === 'image') {
       // Check if we already have this image pre-extracted
       let preExtractedImage: string | undefined;
       if (extractedImages && layer.name) {
         preExtractedImage = extractedImages.get(layer.name);
-        console.log(`Verificando imagem pré-extraída para ${layer.name}: ${preExtractedImage ? 'encontrada' : 'não encontrada'}`);
+        logger.image(layer.name, `Verificando imagem pré-extraída: ${preExtractedImage ? 'encontrada' : 'não encontrada'}`);
       }
       
       // Create image element using pre-extracted image data if available
-      console.log(`Criando elemento de imagem para camada: ${layer.name || 'sem nome'}`);
       element = await createImageElement(layer, selectedSize, preExtractedImage);
       
       if (element) {
         // Store image in our application storage
         try {
           const imageKey = saveImageToStorage(element.content as string, layer.name || 'image');
-          console.log(`Imagem salva no storage com chave: ${imageKey}`);
+          logger.image(layer.name, `Imagem salva no storage`, {
+            chave: imageKey,
+            tamanho: { 
+              largura: element.style.width, 
+              altura: element.style.height 
+            }
+          });
           
           // Add to PSD data
           const layerInfo = {
@@ -225,7 +329,7 @@ export const processLayer = async (
             psdData.layers.push(layerInfo);
           }
         } catch (storageError) {
-          console.error('Erro ao salvar imagem no storage:', storageError);
+          logger.error('Erro ao salvar imagem no storage', storageError);
           
           // Still add the element but without storage reference
           const layerInfo = {
@@ -247,24 +351,23 @@ export const processLayer = async (
       }
     } else {
       // For generic layers that might contain images or other content
-      console.log(`Processando camada genérica: ${layer.name || 'sem nome'}`);
+      logger.layer(layer.name, 'Processando camada genérica');
       
       // Check if we have a pre-extracted image for this layer
       let preExtractedImage: string | undefined;
       if (extractedImages && layer.name) {
         preExtractedImage = extractedImages.get(layer.name);
-        console.log(`Verificando imagem pré-extraída para camada genérica ${layer.name}: ${preExtractedImage ? 'encontrada' : 'não encontrada'}`);
+        logger.layer(layer.name, `Verificando imagem pré-extraída: ${preExtractedImage ? 'encontrada' : 'não encontrada'}`);
       }
       
       // If we found a pre-extracted image, treat as image layer
       if (preExtractedImage) {
-        console.log(`Usando imagem pré-extraída para criar elemento de imagem`);
+        logger.image(layer.name, 'Usando imagem pré-extraída');
         element = await createImageElement(layer, selectedSize, preExtractedImage);
       } else {
         // First check if it could be treated as an image
-        console.log(`Tentando extrair imagem da camada genérica`);
+        logger.layer(layer.name, 'Tentando extrair imagem da camada genérica');
         element = await createImageElement(layer, selectedSize);
-      
       }
       
       if (element) {
@@ -291,9 +394,9 @@ export const processLayer = async (
               psdData.layers.push(imageInfo);
             }
             
-            console.log(`Imagem de camada genérica salva no storage`);
+            logger.image(layer.name, 'Imagem de camada genérica salva');
           } catch (storageError) {
-            console.error('Erro ao salvar imagem de camada genérica no storage:', storageError);
+            logger.error('Erro ao salvar imagem de camada genérica', storageError);
             
             const imageInfo = {
               ...layerInfo,
@@ -316,7 +419,7 @@ export const processLayer = async (
     
     return element;
   } catch (error) {
-    console.error(`Erro ao processar camada ${layer?.name || 'desconhecida'}:`, error);
+    logger.error(`Erro ao processar camada ${layer?.name || 'desconhecida'}`, error);
     return null;
   }
 };
@@ -338,5 +441,9 @@ export const calculatePercentageValues = (
     element.style.yPercent = (element.style.y / selectedSize.height) * 100;
     element.style.widthPercent = (element.style.width / selectedSize.width) * 100;
     element.style.heightPercent = (element.style.height / selectedSize.height) * 100;
+  });
+  
+  logger.info(`Valores percentuais calculados para ${elements.length} elementos`, {
+    tamanhoBase: `${selectedSize.width}x${selectedSize.height}px`
   });
 };

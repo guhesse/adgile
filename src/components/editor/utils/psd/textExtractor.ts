@@ -1,183 +1,255 @@
 import { TextLayerStyle } from './types';
 import { mapPSDFontToWebFont } from './fontMapper';
 
+// Sistema de logs centralizado - simplificado apenas para fontes
+const logger = {
+  enabled: process.env.NODE_ENV === 'development',
+  
+  // Log apenas para informações de fonte
+  font: (layerName: string, message: string, data?: any) => {
+    if (logger.enabled) {
+      console.log(`🔤 Fonte "${layerName}": ${message}`, data || '');
+    }
+  },
+  
+  // Log para resumo final de extração
+  summary: (layerName: string, fontFamily: string, fontSize: number) => {
+    if (logger.enabled) {
+      console.log(`📝 Texto extraído "${layerName}": Fonte=${fontFamily}, Tamanho=${fontSize}px`);
+    }
+  }
+};
+
 /**
  * Extracts style information from a text layer
  * @param textData The text data extracted from the PSD layer
  * @param node The layer node
  * @returns A TextLayerStyle object with the extracted style information
  */
-export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle => {
-  console.log(`Extraindo estilo de texto para: ${node.name}`);
-  
-  // Default style - usando Roboto como padrão, não Inter
-  const textStyle: TextLayerStyle = {
-    text: node.name || '',
-    fontFamily: 'Roboto', // Garantir que o padrão seja Roboto
-    fontSize: 14,
-    fontWeight: 'normal',
-    fontStyle: 'normal',
-    color: '#000000',
-    alignment: 'left',
-    letterSpacing: 0,
-    lineHeight: 1.2
-  };
-
-  // Extract text content
-  if (textData && textData.textValue) {
-    textStyle.text = textData.textValue;
-  }
-
+export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle | null => {
   try {
-    // Extract font information
-    if (textData && typeof textData.fonts === 'function') {
-      const fonts = textData.fonts();
-      console.log(`Fontes encontradas via método fonts(): ${fonts}`);
+    // Informações detalhadas para diagnóstico
+    console.group(`📋 DIAGNÓSTICO DE FONTE [${node.name}]`);
+    console.log(`originalFont: "${textData.originalFont || 'não definida'}"`);
+    console.log(`fontName: "${textData.fontName || 'não definida'}"`);
+    console.log(`fontIndex: ${textData.fontIndex || 'não definido'}`);
+    console.log(`_styles: ${JSON.stringify(textData._styles ? {Font: textData._styles.Font} : 'não disponível')}`);
+    
+    // Verificar disponibilidade de FontSet
+    const hasFontSet = !!(textData.engineData?.ResourceDict?.FontSet);
+    console.log(`FontSet disponível: ${hasFontSet}`);
+    
+    if (hasFontSet) {
+      const fontSet = textData.engineData.ResourceDict.FontSet;
+      const fontIndex = textData._styles?.Font?.[0] || textData.fontIndex || 0;
       
-      if (fonts && fonts.length > 0) {
-        const primaryFont = fonts[0];
-        console.log(`Fonte primária do PSD: "${primaryFont}"`);
+      console.log(`Índice da fonte: ${fontIndex}`);
+      console.log(`FontSet.length: ${fontSet.length}`);
+      
+      if (fontSet[fontIndex]) {
+        console.log(`FontSet[${fontIndex}].Name: "${fontSet[fontIndex].Name}"`);
+      } else if (fontSet.length > 0) {
+        console.log(`FontSet[0].Name: "${fontSet[0].Name}"`);
+      }
+    }
+    console.groupEnd();
+
+    // Inicializar com valores padrão
+    let textStyle: TextLayerStyle = {
+      text: '',
+      fontFamily: 'Arial',
+      fontSize: 14,
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      color: '#000000',
+      alignment: 'left',
+      letterSpacing: 0,
+      lineHeight: 1.2
+    };
+
+    // Extrair texto
+    if (textData) {
+      // Tentar obter o valor do texto
+      if (textData.textValue) {
+        textStyle.text = textData.textValue;
+      } else if (typeof textData.value === 'function') {
+        textStyle.text = textData.value() || '';
+      } else if (textData.text) {
+        textStyle.text = textData.text;
+      }
+
+      // ABORDAGEM DIRETA PARA OBTER A FONTE
+      let fontFound = false;
+      
+      // Opção 1: Usar fontName diretamente (a mais confiável)
+      if (textData.fontName) {
+        textStyle.fontFamily = textData.fontName.split('-')[0]; // Remover sufixo como "-Regular"
+        logger.font(node.name, `Usando fontName direto: ${textStyle.fontFamily}`);
+        fontFound = true;
+      } 
+      // Opção 2: Usar originalFont 
+      else if (textData.originalFont) {
+        textStyle.fontFamily = textData.originalFont.split('-')[0];
+        logger.font(node.name, `Usando fonte original: ${textStyle.fontFamily}`);
+        fontFound = true;
+      }
+      // Opção 3: Usar _styles e FontSet (específico para LazyExecute)
+      else if (textData._styles?.Font && textData.engineData?.ResourceDict?.FontSet) {
+        const fontIndex = textData._styles.Font[0] || 0;
+        const fontSet = textData.engineData.ResourceDict.FontSet;
         
-        // Extrair família da fonte, peso e estilo
-        if (primaryFont.includes('Roboto')) {
-          textStyle.fontFamily = 'Roboto';
-          
-          // Extrair peso da fonte
-          if (primaryFont.includes('-Bold')) {
-            textStyle.fontWeight = 'bold';
-            console.log(`Aplicando peso bold para fonte Roboto`);
-          } else if (primaryFont.includes('-Light')) {
-            textStyle.fontWeight = '300';
-            console.log(`Aplicando peso light para fonte Roboto`);
-          } else if (primaryFont.includes('-Medium')) {
-            textStyle.fontWeight = '500';
-            console.log(`Aplicando peso medium para fonte Roboto`);
-          } else if (primaryFont.includes('-Black')) {
-            textStyle.fontWeight = '900';
-            console.log(`Aplicando peso black para fonte Roboto`);
-          } else {
-            textStyle.fontWeight = 'normal';
-            console.log(`Aplicando peso normal para fonte Roboto`);
-          }
-          
-          // Extrair estilo da fonte
-          if (primaryFont.includes('-Italic')) {
-            textStyle.fontStyle = 'italic';
-            console.log(`Aplicando estilo italic para fonte Roboto`);
-          }
-        } else {
-          // Para outras fontes que não são Roboto
-          const fontMapping = mapPSDFontToWebFont(primaryFont);
-          console.log(`Mapeando fonte "${primaryFont}" para "${fontMapping}"`);
-          textStyle.fontFamily = fontMapping.split(',')[0].trim(); // Pegar apenas o nome principal
+        if (fontSet[fontIndex] && fontSet[fontIndex].Name) {
+          textStyle.fontFamily = fontSet[fontIndex].Name.split('-')[0];
+          logger.font(node.name, `Usando fonte do FontSet[${fontIndex}]: ${textStyle.fontFamily}`);
+          fontFound = true;
+        } else if (fontSet.length > 0 && fontSet[0].Name) {
+          textStyle.fontFamily = fontSet[0].Name.split('-')[0];
+          logger.font(node.name, `Usando primeira fonte do FontSet: ${textStyle.fontFamily}`);
+          fontFound = true;
         }
+      }
+      
+      // SUPER FORÇA A FONTE PARA ROBOTO COMO ÚLTIMO RECURSO
+      if (!fontFound || textStyle.fontFamily === 'Arial') {
+        if (textData.engineData?.ResourceDict?.FontSet) {
+          // Se temos FontSet, é quase certo que deveria ser Roboto
+          textStyle.fontFamily = 'Roboto';
+          logger.font(node.name, `Forçando a fonte para Roboto (tem FontSet mas não conseguimos extrair)`);
+        }
+      }
+
+      // Aplicar mapeamento de fontes para uso na web
+      const originalFont = textStyle.fontFamily;
+      const mappedFont = mapPSDFontToWebFont(originalFont);
+      if (mappedFont !== originalFont) {
+        textStyle.fontFamily = mappedFont.split(',')[0].trim();
+        logger.font(node.name, `Mapeamento: "${originalFont}" → "${textStyle.fontFamily}"`);
+      }
+
+      // Detectar peso e estilo baseado no nome completo da fonte
+      // Verificar se estamos lidando com Roboto e definir corretamente
+      if (textData.originalFont && textData.originalFont.includes('Roboto')) {
+        const fullName = textData.originalFont.toLowerCase();
+        if (fullName.includes('bold')) textStyle.fontWeight = 'bold';
+        else if (fullName.includes('light')) textStyle.fontWeight = '300';
+        else if (fullName.includes('medium')) textStyle.fontWeight = '500';
+        else if (fullName.includes('regular')) textStyle.fontWeight = 'normal';
         
-        console.log(`Fonte processada e aplicada: ${textStyle.fontFamily} (${textStyle.fontWeight}, ${textStyle.fontStyle})`);
+        if (fullName.includes('italic')) textStyle.fontStyle = 'italic';
+        
+        logger.font(node.name, `Estilo da fonte Roboto: peso=${textStyle.fontWeight}, estilo=${textStyle.fontStyle}`);
       }
-    }
 
-    // Extract font size
-    if (textData && typeof textData.sizes === 'function') {
-      const sizes = textData.sizes();
-      console.log(`Tamanhos encontrados via método sizes(): ${sizes}`);
-      
-      if (sizes && sizes.length > 0) {
-        // Converter de pontos para pixels (aproximadamente)
-        // O fator de conversão pode variar, mas geralmente é cerca de 1.33
-        const fontSize = Math.round(sizes[0] / 1.33);
-        textStyle.fontSize = fontSize;
-        console.log(`Tamanho da fonte: ${sizes[0]} pontos -> ${fontSize} pixels`);
+      // Extrair tamanho da fonte - priorizar valores transformados
+      if (textData.transformedFontSize && textData.transformedFontSize > 0) {
+        textStyle.fontSize = Math.round(textData.transformedFontSize);
+      } else if (typeof textData.sizes === 'function') {
+        try {
+          const sizes = textData.sizes();
+          if (sizes && sizes.length > 0) {
+            const pointToPixelFactor = 96 / 72;
+            textStyle.fontSize = Math.round(sizes[0] * pointToPixelFactor);
+          }
+        } catch (e) {
+          // Silenciar erros
+        }
       }
-    }
 
-    // Extract color
-    if (textData && typeof textData.colors === 'function') {
-      const colors = textData.colors();
-      console.log(`Cores encontradas via método colors(): ${colors}`);
-      
-      if (colors && colors.length > 0 && Array.isArray(colors[0])) {
-        const [r, g, b] = colors[0].slice(0, 3);
-        // Converter RGB para hexadecimal
-        textStyle.color = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-        console.log(`Cor da fonte: rgb(${r},${g},${b}) -> ${textStyle.color}`);
+      // Extrair outras propriedades...
+      if (typeof textData.colors === 'function') {
+        const colors = textData.colors();
+        
+        if (colors && colors.length > 0 && Array.isArray(colors[0]) && colors[0].length >= 3) {
+          // Converter RGB para hexadecimal
+          const [r, g, b] = colors[0].slice(0, 3).map(Math.round);
+          textStyle.color = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+        }
       }
-    }
 
-    // Extract alignment
-    if (textData && typeof textData.alignment === 'function') {
-      const alignments = textData.alignment();
-      console.log(`Alinhamento encontrado via método alignment(): ${alignments}`);
-      
-      if (alignments && alignments.length > 0) {
-        const alignment = alignments[0];
-        if (typeof alignment === 'string') {
-          textStyle.alignment = alignment;
-        } else {
-          // Map numeric alignment values to strings
-          const alignmentMap: {[key: string]: string} = {
+      if (typeof textData.alignment === 'function') {
+        const alignmentValue = textData.alignment();
+        
+        if (alignmentValue !== undefined) {
+          // Mapear valores de alinhamento
+          const alignmentMap: Record<string, string> = {
             '0': 'left',
             '1': 'right',
             '2': 'center',
             '3': 'justify'
           };
-          textStyle.alignment = alignmentMap[alignment.toString()] || 'left';
+          
+          const alignment = alignmentMap[alignmentValue.toString()] || 'left';
+          textStyle.alignment = alignment;
         }
-        console.log(`Alinhamento aplicado: ${textStyle.alignment}`);
+      }
+      
+      if (textData.tracking !== undefined) {
+        textStyle.letterSpacing = textData.tracking / 1000; // Convertendo para em
+      }
+      
+      if (textData.engineData) {
+        if (textData.engineData.ResourceDict && 
+            textData.engineData.ResourceDict.FontSet && 
+            textData.engineData.ResourceDict.FontSet[0] && 
+            textData.engineData.ResourceDict.FontSet[0].FontDict && 
+            textData.engineData.ResourceDict.FontSet[0].FontDict.Leading) {
+          const leadingValue = textData.engineData.ResourceDict.FontSet[0].FontDict.Leading;
+          if (!textStyle.lineHeight && textStyle.fontSize) {
+            textStyle.lineHeight = leadingValue / textStyle.fontSize;
+          }
+        }
+        
+        if (textData.engineData.ResourceDict && 
+            textData.engineData.ResourceDict.FontSet && 
+            textData.engineData.ResourceDict.FontSet[0] && 
+            textData.engineData.ResourceDict.FontSet[0].FontDict && 
+            textData.engineData.ResourceDict.FontSet[0].FontDict.Tracking) {
+          const trackingValue = textData.engineData.ResourceDict.FontSet[0].FontDict.Tracking;
+          textStyle.letterSpacing = trackingValue / 1000; // Convertendo para em
+        }
       }
     }
 
-    // Try to access engineData for additional info
-    if (textData && textData.engineData) {
-      console.log("EngineData disponível para extração adicional");
+    // Verificação final para garantir valores válidos
+    if (textStyle.fontSize <= 0) textStyle.fontSize = 14;
+    if (textStyle.lineHeight <= 0) textStyle.lineHeight = 1.2;
+    
+    // Log resumido do resultado final
+    logger.summary(node.name, textStyle.fontFamily, textStyle.fontSize);
 
-      // Additional letter spacing and line height could be extracted here
-      try {
-        if (textData.engineData.EngineDict &&
-            textData.engineData.EngineDict.StyleRun &&
-            textData.engineData.EngineDict.StyleRun.RunArray &&
-            textData.engineData.EngineDict.StyleRun.RunArray.length > 0) {
-
-          const styleRun = textData.engineData.EngineDict.StyleRun.RunArray[0];
-
-          // Extract letter spacing
-          if (styleRun.StyleSheet &&
-              styleRun.StyleSheet.StyleSheetData &&
-              styleRun.StyleSheet.StyleSheetData.Tracking) {
-
-            const tracking = styleRun.StyleSheet.StyleSheetData.Tracking;
-            // Convert tracking to CSS letter-spacing (approximation)
-            textStyle.letterSpacing = tracking / 1000;
-            console.log(`Letter spacing extraído: ${tracking} -> ${textStyle.letterSpacing}em`);
-          }
-
-          // Extract line height
-          if (styleRun.StyleSheet &&
-              styleRun.StyleSheet.StyleSheetData &&
-              styleRun.StyleSheet.StyleSheetData.Leading) {
-
-            const leading = styleRun.StyleSheet.StyleSheetData.Leading;
-            // Convert leading to CSS line-height ratio (approximation)
-            if (textStyle.fontSize > 0) {
-              textStyle.lineHeight = leading / textStyle.fontSize;
-              console.log(`Line height extraído: ${leading}px -> ${textStyle.lineHeight}`);
-            }
-          }
-        }
-      } catch (engineDataError) {
-        console.error("Erro ao extrair dados avançados do engineData:", engineDataError);
-      }
-    }
-
-    // Log node position for debugging
-    console.log(`Posição da camada: x=${node.left || 0}, y=${node.top || 0}`);
-
+    return textStyle;
   } catch (error) {
-    console.error(`Erro ao extrair estilos de texto para ${node.name}:`, error);
+    console.error("Erro ao extrair estilo de texto:", error);
+    return null;
   }
-
-  console.log("Estilo de texto extraído:", textStyle);
-  return textStyle;
 };
+
+// Função auxiliar para buscar propriedades em objetos aninhados
+function findAllPropertiesDeep(obj: any, propertyNames: string[]): Array<{path: string, value: any}> {
+  const result: Array<{path: string, value: any}> = [];
+  
+  function search(currentObj: any, currentPath: string = '') {
+    if (!currentObj || typeof currentObj !== 'object') return;
+    
+    for (const key in currentObj) {
+      const newPath = currentPath ? `${currentPath}.${key}` : key;
+      
+      if (propertyNames.includes(key) && currentObj[key]) {
+        result.push({
+          path: newPath,
+          value: currentObj[key]
+        });
+      }
+      
+      if (typeof currentObj[key] === 'object') {
+        search(currentObj[key], newPath);
+      }
+    }
+  }
+  
+  search(obj);
+  return result;
+}
 
 /**
  * Parseia um objeto textData para extrair informações específicas
@@ -213,14 +285,13 @@ export function parseTextData(textData: any): any {
         try {
           result[key] = textData[key]();
         } catch (e) {
-          console.log(`Erro ao chamar método ${key}():`, e);
+          // Silenciar erro
         }
       }
     });
 
     return result;
   } catch (error) {
-    console.error("Error parsing text data:", error);
     return { error: String(error) };
   }
 }
