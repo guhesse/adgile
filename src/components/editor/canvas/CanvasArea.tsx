@@ -43,38 +43,19 @@ export const CanvasArea = ({
 }: CanvasAreaProps) => {
   const { artboardBackgroundColor = '#ffffff' } = useCanvas();
   
-  // Use provided background color directly
+  // Use provided background color directly, no need to search for an element
   const backgroundColor = artboardBackgroundColor;
 
-  // Filter elements that should appear on this specific size
-  // Elements are shown if:
-  // 1. They have no sizeId (legacy elements)
-  // 2. They match this size name
-  // 3. They have a linkedElementId (responsive across sizes)
-  // 4. They are global elements
+  // Filter elements that should appear in this specific size or globally
+  // Sort elements by z-index (order in the array)
   const elementsToShow = elements
     .filter(element => 
-      !element.sizeId || // Legacy elements without sizeId
+      !element.sizeId || // Elements without sizeId
       element.sizeId === size.name || // Elements specific to this size
-      element.sizeId === 'global' || // Global elements
-      !!element.linkedElementId // Linked elements (responsive)
+      element.sizeId === 'global' // Global elements that should appear in all sizes
     )
     // Filter out artboard-background elements as we handle them separately
-    .filter(element => element.type !== 'artboard-background')
-    // Filter out elements linked to this size but belonging to other sizes
-    // (We want to show only the specific version for this size)
-    .filter(element => {
-      if (element.linkedElementId && element.sizeId !== size.name) {
-        // Check if there's a specific version for this size
-        const hasSpecificVersion = elements.some(e => 
-          e.linkedElementId === element.linkedElementId && 
-          e.sizeId === size.name
-        );
-        // Only show this element if there's no specific version for this size
-        return !hasSpecificVersion;
-      }
-      return true;
-    });
+    .filter(element => element.type !== 'artboard-background');
 
   return (
     <div className="relative">
@@ -107,8 +88,6 @@ export const CanvasArea = ({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        data-canvas-size={`${size.width}x${size.height}`}
-        data-zoom-level={zoomLevel}
       >
         {elementsToShow
           .filter(el => !el.inContainer)
@@ -127,7 +106,6 @@ export const CanvasArea = ({
               hoveredContainer={hoveredContainer}
               canvasNavMode={canvasNavMode}
               zIndex={index} // Pass the index to control z-index
-              zoomLevel={zoomLevel}
             />
           ))}
       </Card>

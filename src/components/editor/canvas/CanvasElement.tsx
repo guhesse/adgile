@@ -1,4 +1,3 @@
-
 import { BannerSize, CanvasNavigationMode, EditorElement } from "../types";
 import { ElementRenderer } from "../ElementRenderer";
 import { ElementHandles } from "./ElementHandles";
@@ -19,7 +18,6 @@ interface CanvasElementProps {
   hoveredContainer: string | null;
   canvasNavMode: CanvasNavigationMode;
   zIndex?: number;
-  zoomLevel?: number;
 }
 
 export const CanvasElement = ({
@@ -35,8 +33,7 @@ export const CanvasElement = ({
   handleContainerHoverEnd,
   hoveredContainer,
   canvasNavMode,
-  zIndex = 1,
-  zoomLevel = 1
+  zIndex = 1
 }: CanvasElementProps) => {
   
   const isHovered = hoveredContainer === element.id;
@@ -49,6 +46,12 @@ export const CanvasElement = ({
   // Reference to maintain a fixed point when dragging
   const elementRef = useRef<HTMLDivElement>(null);
 
+  // If the element doesn't belong to this canvas size, don't render it
+  // Global elements (sizeId = 'global') should appear in all canvases
+  if (element.sizeId && element.sizeId !== canvasSize.name && element.sizeId !== 'global') {
+    return null;
+  }
+
   // Determine the position for this element
   let position = { 
     x: element.style.x, 
@@ -58,12 +61,11 @@ export const CanvasElement = ({
   };
   
   // If element has percentage values and needs to be adjusted for this canvas size
-  // Or if this element is linked but has a different sizeId
-  if ((element.style.xPercent !== undefined && 
-       element.style.yPercent !== undefined && 
-       element.style.widthPercent !== undefined && 
-       element.style.heightPercent !== undefined) ||
-      (element.linkedElementId && element.sizeId !== canvasSize.name)) {
+  if (element.style.xPercent !== undefined && 
+      element.style.yPercent !== undefined && 
+      element.style.widthPercent !== undefined && 
+      element.style.heightPercent !== undefined &&
+      element.sizeId !== canvasSize.name) {
     
     // Find the source size (the size this element was originally created for)
     const sourceSize = {
@@ -95,36 +97,18 @@ export const CanvasElement = ({
   const handleElementMouseDown = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     
-    // Store the current zoom level on the event
-    (e as any).zoomLevel = zoomLevel;
-    
     // Capture mouse position at the beginning of the drag relative to the element
     if (elementRef.current) {
       const rect = elementRef.current.getBoundingClientRect();
-      const offsetX = (e.clientX - rect.left) / zoomLevel;
-      const offsetY = (e.clientY - rect.top) / zoomLevel;
+      const offsetX = e.clientX - rect.left;
+      const offsetY = e.clientY - rect.top;
       
       // Store information in the event object for use in the drag handler
       (e as any).elementOffset = { x: offsetX, y: offsetY };
     }
     
     handleMouseDown(e, element);
-  }, [element, handleMouseDown, zoomLevel]);
-
-  // For linked elements that belong to other sizes, determine visibility
-  const shouldShowInCurrentSize = element.sizeId === canvasSize.name || 
-                                 !element.sizeId || 
-                                 element.sizeId === 'global';
-
-  if (!shouldShowInCurrentSize && element.linkedElementId) {
-    // Check if there's a specific version for this size
-    const hasSpecificVersion = false; // This would need elements array to check
-    
-    // If there's a specific version, don't show this one
-    if (hasSpecificVersion) {
-      return null;
-    }
-  }
+  }, [element, handleMouseDown]);
 
   return (
     <div
@@ -156,10 +140,8 @@ export const CanvasElement = ({
       draggable={false}
       data-element-id={element.id}
       data-element-type={element.type}
-      data-zoom-level={zoomLevel}
-      data-canvas-size={`${canvasSize.width}x${canvasSize.height}`}
-      data-linked-id={element.linkedElementId}
-      data-size-id={element.sizeId}
+      data-zoom-level={1}
+      data-canvas-wrapper="true"
       onMouseEnter={(e) => {
         if (isContainer) {
           handleContainerHover(e, element.id);
@@ -197,7 +179,6 @@ export const CanvasElement = ({
               hoveredContainer={hoveredContainer}
               canvasNavMode={canvasNavMode}
               zIndex={childIndex + 1}
-              zoomLevel={zoomLevel}
             />
           ))}
         </div>
@@ -207,7 +188,6 @@ export const CanvasElement = ({
         <ElementHandles 
           element={element} 
           handleResizeStart={handleResizeStart}
-          zoomLevel={zoomLevel}
         />
       )}
     </div>

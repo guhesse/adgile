@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { TextLayerStyle } from './types';
 import { mapPSDFontToWebFont, addFontImportToDocument } from './fontMapper';
@@ -48,13 +47,13 @@ export const PSDText: React.FC<PSDTextProps> = ({
 
     return (
         <div 
-            className={className}
-            style={cssStyle}
-            onClick={onClick}
+      className= { className }
+    style = { cssStyle }
+    onClick = { onClick }
         >
-            {textStyle.text || ''}
+        { textStyle.text || '' }
         </div>
-    );
+  );
 };
 
 /**
@@ -82,21 +81,21 @@ export const EditablePSDText: React.FC<EditablePSDTextProps> = ({
 
     return (
         <div 
-            className={className}
-            style={{
-                ...cssStyle,
-                outline: editable ? 'none' : undefined,
-                userSelect: editable ? 'text' : undefined,
-                cursor: editable ? 'text' : undefined
-            }}
-            contentEditable={editable}
-            suppressContentEditableWarning={true}
-            onInput={handleInput}
-            onClick={onClick}
-        >
-            {textStyle.text || ''}
-        </div>
-    );
+      className= { className }
+    style = {{
+        ...cssStyle,
+    outline: editable ? 'none' : undefined,
+        userSelect: editable ? 'text' : undefined,
+            cursor: editable ? 'text' : undefined,
+      }}
+contentEditable = { editable }
+suppressContentEditableWarning = { true }
+onInput = { handleInput }
+onClick = { onClick }
+    >
+    { textStyle.text || '' }
+    </div>
+  );
 };
 
 /**

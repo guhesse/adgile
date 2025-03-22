@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { snapToGrid } from '../utils/gridUtils';
 import { BannerSize, CanvasNavigationMode, EditingMode, EditorElement } from '../types';
@@ -50,7 +49,6 @@ export const useDragAndResize = ({
   const [isElementOutsideContainer, setIsElementOutsideContainer] = useState(false);
   const isDraggingRef = useRef(false);
   const selectedElementRef = useRef<EditorElement | null>(null);
-  const currentZoomLevelRef = useRef<number>(1);
 
   useEffect(() => {
     selectedElementRef.current = selectedElement;
@@ -69,10 +67,6 @@ export const useDragAndResize = ({
       return;
     }
 
-    // Get the zoom level either from event (if available) or use default
-    const zoomLevel = (e as any).zoomLevel || 1;
-    currentZoomLevelRef.current = zoomLevel;
-    
     setElementInitialPos({
       x: element.style.x,
       y: element.style.y,
@@ -87,23 +81,16 @@ export const useDragAndResize = ({
     setIsDragging(true);
     isDraggingRef.current = true;
 
-    // Use the element offset if available (stored by CanvasElement component)
-    // This ensures accurate positioning, especially with zooming
-    if ((e as any).elementOffset) {
-      setDragOffset((e as any).elementOffset);
-    } else {
-      // Fallback to calculating offset from rect
-      const rect = e.currentTarget.getBoundingClientRect();
-      
-      // Account for zoom level when calculating offsets
-      const offsetX = (e.clientX - rect.left) / zoomLevel;
-      const offsetY = (e.clientY - rect.top) / zoomLevel;
-      
-      setDragOffset({
-        x: offsetX,
-        y: offsetY
-      });
-    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const zoomLevel = parseFloat((e.currentTarget.closest('[data-canvas-wrapper]') as HTMLElement)?.dataset.zoomLevel || '1');
+    
+    const offsetX = (e.clientX - rect.left) / zoomLevel;
+    const offsetY = (e.clientY - rect.top) / zoomLevel;
+    
+    setDragOffset({
+      x: offsetX,
+      y: offsetY
+    });
     
     setDragStart({
       x: e.clientX,
@@ -124,11 +111,6 @@ export const useDragAndResize = ({
   const handleResizeStart = (e: React.MouseEvent, direction: string, element: EditorElement) => {
     e.stopPropagation();
     e.preventDefault();
-    
-    // Get the zoom level either from event (if available) or from the element's dataset
-    const zoomLevel = (e as any).zoomLevel || 
-                      parseFloat((e.currentTarget.closest('[data-canvas-wrapper]') as HTMLElement)?.dataset.zoomLevel || '1');
-    currentZoomLevelRef.current = zoomLevel;
     
     setIsResizing(true);
     setResizeDirection(direction);
@@ -210,28 +192,16 @@ export const useDragAndResize = ({
     const element = selectedElementRef.current;
     if (!element) return;
 
-    // Find the target canvas (artboard) element is on
-    const canvas = e.currentTarget as HTMLElement;
-    
-    // Get the canvas size from the data attribute
-    const canvasSizeStr = canvas.dataset.canvasSize || `${selectedSize.width}x${selectedSize.height}`;
-    const [canvasWidth, canvasHeight] = canvasSizeStr.split('x').map(Number);
-    
-    // Get the zoom level from the data attribute
-    const zoomLevel = currentZoomLevelRef.current || 
-                     parseFloat(canvas.dataset.zoomLevel || '1');
-
     if (isDragging) {
+      const canvas = e.currentTarget as HTMLElement;
       const canvasRect = canvas.getBoundingClientRect();
+      const zoomLevel = parseFloat(canvas.style.transform?.match(/scale\((.+)\)/)?.[1] || '1');
       
-      // Calculate mouse position within the canvas, accounting for zoom
       const mouseX = (e.clientX - canvasRect.left) / zoomLevel;
       const mouseY = (e.clientY - canvasRect.top) / zoomLevel;
       
       let newX = mouseX - dragOffset.x;
       let newY = mouseY - dragOffset.y;
-      
-      // Maintain the original width and height during dragging
       let newWidth = element.style.width;
       let newHeight = element.style.height;
 
@@ -253,23 +223,19 @@ export const useDragAndResize = ({
           newY = Math.max(0, Math.min(newY, parentElement.style.height - element.style.height));
         }
       } else {
-        // Allow slight overflow for easier placement
         const overflowAllowance = 0;
-        newX = Math.max(-overflowAllowance, Math.min(newX, canvasWidth - element.style.width + overflowAllowance));
-        newY = Math.max(-overflowAllowance, Math.min(newY, canvasHeight - element.style.height + overflowAllowance));
+        newX = Math.max(-overflowAllowance, Math.min(newX, selectedSize.width - element.style.width + overflowAllowance));
+        newY = Math.max(-overflowAllowance, Math.min(newY, selectedSize.height - element.style.height + overflowAllowance));
       }
 
-      // Snap to grid
       newX = snapToGrid(newX);
       newY = snapToGrid(newY);
 
-      // Calculate percentages relative to the canvas size
-      const xPercent = (newX / canvasWidth) * 100;
-      const yPercent = (newY / canvasHeight) * 100;
-      const widthPercent = (newWidth / canvasWidth) * 100;
-      const heightPercent = (newHeight / canvasHeight) * 100;
+      const widthPercent = (newWidth / selectedSize.width) * 100;
+      const heightPercent = (newHeight / selectedSize.height) * 100;
+      const xPercent = (newX / selectedSize.width) * 100;
+      const yPercent = (newY / selectedSize.height) * 100;
 
-      // For images, maintain aspect ratio if needed during resize operations
       if ((element.type === "image" || element.type === "logo")) {
         if (resizeDirection === 'nw' || resizeDirection === 'ne' || 
             resizeDirection === 'sw' || resizeDirection === 'se') {
@@ -290,11 +256,9 @@ export const useDragAndResize = ({
 
       let updatedElements = [...elements];
       
-      // Determine if we're updating all linked elements or just this one
       const isIndividualUpdate = editingMode === 'individual' || !element.linkedElementId;
 
       if (!isIndividualUpdate) {
-        // Update all linked elements using the intelligent update function
         updatedElements = updateLinkedElementsIntelligently(
           updatedElements,
           {
@@ -314,7 +278,6 @@ export const useDragAndResize = ({
           activeSizes
         );
       } else {
-        // Update only the current element
         updatedElements = updatedElements.map(el => {
           if (el.id === element.id) {
             return { 
@@ -334,7 +297,6 @@ export const useDragAndResize = ({
             };
           }
 
-          // Handle child elements in containers
           if (el.childElements && element.parentId === el.id) {
             return {
               ...el,
@@ -366,7 +328,6 @@ export const useDragAndResize = ({
 
       setElements(updatedElements);
 
-      // Update the selected element reference
       const updatedElement = {
         ...element,
         style: { 
@@ -387,17 +348,17 @@ export const useDragAndResize = ({
       setSelectedElement(updatedElement);
       
     } else if (isResizing) {
-      // Calculate the delta accounting for zoom level
+      const canvas = e.currentTarget as HTMLElement;
+      const zoomLevel = parseFloat(canvas.style.transform?.match(/scale\((.+)\)/)?.[1] || '1');
+
       const deltaX = (e.clientX - dragStart.x) / zoomLevel;
       const deltaY = (e.clientY - dragStart.y) / zoomLevel;
 
-      // Start with the initial dimensions (before resizing started)
       let newWidth = elementInitialPos.width;
       let newHeight = elementInitialPos.height;
       let newX = elementInitialPos.x;
       let newY = elementInitialPos.y;
 
-      // Adjust dimensions and position based on resize direction
       if (resizeDirection.includes('e')) {
         newWidth = snapToGrid(Math.max(50, elementInitialPos.width + deltaX));
       }
@@ -415,7 +376,6 @@ export const useDragAndResize = ({
         newHeight = possibleHeight;
       }
 
-      // Handle container constraints
       if (element.inContainer && element.parentId) {
         const parentElement = elements.find(el => el.id === element.parentId);
         if (parentElement) {
@@ -435,7 +395,6 @@ export const useDragAndResize = ({
           }
         }
       } else {
-        // Canvas boundary constraints
         if (newX < 0) {
           newX = 0;
           newWidth = elementInitialPos.width;
@@ -444,31 +403,24 @@ export const useDragAndResize = ({
           newY = 0;
           newHeight = elementInitialPos.height;
         }
-        if (newX + newWidth > canvasWidth) {
-          newWidth = canvasWidth - newX;
+        if (newX + newWidth > selectedSize.width) {
+          newWidth = selectedSize.width - newX;
         }
-        if (newY + newHeight > canvasHeight) {
-          newHeight = canvasHeight - newY;
+        if (newY + newHeight > selectedSize.height) {
+          newHeight = selectedSize.height - newY;
         }
       }
 
-      // Calculate percentage values
-      const widthPercent = (newWidth / canvasWidth) * 100;
-      const heightPercent = (newHeight / canvasHeight) * 100;
-      const xPercent = (newX / canvasWidth) * 100;
-      const yPercent = (newY / canvasHeight) * 100;
+      const widthPercent = (newWidth / selectedSize.width) * 100;
+      const heightPercent = (newHeight / selectedSize.height) * 100;
+      const xPercent = (newX / selectedSize.width) * 100;
+      const yPercent = (newY / selectedSize.height) * 100;
 
-      // For images and logos, maintain aspect ratio during corner resizing
       if ((element.type === "image" || element.type === "logo") && 
           (resizeDirection === 'nw' || resizeDirection === 'ne' || 
            resizeDirection === 'sw' || resizeDirection === 'se')) {
+        const aspectRatio = elementInitialPos.width / elementInitialPos.height;
         
-        // Get original aspect ratio
-        const aspectRatio = element.style.originalWidth && element.style.originalHeight
-          ? element.style.originalWidth / element.style.originalHeight
-          : elementInitialPos.width / elementInitialPos.height;
-        
-        // Adjust height or width based on the aspect ratio
         if (resizeDirection === 'se' || resizeDirection === 'ne') {
           newHeight = newWidth / aspectRatio;
         } else {
@@ -478,11 +430,9 @@ export const useDragAndResize = ({
 
       let updatedElements;
       
-      // Determine if we're updating all linked elements or just this one
       const isIndividualUpdate = editingMode === 'individual' || !element.linkedElementId;
 
       if (!isIndividualUpdate) {
-        // Update all linked elements using the intelligent update function
         updatedElements = updateLinkedElementsIntelligently(
           elements,
           {
@@ -502,7 +452,6 @@ export const useDragAndResize = ({
           activeSizes
         );
       } else {
-        // Update only this specific element
         updatedElements = elements.map(el => {
           if (el.id === element.id) {
             return { 
@@ -522,7 +471,6 @@ export const useDragAndResize = ({
             };
           }
 
-          // Handle child elements in containers
           if (el.childElements && element.parentId === el.id) {
             return {
               ...el,
@@ -554,7 +502,6 @@ export const useDragAndResize = ({
 
       setElements(updatedElements);
 
-      // Update the selected element reference
       const updatedElement = {
         ...element,
         style: { 
@@ -624,7 +571,6 @@ export const useDragAndResize = ({
     setIsDragging(false);
     isDraggingRef.current = false;
     setIsResizing(false);
-    setResizeDirection("");
     handleContainerHoverEnd();
   };
 

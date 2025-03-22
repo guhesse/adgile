@@ -11,8 +11,6 @@ import { generateRandomId } from "./utils/idGenerator";
 import { CanvasContextType } from "./context/CanvasContextTypes";
 import { updateLinkedElementsIntelligently } from "./utils/grid/responsivePosition";
 import { toast } from "sonner";
-import { linkElementsToNewSizes } from "./context/responsiveOperations";
-import { createNewElement, createLayoutElement } from "./context/elements/createElements";
 
 interface CanvasProviderProps {
   children: React.ReactNode;
@@ -130,26 +128,68 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
   };
 
   const handleAddElement = (type: EditorElement["type"]) => {
-    // Usando importação direta em vez de require
-    const newElements = [createNewElement(type, selectedSize)];
+    const newId = `${type}-${generateRandomId()}`;
     
-    // Add the new elements to the state
-    setElements(prevElements => [...prevElements, ...newElements]);
+    let newElement: EditorElement = {
+      id: newId,
+      type,
+      content: type === 'text' ? 'Add text here' : '',
+      style: {
+        x: 50,
+        y: 50,
+        width: type === 'text' ? 200 : 300,
+        height: type === 'text' ? 50 : 200,
+        fontSize: 16,
+        fontWeight: 'normal',
+        color: '#000000',
+        backgroundColor: type === 'button' ? '#3b82f6' : (type === 'container' ? '#f9fafb' : 'transparent'),
+        padding: type === 'button' ? '8px 16px' : '0px',
+        borderRadius: type === 'button' ? 4 : 0,
+      },
+      sizeId: selectedSize.name === 'All' ? 'global' : selectedSize.name,
+    };
     
-    // Select the first element (the primary one)
-    setSelectedElement(newElements[0]);
+    if (type === 'button') {
+      newElement.content = 'Button';
+    } else if (type === 'image') {
+      newElement.content = 'https://via.placeholder.com/300x200';
+    } else if (type === 'container') {
+      newElement.style.width = 500;
+      newElement.style.height = 300;
+      newElement.style.backgroundColor = '#f9fafb';
+      newElement.style.borderWidth = 1;
+      newElement.style.borderColor = '#e5e7eb';
+      newElement.style.borderStyle = 'solid';
+    }
+    
+    setElements(prevElements => [...prevElements, newElement]);
+    setSelectedElement(newElement);
   };
 
   const handleAddLayout = (template: any) => {
     console.log("Adding layout template:", template);
-    // Usando importação direta em vez de require
-    const newLayoutElements = [createLayoutElement(template, selectedSize, elements)];
+    const containerId = `container-${generateRandomId()}`;
+    const containerElement: EditorElement = {
+      id: containerId,
+      type: 'container',
+      content: '',
+      style: {
+        x: 50,
+        y: 50,
+        width: 600,
+        height: 300,
+        backgroundColor: '#f9fafb',
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+        borderStyle: 'solid',
+        padding: '16px',
+      },
+      columns: template.columns,
+      sizeId: selectedSize.name === 'All' ? 'global' : selectedSize.name,
+    };
     
-    // Add the new elements to the state
-    setElements(prevElements => [...prevElements, ...newLayoutElements]);
-    
-    // Select the first element (the primary one)
-    setSelectedElement(newLayoutElements[0]);
+    setElements(prevElements => [...prevElements, containerElement]);
+    setSelectedElement(containerElement);
   };
 
   const handlePreviewAnimation = () => {
@@ -240,27 +280,12 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
       if (prevSizes.find(s => s.name === size.name)) {
         return prevSizes;
       }
-      
-      const newSizes = [...prevSizes, size];
-      
-      // Link existing elements to the new size
-      setTimeout(() => {
-        setElements(prevElements => {
-          const updatedElements = linkElementsToNewSizes(prevElements, size, newSizes);
-          return updatedElements;
-        });
-      }, 100);
-      
-      return newSizes;
+      return [...prevSizes, size];
     });
   };
 
   const removeCustomSize = (size: BannerSize) => {
     setActiveSizes(prevSizes => {
-      // Filter out elements specific to this size when removing it
-      setElements(prevElements => 
-        prevElements.filter(el => el.sizeId !== size.name)
-      );
       return prevSizes.filter(s => s.name !== size.name);
     });
   };
@@ -292,7 +317,7 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
     console.log('Undo triggered');
     
     if (currentHistoryIndexRef.current <= 0) {
-      toast.info("No more actions to undo");
+      toast.info("Não há mais ações para desfazer");
       return;
     }
     
@@ -302,7 +327,7 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
     if (previousState) {
       setElements(previousState.elements);
       setSelectedElement(previousState.selectedElement);
-      toast.info("Last action undone");
+      toast.info("Última ação desfeita");
     }
   };
 
