@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useRef, useEffect } from "react";
 import { 
   BannerSize, 
@@ -13,6 +12,7 @@ import { CanvasContextType } from "./context/CanvasContextTypes";
 import { updateLinkedElementsIntelligently } from "./utils/grid/responsivePosition";
 import { toast } from "sonner";
 import { linkElementsToNewSizes } from "./context/responsiveOperations";
+import { createNewElement, createLayoutElement } from "./context/elements/createElements";
 
 interface CanvasProviderProps {
   children: React.ReactNode;
@@ -130,11 +130,8 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
   };
 
   const handleAddElement = (type: EditorElement["type"]) => {
-    // Import the function from elementOperations.ts
-    const { createNewElement } = require('./context/elementOperations');
-    
-    // Create the new element(s) - this may return multiple elements if creating across sizes
-    const newElements = createNewElement(type, selectedSize, activeSizes);
+    // Usando importação direta em vez de require
+    const newElements = [createNewElement(type, selectedSize)];
     
     // Add the new elements to the state
     setElements(prevElements => [...prevElements, ...newElements]);
@@ -145,11 +142,8 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
 
   const handleAddLayout = (template: any) => {
     console.log("Adding layout template:", template);
-    // Import the function from elementOperations.ts
-    const { createLayoutElement } = require('./context/elementOperations');
-    
-    // Create the new layout element(s) - may return multiple elements if creating across sizes
-    const newLayoutElements = createLayoutElement(template, selectedSize, elements, activeSizes);
+    // Usando importação direta em vez de require
+    const newLayoutElements = [createLayoutElement(template, selectedSize, elements)];
     
     // Add the new elements to the state
     setElements(prevElements => [...prevElements, ...newLayoutElements]);
