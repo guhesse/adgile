@@ -89,6 +89,7 @@ export const PSDImport = () => {
               fontFamily: textElement.style.fontFamily || 'Não definido',
               fontSize: textElement.style.fontSize || 'Não definido',
               fontWeight: textElement.style.fontWeight || 'Não definido',
+              fontStyle: textElement.style.fontStyle || 'Não definido',
               color: textElement.style.color || 'Não definido',
               textAlign: textElement.style.textAlign || 'Não definido',
               lineHeight: textElement.style.lineHeight || 'Não definido',

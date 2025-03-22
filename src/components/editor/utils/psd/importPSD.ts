@@ -69,8 +69,58 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
     // Process layers
     const elements: EditorElement[] = [];
     
-    // Now process all layers
+    // Processar camadas de texto primeiro usando a nova abordagem
+    const processedTextLayerNames = new Set<string>(); // Rastrear camadas de texto processadas
+
+    if (textLayers.size > 0) {
+      console.log("=== PROCESSANDO CAMADAS DE TEXTO EXTRAÍDAS ===");
+      for (const [layerName, textStyle] of textLayers.entries()) {
+        console.log(`Processando camada de texto: ${layerName}`);
+        
+        // Encontrar informações da camada nos dados do PSD
+        const layerInfo = psdData.layers.find(layer => layer.name === layerName && layer.type === 'text');
+        
+        if (layerInfo) {
+          const element: EditorElement = {
+            id: `text_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            type: 'text',
+            content: textStyle.text || 'Texto',
+            _layerName: layerName,
+            style: {
+              ...textStyle, // Preserve os estilos extraídos do textExtractor
+              x: layerInfo.x,
+              y: layerInfo.y,
+              width: layerInfo.width,
+              height: layerInfo.height
+            },
+            sizeId: 'global'
+          };
+          
+          console.log(`Elemento de texto criado:`, {
+            id: element.id,
+            content: element.content,
+            fontFamily: element.style.fontFamily,
+            fontSize: element.style.fontSize,
+            fontWeight: element.style.fontWeight,
+            fontStyle: element.style.fontStyle,
+            color: element.style.color
+          });
+          
+          elements.push(element);
+          processedTextLayerNames.add(layerName); // Marcar camada como processada
+        } else {
+          console.log(`Informações de posição não encontradas para camada de texto: ${layerName}`);
+        }
+      }
+    }
+    
+    // Processar todas as camadas, ignorando as camadas de texto já processadas
     for (const layer of psd.layers) {
+      if (layer.name && processedTextLayerNames.has(layer.name)) {
+        console.log(`Pulando camada de texto já processada: ${layer.name}`);
+        continue; // Ignorar camadas de texto já processadas
+      }
+
       const element = await processLayer(layer, selectedSize, psdData, extractedImages);
       if (element) {
         // Assign the sizeId as 'global' to ensure elements are visible in all artboards

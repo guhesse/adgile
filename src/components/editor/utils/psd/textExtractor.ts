@@ -142,17 +142,28 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
 
       // Extrair tamanho da fonte - priorizar valores transformados
       if (textData.transformedFontSize && textData.transformedFontSize > 0) {
-        textStyle.fontSize = Math.round(textData.transformedFontSize);
+        textStyle.fontSize = Math.round(textData.transformedFontSize); // Usar tamanho transformado diretamente
       } else if (typeof textData.sizes === 'function') {
         try {
           const sizes = textData.sizes();
           if (sizes && sizes.length > 0) {
-            const pointToPixelFactor = 96 / 72;
-            textStyle.fontSize = Math.round(sizes[0] * pointToPixelFactor);
+            textStyle.fontSize = Math.round(sizes[0]); // Usar tamanho sem conversão
           }
         } catch (e) {
           // Silenciar erros
         }
+      }
+
+      // Ajustar tamanho da fonte e lineHeight usando transformações
+      if (textData.transform && textData.transform.yy) {
+        const transY = textData.transform.yy; // Fator de transformação vertical
+        if (textStyle.fontSize) {
+          textStyle.fontSize = Math.round((textStyle.fontSize * transY) * 100) * 0.01; // Ajustar tamanho da fonte
+        }
+        if (textStyle.lineHeight) {
+          textStyle.lineHeight = Math.round((textStyle.lineHeight * transY) * 100) * 0.01; // Ajustar lineHeight
+        }
+        logger.font(node.name, `Tamanho ajustado: fontSize=${textStyle.fontSize}, lineHeight=${textStyle.lineHeight}`);
       }
 
       // Extrair outras propriedades...
@@ -213,11 +224,20 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
     // Verificação final para garantir valores válidos
     if (textStyle.fontSize <= 0) textStyle.fontSize = 14;
     if (textStyle.lineHeight <= 0) textStyle.lineHeight = 1.2;
-    
-    // Log resumido do resultado final
-    logger.summary(node.name, textStyle.fontFamily, textStyle.fontSize);
 
-    return textStyle;
+    // Certifique-se de retornar todos os estilos extraídos
+    return {
+      ...textStyle,
+      text: textStyle.text || '', // Garante que o texto esteja presente
+      fontFamily: textStyle.fontFamily || 'Arial', // Fonte padrão
+      fontSize: textStyle.fontSize || 14, // Tamanho padrão
+      fontWeight: textStyle.fontWeight || 'normal',
+      fontStyle: textStyle.fontStyle || 'normal',
+      color: textStyle.color || '#000000',
+      alignment: textStyle.alignment || 'left',
+      letterSpacing: textStyle.letterSpacing || 0,
+      lineHeight: textStyle.lineHeight || 1.2
+    };
   } catch (error) {
     console.error("Erro ao extrair estilo de texto:", error);
     return null;
