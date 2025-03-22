@@ -56,10 +56,10 @@ export const parsePSDFile = async (file: File): Promise<{
         // First try the direct approach similar to the example code
         if (psd.tree && typeof psd.tree === 'function') {
           const tree = psd.tree();
-          
+
           // Log a árvore bruta do Photoshop - MODIFICADO PARA EVITAR SERIALIZAÇÃO COMPLETA
           console.log("=== ÁRVORE BRUTA DO PHOTOSHOP ===");
-          
+
           // Em vez de tentar serializar toda a árvore, logar propriedades específicas
           console.log("Tree properties:", {
             width: tree.width,
@@ -68,13 +68,13 @@ export const parsePSDFile = async (file: File): Promise<{
             childrenCount: tree.children ? (Array.isArray(tree.children) ? tree.children.length : 'não é array') : 0,
             hasDocument: !!tree.document
           });
-          
+
           // Log informações do documento
           console.log("=== INFORMAÇÕES DO DOCUMENTO ===");
           if (tree.document) {
             console.log("Document width:", tree.document.width);
             console.log("Document height:", tree.document.height);
-            
+
             if (tree.document.resources) {
               console.log("Document has resources:", {
                 hasLayerComps: !!tree.document.resources.layerComps,
@@ -84,14 +84,14 @@ export const parsePSDFile = async (file: File): Promise<{
               });
             }
           }
-          
+
           // Log filhos de primeiro nível
           console.log("=== FILHOS DE PRIMEIRO NÍVEL ===");
           if (tree.children && Array.isArray(tree.children)) {
             console.log(`Número de filhos: ${tree.children.length}`);
             tree.children.forEach((child, index) => {
-              console.log(`Filho #${index}:`, { 
-                name: child.name, 
+              console.log(`Filho #${index}:`, {
+                name: child.name,
                 type: child.type,
                 visible: child.visible,
                 opacity: child.opacity,
@@ -106,16 +106,16 @@ export const parsePSDFile = async (file: File): Promise<{
               });
             });
           }
-          
+
           // Log informações detalhadas das camadas conforme estrutura dos blocos
           if (tree.descendants && typeof tree.descendants === 'function') {
             const descendants = tree.descendants();
             console.log("=== TODAS AS CAMADAS COM LAYER INFO ===");
             console.log(`Total de camadas: ${descendants.length}`);
-            
+
             descendants.forEach((node, index) => {
               console.log(`\n--- CAMADA #${index}: ${node.name} ---`);
-              
+
               // Log de propriedades básicas
               console.log("Propriedades básicas:", {
                 name: node.name,
@@ -132,23 +132,23 @@ export const parsePSDFile = async (file: File): Promise<{
                   height: node.height
                 }
               });
-              
+
               // Verificar tipos específicos de layers
               console.log("É grupo:", node.isGroup ? node.isGroup() : "método não disponível");
-              
+
               // Log de text e mask se existirem
               if (node.text) console.log("Text:", node.text);
               if (node.mask) console.log("Mask:", node.mask);
-              
+
               // Verificar adjustments/layer info disponíveis como no exemplo do código
               if (node.adjustments) {
                 console.log("Layer Info Blocks disponíveis:", Object.keys(node.adjustments));
-                
+
                 // Adicionar a exploração detalhada dos blocos
                 const layerInfoDetails = exploreLayerInfoBlocks(node);
                 console.log("Layer Info Details:", layerInfoDetails);
               }
-              
+
               // Verificar se há métodos get disponíveis
               if (node.get && typeof node.get === 'function') {
                 try {
@@ -156,41 +156,41 @@ export const parsePSDFile = async (file: File): Promise<{
                   const layerInfoTypes = [
                     'artboard', 'blendClippingElements', 'blendInteriorElements',
                     'fillOpacity', 'gradientFill', 'layerId', 'layerNameSource',
-                    'legacyTypetool', 'locked', 'metadata', 'name', 
+                    'legacyTypetool', 'locked', 'metadata', 'name',
                     'nestedSectionDivider', 'objectEffects', 'sectionDivider',
                     'solidColor', 'typeTool', 'vectorMask', 'vectorOrigination',
                     'vectorStroke', 'vectorStrokeContent'
                   ];
-                  
+
                   const availableInfo: Record<string, any> = {};
-                  
+
                   layerInfoTypes.forEach(type => {
                     try {
                       const info = node.get(type);
                       if (info) {
-                        availableInfo[type] = typeof info === 'function' ? 
-                          'É uma função - precisa ser executada' : 
+                        availableInfo[type] = typeof info === 'function' ?
+                          'É uma função - precisa ser executada' :
                           (typeof info === 'object' ? 'Objeto disponível' : info);
                       }
                     } catch (e) {
                       // Ignorar erros na tentativa de obter informações
                     }
                   });
-                  
+
                   if (Object.keys(availableInfo).length > 0) {
                     console.log("Layer Info disponível via get():", availableInfo);
                   }
-                  
+
                   // Explorar especificamente typeTool que contém dados de texto
                   const typeTool = node.get('typeTool');
                   if (typeTool) {
                     console.log("TypeTool encontrado!");
-                    
+
                     if (typeof typeTool === 'function') {
                       try {
                         const typeToolData = typeTool();
                         console.log("TypeTool data:", typeToolData);
-                        
+
                         // Tentar métodos auxiliares se disponíveis
                         if (typeToolData) {
                           if (typeof typeToolData.fonts === 'function') console.log("Fonts:", typeToolData.fonts());
@@ -209,14 +209,14 @@ export const parsePSDFile = async (file: File): Promise<{
                   console.log("Erro ao acessar get method:", e);
                 }
               }
-              
+
               // Verificar layer específico
               if (node.layer) {
                 console.log("Layer properties:", Object.keys(node.layer));
-                
+
                 if (node.layer.typeTool) {
                   console.log("Layer tem typeTool:");
-                  
+
                   if (typeof node.layer.typeTool === 'function') {
                     try {
                       const typeToolData = node.layer.typeTool();
@@ -226,7 +226,7 @@ export const parsePSDFile = async (file: File): Promise<{
                     }
                   }
                 }
-                
+
                 if (node.layer.vectorMask) {
                   console.log("Layer tem vectorMask");
                 }
@@ -238,19 +238,19 @@ export const parsePSDFile = async (file: File): Promise<{
               try {
                 // O importante é verificar se a camada possui typeTool
                 const hasTypeTool = node.layer && node.layer.typeTool;
-      
+
                 if (hasTypeTool) {
                   try {
                     // Usar a nova função que tenta ativar a camada antes de extrair os dados
                     const activeLayerData = getActiveTextLayerData(node);
-                    
+
                     if (activeLayerData) {
                       // Extrair estilo de texto a partir dos dados ativos
                       const textStyle = extractTextLayerStyle(activeLayerData.rawData, node);
-                      
+
                       if (textStyle) {
                         textLayers.set(node.name, textStyle);
-                        
+
                         // Adicionar à estrutura de dados PSD
                         psdData.layers.push({
                           id: generateLayerId(node.name),
@@ -274,13 +274,13 @@ export const parsePSDFile = async (file: File): Promise<{
                     // ...existing code...
                   }
                 }
-      
+
                 // Check if this is a text layer using the get method as fallback
                 const isText = !hasTypeTool && node.get && typeof node.get === 'function' && node.get('typeTool');
                 if (isText) {
                   // Extrair estilo de texto desta camada
                   const typeToolData = node.get('typeTool');
-                  
+
                   // Se o typeTool é uma função, executá-la para obter os dados
                   let processedTypeToolData = typeToolData;
                   if (typeof typeToolData === 'function') {
@@ -290,12 +290,12 @@ export const parsePSDFile = async (file: File): Promise<{
                       // Silêncio no erro
                     }
                   }
-                  
+
                   const textStyle = extractTextLayerStyle(processedTypeToolData, node);
-      
+
                   if (textStyle) {
                     textLayers.set(node.name, textStyle);
-      
+
                     psdData.layers.push({
                       id: generateLayerId(node.name),
                       name: node.name,
@@ -309,12 +309,12 @@ export const parsePSDFile = async (file: File): Promise<{
                     });
                   }
                 }
-      
+
                 if (!node.isGroup()) {
                   if (node.layer && node.layer.image) {
                     try {
                       const png = node.layer.image.toPng();
-      
+
                       if (png) {
                         const imageData = png.src || png;
                         extractedImages.set(node.name, imageData);
@@ -331,30 +331,30 @@ export const parsePSDFile = async (file: File): Promise<{
           } else {
             // Fallback caso descendants não esteja disponível
             console.log("Método descendants não disponível, usando alternativa");
-            
+
             // Obter todas as camadas de forma recursiva a partir de children
             const allLayers = getAllLayers(tree);
             console.log(`Total de camadas (método alternativo): ${allLayers.length}`);
-            
+
             // Processamento das camadas para extrair texto e imagens
             for (const node of allLayers) {
               try {
                 // O importante é verificar se a camada possui typeTool
                 const hasTypeTool = node.layer && node.layer.typeTool;
-                
+
                 // Código idêntico ao do bloco acima para processamento das camadas
                 if (hasTypeTool) {
                   try {
                     // Usar a nova função que tenta ativar a camada antes de extrair os dados
                     const activeLayerData = getActiveTextLayerData(node);
-                    
+
                     if (activeLayerData) {
                       // Extrair estilo de texto a partir dos dados ativos
                       const textStyle = extractTextLayerStyle(activeLayerData.rawData, node);
-                      
+
                       if (textStyle) {
                         textLayers.set(node.name, textStyle);
-                        
+
                         // Adicionar à estrutura de dados PSD
                         psdData.layers.push({
                           id: generateLayerId(node.name),
@@ -378,13 +378,13 @@ export const parsePSDFile = async (file: File): Promise<{
                     // ...existing code...
                   }
                 }
-      
+
                 // Check if this is a text layer using the get method as fallback
                 const isText = !hasTypeTool && node.get && typeof node.get === 'function' && node.get('typeTool');
                 if (isText) {
                   // Extrair estilo de texto desta camada
                   const typeToolData = node.get('typeTool');
-                  
+
                   // Se o typeTool é uma função, executá-la para obter os dados
                   let processedTypeToolData = typeToolData;
                   if (typeof typeToolData === 'function') {
@@ -394,12 +394,12 @@ export const parsePSDFile = async (file: File): Promise<{
                       // Silêncio no erro
                     }
                   }
-                  
+
                   const textStyle = extractTextLayerStyle(processedTypeToolData, node);
-      
+
                   if (textStyle) {
                     textLayers.set(node.name, textStyle);
-      
+
                     psdData.layers.push({
                       id: generateLayerId(node.name),
                       name: node.name,
@@ -413,12 +413,12 @@ export const parsePSDFile = async (file: File): Promise<{
                     });
                   }
                 }
-      
+
                 if (!node.isGroup()) {
                   if (node.layer && node.layer.image) {
                     try {
                       const png = node.layer.image.toPng();
-      
+
                       if (png) {
                         const imageData = png.src || png;
                         extractedImages.set(node.name, imageData);
@@ -467,28 +467,28 @@ function replaceCircular() {
     // Lidar com valores null e undefined
     if (value === null) return null;
     if (value === undefined) return undefined;
-    
+
     // Verificar se é um objeto ou array
     if (typeof value === 'object') {
       // Evitar referências circulares
       if (seen.has(value)) {
         return '[Circular Reference]';
       }
-      
+
       // Adicionar objeto ao conjunto de objetos vistos
       seen.add(value);
-      
+
       // Tratar objetos Buffer ou tipados do Node.js/Browser
       if (value.buffer instanceof ArrayBuffer || value instanceof ArrayBuffer) {
         return `[Binary data: ${value.byteLength} bytes]`;
       }
-      
+
       // Tratar arrays muito grandes
       if (Array.isArray(value)) {
         if (value.length > 1000) {
           return `[Array com ${value.length} itens]`;
         }
-        
+
         // Para arrays menores, processamos normalmente, mas verificamos o tamanho do resultado
         try {
           // Se houver algum elemento que cause problemas, lidaremos com exceções
@@ -497,12 +497,12 @@ function replaceCircular() {
           return `[Array com erro: ${e.message}]`;
         }
       }
-      
+
       // Tratar funções
       if (typeof value === 'function') {
         return `[Function: ${value.name || 'anonymous'}]`;
       }
-      
+
       // Para objetos complexos, remover propriedades que podem causar problemas
       if (Object.keys(value).length > 100) {
         const safeObj = {};
@@ -513,7 +513,7 @@ function replaceCircular() {
         return safeObj;
       }
     }
-    
+
     // Retornar o valor normalmente para tipos simples
     return value;
   };
@@ -527,7 +527,7 @@ function replaceCircular() {
 function logLayerTree(node: any, depth: number) {
   const indent = ' '.repeat(depth * 2);
   console.log(`${indent}Layer: ${node.name || 'unnamed'} (${node.type || 'unknown type'})`);
-  
+
   // Logar propriedades importantes
   console.log(`${indent}Properties:`, {
     left: node.left,
@@ -540,22 +540,22 @@ function logLayerTree(node: any, depth: number) {
     opacity: node.opacity,
     blendingMode: node.blendingMode
   });
-  
+
   // Logar especificamente se tem children
   if (node.children) {
     console.log(`${indent}Children:`, Array.isArray(node.children) ? `Array com ${node.children.length} itens` : typeof node.children);
   }
-  
+
   // Logar se tem texto
   if (node.text) {
     console.log(`${indent}Text data:`, node.text);
   }
-  
+
   // Logar se tem imagem
   if (node.image) {
     console.log(`${indent}Has image data`);
   }
-  
+
   // Processar recursivamente os filhos se existirem
   if (node.children && node.children.length > 0) {
     console.log(`${indent}Processing ${node.children.length} children:`);
@@ -570,27 +570,27 @@ function logLayerTree(node: any, depth: number) {
 function logTextLayerDetails(node: any) {
   console.log(`\n===== TEXT LAYER: ${node.name} =====`);
   console.log("ALL AVAILABLE PROPERTIES:", Object.keys(node));
-  
+
   // Logar propriedades relacionadas a texto
   if (node.text) {
     console.log("TEXT PROPERTY DETAILS:", node.text);
-    
+
     // Logar fonte se disponível
     if (node.text.font) {
       console.log("FONT DETAILS:", node.text.font);
     }
-    
+
     // Logar valor do texto
     if (node.text.value) {
       console.log("TEXT VALUE:", node.text.value);
     }
   }
-  
+
   // Logar posição e dimensões
   console.log("Position and Dimensions:");
   console.log(`X: ${node.left || 0}, Y: ${node.top || 0}`);
   console.log(`Width: ${(node.right || 0) - (node.left || 0)}, Height: ${(node.bottom || 0) - (node.top || 0)}`);
-  
+
   console.log("=========================================\n");
 }
 
@@ -621,9 +621,9 @@ function exploreLayerInfoBlocks(node: any) {
 
   // Lista de blocos de layer info, conforme o código original
   const availableBlocks = [
-    'artboard', 'blendClippingElements', 'blendInteriorElements', 
+    'artboard', 'blendClippingElements', 'blendInteriorElements',
     'fillOpacity', 'gradientFill', 'layerId', 'layerNameSource',
-    'legacyTypetool', 'locked', 'metadata', 'name', 
+    'legacyTypetool', 'locked', 'metadata', 'name',
     'nestedSectionDivider', 'objectEffects', 'sectionDivider',
     'solidColor', 'typeTool', 'vectorMask', 'vectorOrigination',
     'vectorStroke', 'vectorStrokeContent'
@@ -662,22 +662,22 @@ function exploreLayerInfoBlocks(node: any) {
                 if (typeof executedData.fonts === 'function') {
                   try {
                     result.parsedInfo.fonts = executedData.fonts();
-                  } catch (e) {}
+                  } catch (e) { }
                 }
                 if (typeof executedData.sizes === 'function') {
                   try {
                     result.parsedInfo.sizes = executedData.sizes();
-                  } catch (e) {}
+                  } catch (e) { }
                 }
                 if (typeof executedData.colors === 'function') {
                   try {
                     result.parsedInfo.colors = executedData.colors();
-                  } catch (e) {}
+                  } catch (e) { }
                 }
                 if (typeof executedData.alignment === 'function') {
                   try {
                     result.parsedInfo.alignment = executedData.alignment();
-                  } catch (e) {}
+                  } catch (e) { }
                 }
               } else if (blockName === 'vectorMask') {
                 console.log(`VectorMask data for layer "${node.name}":`, {
@@ -711,14 +711,14 @@ function exploreLayerInfoBlocks(node: any) {
  */
 function getAllLayers(node: any): any[] {
   if (!node) return [];
-  
+
   const result: any[] = [];
-  
+
   // Adicionar o nó atual se não for a raiz
   if (node.type) {
     result.push(node);
   }
-  
+
   // Adicionar recursivamente todos os filhos
   if (node.children && Array.isArray(node.children)) {
     for (const child of node.children) {
@@ -726,7 +726,7 @@ function getAllLayers(node: any): any[] {
       result.push(...childLayers);
     }
   }
-  
+
   return result;
 }
 
@@ -737,224 +737,224 @@ function getAllLayers(node: any): any[] {
  */
 function getActiveTextLayerData(node: any) {
   if (!node) return null;
-  
-  const logger = {
-    // Define se logs estão habilitados
-    enabled: process.env.NODE_ENV === 'development',
-    
-    // Log para informações de texto
-    textInfo: (layerName: string, message: string, data?: any) => {
-      if (logger.enabled) {
-        console.group(`🔠 Texto "${layerName}"`);
-        console.log(`  ${message}`);
-        if (data) console.log('  ', data);
-        console.groupEnd();
-      }
-    },
-    
-    // Log para fontes
-    fontInfo: (layerName: string, message: string, data?: any) => {
-      if (logger.enabled) {
-        console.group(`🔤 Fontes "${layerName}"`);
-        console.log(`  ${message}`);
-        if (data) console.log('  ', data);
-        console.groupEnd();
-      }
-    },
-    
-    // Log para erros
-    error: (message: string, error: any) => {
-      if (logger.enabled) {
-        console.group(`❌ Erro: ${message}`);
-        console.error('  ', error);
-        console.groupEnd();
-      }
+
+  // Log simplificado apenas para fontes
+  const logFont = (source: string, fontName: string | null | undefined) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔍 Fonte para "${node.name}" [${source}]: "${fontName || 'não encontrada'}"`);
     }
   };
-  
-  logger.textInfo(node.name, "Tentando ativar camada para extração de texto");
-  
+
   try {
     // Algumas bibliotecas PSD exigem selecionar uma camada antes de acessar seus dados
     if (typeof node.activate === 'function') {
       node.activate();
-      logger.textInfo(node.name, "Camada ativada com sucesso");
     }
-    
+
     // Tentar diferentes métodos para obter os dados de texto
     let textData = null;
-    
-    // Novo Método 0: Tentar usar a abordagem de export() mencionada no GitHub
-    if (node.export && typeof node.export === 'function') {
+
+    // CORREÇÃO CRÍTICA: Quando typeTool é LazyExecute
+    if (!textData && node.layer && node.layer.typeTool) {
       try {
-        const exportData = node.export();
-        if (exportData && exportData.text) {
-          logger.textInfo(node.name, "Dados de texto obtidos via export()");
-          
-          // Aplicar transformação aos tamanhos conforme a solução do GitHub
-          const transformedData = applyTransformToTextData(exportData.text);
-          logger.textInfo(node.name, "Tamanhos de fonte transformados", {
-            originalFontSize: exportData.text.font?.sizes?.[0] || 'N/A',
-            transformedFontSize: transformedData.fontSize,
-            originalLineHeight: exportData.text.font?.leadings?.[0] || 'N/A',
-            transformedLineHeight: transformedData.lineHeight,
-            transformFactor: transformedData.transformFactor
-          });
-          
-          // Extrair e exibir informações sobre fontes
-          if (exportData.text.engineData?.ResourceDict?.FontSet) {
-            const fontSet = exportData.text.engineData.ResourceDict.FontSet;
-            logger.fontInfo(node.name, "Fontes encontradas no engineData", fontSet);
-            
-            // Usar a primeira fonte do FontSet
-            const fontName = fontSet[0]?.Name || '';
-            logger.fontInfo(node.name, `Fonte primária: "${fontName}"`);
-            
-            // Criar um objeto compatível com nossa estrutura
+        let typeToolData;
+
+        if (typeof node.layer.typeTool === 'function') {
+          typeToolData = node.layer.typeTool();
+        } else {
+          typeToolData = node.layer.typeTool;
+
+          // Verificar se é uma instância de LazyExecute
+          if (typeToolData.obj && typeToolData._styles) {
+            console.log(`✅ [${node.name}] Detectado LazyExecute typeTool com _styles!`);
+
+            // Extrair informações relevantes
+            const lazyObj = typeToolData.obj;
+            const styles = typeToolData._styles;
+
+            // Extrair ResourceDict.FontSet do engineData se disponível
+            let fontName = null;
+            let fontIndex = styles.Font ? styles.Font[0] : 0;
+
+            // Log completo dos _styles para diagnóstico
+            console.log(`✏️ [${node.name}] _styles:`, styles);
+
+            if (lazyObj.engineData && lazyObj.engineData.ResourceDict && lazyObj.engineData.ResourceDict.FontSet) {
+              const fontSet = lazyObj.engineData.ResourceDict.FontSet;
+              console.log(`📚 [${node.name}] FontSet completo:`, fontSet);
+              console.log(`📌 [${node.name}] Índice da fonte: ${fontIndex}`);
+
+              // Usar o índice correto para selecionar a fonte
+              if (fontSet[fontIndex] && fontSet[fontIndex].Name) {
+                fontName = fontSet[fontIndex].Name;
+                console.log(`💯 [${node.name}] FONTE ENCONTRADA: "${fontName}"`);
+              } else if (fontSet.length > 0) {
+                fontName = fontSet[0].Name;
+                console.log(`⚠️ [${node.name}] Usando primeira fonte do FontSet: "${fontName}"`);
+              }
+            }
+
+            // CORREÇÃO: Criar um objeto NEW com os métodos necessários em vez de modificar o LazyExecute
             textData = {
-              text: exportData.text.value || '',
-              engineData: exportData.text.engineData || null,
-              // Usar a fonte do FontSet como primeira opção
-              fonts: () => [fontName || exportData.text.font?.name || ''],
-              sizes: () => [transformedData.fontSize],
-              colors: () => exportData.text.font?.colors || [],
-              alignment: () => exportData.text.font?.alignment || [],
-              // Adicionar propriedades transformadas
-              transformedFontSize: transformedData.fontSize,
-              transformedLineHeight: transformedData.lineHeight,
-              transform: exportData.text.transform,
-              // Adicionar propriedade para rastrear a fonte original
-              originalFont: fontName
+              text: lazyObj.textValue || '',
+              textValue: lazyObj.textValue || '',
+              engineData: lazyObj.engineData || null,
+              _styles: styles, // Passar _styles para uso posterior
+              // Funções personalizadas em vez de tentar modificar o objeto LazyExecute
+              fonts: function() { return [fontName || '']; },
+              sizes: function() { return styles.FontSize || []; },
+              colors: function() { return [[255, 62, 62]]; }, // Valores de cor
+              alignment: function() { return styles.ParagraphAlign || [0]; },
+              transformedFontSize: styles.FontSize ? styles.FontSize[0] : null,
+              transform: lazyObj.transform,
+              // Propriedades adicionais para garantir que a fonte seja processada corretamente
+              originalFont: fontName,
+              fontName: fontName, // Adicionar explicitamente
+              fontIndex: fontIndex
             };
-          } else {
-            // Se não temos FontSet, usar font.name
-            const fontName = exportData.text.font?.name || '';
-            logger.fontInfo(node.name, `Fonte via font.name: "${fontName}"`);
-            
-            // Criar objeto compatível
-            textData = {
-              text: exportData.text.value || '',
-              engineData: exportData.text.engineData || null,
-              fonts: () => [fontName || ''],
-              sizes: () => [transformedData.fontSize],
-              colors: () => exportData.text.font?.colors || [],
-              alignment: () => exportData.text.font?.alignment || [],
-              transformedFontSize: transformedData.fontSize,
-              transformedLineHeight: transformedData.lineHeight,
-              transform: exportData.text.transform,
-              originalFont: fontName
+
+            logFont('LazyExecute', fontName);
+
+            // Retornar aqui para evitar que continue processando outros métodos
+            return {
+              rawData: textData,
+              extractedData: {
+                text: lazyObj.textValue || '',
+                fonts: [fontName || ''],
+                sizes: styles.FontSize || [],
+                colors: [[255, 62, 62]],
+                alignment: styles.ParagraphAlign || [0],
+                originalFont: fontName || '',
+                fontName: fontName || '',
+                fontIndex: fontIndex
+              }
             };
           }
         }
-      } catch (e) {
-        logger.error(`Erro ao usar export() para "${node.name}"`, e.message);
-      }
-    }
-    
-    // Continuar com os métodos existentes se o método export não funcionar
-    if (!textData) {
-      // Método 1: Diretamente via typeTool do layer
-      if (node.layer && node.layer.typeTool) {
-        try {
-          let typeToolData;
-          
-          if (typeof node.layer.typeTool === 'function') {
-            typeToolData = node.layer.typeTool();
-            logger.textInfo(node.name, "Dados de texto obtidos via layer.typeTool()");
-          } else {
-            typeToolData = node.layer.typeTool;
-            logger.textInfo(node.name, "Dados de texto obtidos via layer.typeTool");
-          }
-          
+
+        // Se não foi LazyExecute, continuar com o processamento normal
+        if (!textData && typeToolData) {
           // Extrair fonte do engineData se disponível
-          if (typeToolData && typeToolData.engineData && typeToolData.engineData.ResourceDict && typeToolData.engineData.ResourceDict.FontSet) {
+          if (typeToolData.engineData && typeToolData.engineData.ResourceDict && typeToolData.engineData.ResourceDict.FontSet) {
             const fontSet = typeToolData.engineData.ResourceDict.FontSet;
-            logger.fontInfo(node.name, "Fontes encontradas no engineData", fontSet);
-            
+
             // Usar a primeira fonte como fonte principal
             const fontName = fontSet[0]?.Name || '';
-            
+
             // Se temos engineData, também devemos ter o objeto _styles
             const fontIndex = typeToolData._styles?.Font?.[0] || 0;
-            logger.fontInfo(node.name, `Índice de fonte: ${fontIndex}, Nome da fonte: "${fontName}"`, 
-                           fontSet[fontIndex] ? fontSet[fontIndex] : 'Fonte não encontrada no índice');
-            
+
             // Usar a fonte pelo índice se possível, caso contrário usar a primeira
             const selectedFont = fontSet[fontIndex]?.Name || fontName;
-            logger.fontInfo(node.name, `Fonte selecionada: "${selectedFont}"`);
-            
+
             textData = typeToolData;
             // Adicionar método de fonte personalizado
             textData.fonts = () => [selectedFont];
             textData.originalFont = selectedFont;
+            textData.fontName = selectedFont; // Adicionar explicitamente
+            textData.fontIndex = fontIndex;
+
+            logFont('typeTool.engineData', selectedFont);
           } else {
             textData = typeToolData;
           }
-        } catch (e) {
-          logger.error(`Erro ao acessar layer.typeTool para "${node.name}"`, e.message);
         }
-      }
-      
-      // Resto dos métodos como fallback...
-      if (!textData && node.get && typeof node.get === 'function') {
-        try {
-          const typeToolGetter = node.get('typeTool');
-          if (typeToolGetter) {
-            if (typeof typeToolGetter === 'function') {
-              textData = typeToolGetter();
-              logger.textInfo(node.name, "Dados de texto obtidos via get('typeTool')()");
-            } else {
-              textData = typeToolGetter;
-              logger.textInfo(node.name, "Dados de texto obtidos via get('typeTool')");
-            }
-          }
-        } catch (e) {
-          logger.error(`Erro ao acessar get('typeTool') para "${node.name}"`, e.message);
-        }
-      }
-      
-      // Método 3: Diretamente via propriedade text do nó
-      if (!textData && node.text) {
-        textData = {
-          text: node.text.value || '',
-          engineData: null,
-          fonts: typeof node.text.font?.name === 'string' ? () => [node.text.font.name] : null,
-          sizes: node.text.font?.sizes ? () => node.text.font.sizes : null,
-          colors: node.text.font?.colors ? () => node.text.font.colors : null,
-          alignment: node.text.font?.alignment ? () => node.text.font.alignment : null
-        };
-        logger.textInfo(node.name, "Dados de texto construídos a partir de node.text");
-      }
-      
-      // Método 4: Via adjustments
-      if (!textData && node.adjustments && node.adjustments.typeTool) {
-        try {
-          if (typeof node.adjustments.typeTool === 'function') {
-            textData = node.adjustments.typeTool();
-            logger.textInfo(node.name, "Dados de texto obtidos via adjustments.typeTool()");
-          } else {
-            textData = node.adjustments.typeTool;
-            logger.textInfo(node.name, "Dados de texto obtidos via adjustments.typeTool");
-          }
-        } catch (e) {
-          logger.error(`Erro ao acessar adjustments.typeTool para "${node.name}"`, e.message);
-        }
+      } catch (e) {
+        console.error(`❌ Erro ao processar typeTool para "${node.name}":`, e.message);
       }
     }
-    
-    // Fazer log das informações encontradas
+
+    // Método 1: Via export()
+    if (!textData && node.export && typeof node.export === 'function') {
+      try {
+        const exportData = node.export();
+        if (exportData && exportData.text) {
+          const transformedData = applyTransformToTextData(exportData.text);
+
+          // Extrair informações de fonte
+          let fontName = '';
+
+          // Tentar extrair do FontSet primeiro
+          if (exportData.text.engineData?.ResourceDict?.FontSet?.length > 0) {
+            fontName = exportData.text.engineData.ResourceDict.FontSet[0]?.Name || '';
+            logFont('engineData.FontSet', fontName);
+          }
+          // Se não encontrou, tentar de font.name
+          else if (exportData.text.font?.name) {
+            fontName = exportData.text.font.name;
+            logFont('exportData.font.name', fontName);
+          }
+
+          // Criar objeto compatível
+          textData = {
+            text: exportData.text.value || '',
+            textValue: exportData.text.value || '',
+            engineData: exportData.text.engineData || null,
+            fonts: () => [fontName || ''],
+            sizes: () => [transformedData.fontSize],
+            colors: () => exportData.text.font?.colors || [],
+            alignment: () => exportData.text.font?.alignment || [],
+            transformedFontSize: transformedData.fontSize,
+            transformedLineHeight: transformedData.lineHeight,
+            transform: exportData.text.transform,
+            originalFont: fontName,
+            fontName: fontName // Adicionar explicitamente
+          };
+        }
+      } catch (e) {
+        // Silenciar erros
+      }
+    }
+
+    // Continuar com os outros métodos de fallback...
+    if (!textData && node.get && typeof node.get === 'function') {
+      try {
+        const typeToolGetter = node.get('typeTool');
+        if (typeToolGetter) {
+          let processedTypeToolData;
+
+          if (typeof typeToolGetter === 'function') {
+            processedTypeToolData = typeToolGetter();
+          } else {
+            processedTypeToolData = typeToolGetter;
+          }
+
+          // Verificar se temos informações de fonte
+          if (processedTypeToolData &&
+            processedTypeToolData.engineData?.ResourceDict?.FontSet?.length > 0) {
+            const fontSet = processedTypeToolData.engineData.ResourceDict.FontSet;
+            const fontName = fontSet[0]?.Name || '';
+
+            processedTypeToolData.originalFont = fontName;
+            processedTypeToolData.fontName = fontName;
+
+            logFont('get.typeTool.engineData', fontName);
+          }
+
+          textData = processedTypeToolData;
+        }
+      } catch (e) {
+        // Silenciar erros
+      }
+    }
+
+    // Outros métodos de fallback...
+    if (!textData && node.text) {
+      textData = {
+        text: node.text.value || '',
+        textValue: node.text.value || '',
+        engineData: null,
+        fonts: typeof node.text.font?.name === 'string' ? () => [node.text.font.name] : null,
+        sizes: node.text.font?.sizes ? () => node.text.font.sizes : null,
+        colors: node.text.font?.colors ? () => node.text.font.colors : null,
+        alignment: node.text.font?.alignment ? () => node.text.font.alignment : null,
+        originalFont: node.text.font?.name || '',
+        fontName: node.text.font?.name || ''
+      };
+    }
+
+    // Se temos dados, extrair informações
     if (textData) {
-      logger.textInfo(node.name, "Informações de texto encontradas", {
-        hasText: !!textData.text,
-        hasEngineData: !!textData.engineData,
-        hasTextValue: !!textData.textValue,
-        hasFontsMethod: typeof textData.fonts === 'function',
-        hasSizesMethod: typeof textData.sizes === 'function',
-        hasColorsMethod: typeof textData.colors === 'function',
-        hasAlignmentMethod: typeof textData.alignment === 'function',
-        originalFont: textData.originalFont || 'Não definida'
-      });
-    
       // Tentar extrair métodos auxiliares
       const extractedData = {
         text: textData.text || textData.textValue || '',
@@ -962,110 +962,106 @@ function getActiveTextLayerData(node: any) {
         sizes: [],
         colors: [],
         alignment: null,
-        originalFont: textData.originalFont || ''
+        originalFont: textData.originalFont || '',
+        fontName: textData.fontName || '', // Adicionar explicitamente
+        fontIndex: textData.fontIndex || 0
       };
-      
-      // Extrair fontes usando método personalizado ou padrão
+
+      // Extrair fontes
       if (typeof textData.fonts === 'function') {
         try {
           extractedData.fonts = textData.fonts() || [];
-          
-          // Verificar se temos fontes e se são válidas
+
           if (Array.isArray(extractedData.fonts) && extractedData.fonts.length > 0) {
-            logger.fontInfo(node.name, "Fontes extraídas via fonts()", extractedData.fonts);
-            
+            logFont('fonts() método', extractedData.fonts[0]);
+
             // Se o array de fontes contém itens vazios e temos originalFont, substituir
-            if (extractedData.fonts[0] === '' && extractedData.originalFont) {
+            if ((!extractedData.fonts[0] || extractedData.fonts[0] === '') &&
+              extractedData.originalFont) {
               extractedData.fonts[0] = extractedData.originalFont;
-              logger.fontInfo(node.name, `Substituindo fonte vazia por originalFont: "${extractedData.originalFont}"`);
-            }
-            
-            // Se ainda estiver vazio e temos engineData, tentar extrair de lá
-            if (extractedData.fonts[0] === '' && textData.engineData) {
-              try {
-                const fontInfo = textData.engineData.ResourceDict?.FontSet?.[0]?.Name;
-                if (fontInfo) {
-                  extractedData.fonts[0] = fontInfo;
-                  logger.fontInfo(node.name, `Usando fonte do engineData: "${fontInfo}"`);
-                }
-              } catch (e) {
-                logger.error(`Erro ao extrair fontes de engineData para "${node.name}"`, e);
-              }
+              logFont('substituição por originalFont', extractedData.originalFont);
             }
           }
         } catch (e) {
-          logger.error(`Erro ao executar fonts() para "${node.name}"`, e.message);
+          // Silenciar erros
         }
       } else if (textData.originalFont) {
-        // Se não temos método fonts mas temos originalFont, usá-la
         extractedData.fonts = [textData.originalFont];
-        logger.fontInfo(node.name, `Usando originalFont: "${textData.originalFont}"`);
-      } else if (textData.engineData && textData.engineData.ResourceDict) {
-        // Tentar extrair informações de fonte diretamente do engineData
+        logFont('originalFont direta', textData.originalFont);
+      } else if (textData.fontName) {
+        extractedData.fonts = [textData.fontName];
+        logFont('fontName direta', textData.fontName);
+      }
+
+      // Extrair outros dados
+      if (typeof textData.sizes === 'function') {
         try {
-          const fontSet = textData.engineData.ResourceDict.FontSet;
-          if (fontSet && fontSet.length > 0) {
-            const fontName = fontSet[0].Name;
-            extractedData.fonts = [fontName];
-            logger.fontInfo(node.name, `Extraindo fonte diretamente do engineData: "${fontName}"`);
-          }
+          extractedData.sizes = textData.sizes() || [];
         } catch (e) {
-          logger.error(`Erro ao extrair fontes do engineData para "${node.name}"`, e);
+          // Silenciar erros
         }
       }
-      
-      // Extrair outros dados como antes
-      const extractedSizes = typeof textData.sizes === 'function' ? textData.sizes() : [];
-      const extractedColors = typeof textData.colors === 'function' ? textData.colors() : [];
-      const extractedAlignment = typeof textData.alignment === 'function' ? textData.alignment() : null;
-      
-      extractedData.sizes = extractedSizes || [];
-      extractedData.colors = extractedColors || [];
-      extractedData.alignment = extractedAlignment || null;
-      
-      logger.textInfo(node.name, "Dados extraídos", extractedData);
-      
+
+      if (typeof textData.colors === 'function') {
+        try {
+          extractedData.colors = textData.colors() || [];
+        } catch (e) {
+          // Silenciar erros
+        }
+      }
+
+      if (typeof textData.alignment === 'function') {
+        try {
+          extractedData.alignment = textData.alignment() || null;
+        } catch (e) {
+          // Silenciar erros
+        }
+      }
+
       // Verificar se precisamos aplicar transformação a este textData também
       if (textData.transform && !textData.transformedFontSize) {
         const transformedSizes = applyTransformToTextData({
           transform: textData.transform,
           font: {
             sizes: extractedData.sizes,
-            leadings: Array.isArray(extractedData.sizes) ? extractedData.sizes.map(s => s * 1.2) : [] // Estimativa de leading
+            leadings: Array.isArray(extractedData.sizes) ?
+              extractedData.sizes.map(s => s * 1.2) : [] // Estimativa de leading
           }
         });
-        
-        logger.textInfo(node.name, "Aplicando transformação aos tamanhos extraídos", {
-          originalSizes: extractedData.sizes,
-          transformedSize: transformedSizes.fontSize,
-          transformFactor: transformedSizes.transformFactor
-        });
-        
+
         // Atualizar tamanhos extraídos com valores transformados
         if (transformedSizes.fontSize) {
           extractedData.sizes = [transformedSizes.fontSize];
         }
-        
+
         // Adicionar à resposta
         extractedData.transformedFontSize = transformedSizes.fontSize;
         extractedData.transformedLineHeight = transformedSizes.lineHeight;
         extractedData.transformFactor = transformedSizes.transformFactor;
+      } else if (textData.transformedFontSize) {
+        extractedData.transformedFontSize = textData.transformedFontSize;
+        extractedData.transformedLineHeight = textData.transformedLineHeight;
       }
-      
+
       // Adicionar engine data se existir
       if (textData.engineData) {
-        extractedData['engineData'] = textData.engineData;
+        extractedData.engineData = textData.engineData;
       }
-      
+
+      // Adicionar _styles para uso na extração de fontes
+      if (textData._styles) {
+        extractedData._styles = textData._styles;
+      }
+
       return {
         rawData: textData,
         extractedData: extractedData
       };
     }
-    
+
     return null;
   } catch (e) {
-    logger.error(`Erro ao processar camada de texto "${node.name}"`, e.message);
+    console.error(`Erro ao processar camada de texto "${node.name}":`, e.message);
     return null;
   }
 }
@@ -1081,28 +1077,28 @@ function applyTransformToTextData(textData: any) {
     lineHeight: 0,
     transformFactor: 1.0
   };
-  
+
   try {
     if (!textData || !textData.transform) return result;
-    
+
     // Extrair fator de transformação
     const transformY = textData.transform.yy || 1.0;
     result.transformFactor = transformY;
-    
+
     // Extrair tamanho de fonte
-    const fontSize = Array.isArray(textData.font?.sizes) && textData.font.sizes.length > 0 
-      ? textData.font.sizes[0] 
+    const fontSize = Array.isArray(textData.font?.sizes) && textData.font.sizes.length > 0
+      ? textData.font.sizes[0]
       : 0;
-    
+
     // Extrair altura de linha
     const lineHeight = Array.isArray(textData.font?.leadings) && textData.font.leadings.length > 0
       ? textData.font.leadings[0]
       : fontSize * 1.2; // Valor padrão se não encontrarmos leadings
-    
+
     // Aplicar transformação de acordo com a solução do GitHub
     result.fontSize = Math.round((fontSize * transformY) * 100) * 0.01;
     result.lineHeight = Math.round((lineHeight * transformY) * 100) * 0.01;
-    
+
     return result;
   } catch (e) {
     console.log('Erro ao aplicar transformação aos dados de texto:', e.message);

@@ -10,10 +10,10 @@ import { mapPSDFontToWebFont, addFontImportToDocument } from './fontMapper';
 export const convertTextStyleToCSS = (textStyle: TextLayerStyle): React.CSSProperties => {
     // Mapear a fonte do PSD para uma fonte web
     const webFontFamily = mapPSDFontToWebFont(textStyle.fontFamily);
-    
+
     // Adicionar importação da fonte ao documento se necessário
     addFontImportToDocument(webFontFamily.split(',')[0].trim());
-    
+
     return {
         fontFamily: webFontFamily,
         fontSize: `${textStyle.fontSize}px`,
@@ -38,22 +38,19 @@ interface PSDTextProps {
     onClick?: () => void;
 }
 
-export const PSDText: React.FC<PSDTextProps> = ({
-    textStyle,
-    className,
-    onClick
-}) => {
+export const PSDText: React.FC<PSDTextProps> = (props) => {
+    const { textStyle, className, onClick } = props;
     const cssStyle = convertTextStyleToCSS(textStyle);
 
-    return (
-        <div 
-      className= { className }
-    style = { cssStyle }
-    onClick = { onClick }
-        >
-        { textStyle.text || '' }
-        </div>
-  );
+    return React.createElement(
+        'div',
+        {
+            className,
+            style: cssStyle,
+            onClick
+        },
+        textStyle.text || ''
+    );
 };
 
 /**
@@ -65,13 +62,8 @@ interface EditablePSDTextProps extends PSDTextProps {
     editable?: boolean;
 }
 
-export const EditablePSDText: React.FC<EditablePSDTextProps> = ({
-    textStyle,
-    className,
-    onClick,
-    onTextChange,
-    editable = true
-}) => {
+export const EditablePSDText: React.FC<EditablePSDTextProps> = (props) => {
+    const { textStyle, className, onClick, onTextChange, editable = true } = props;
     const cssStyle = convertTextStyleToCSS(textStyle);
 
     const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
@@ -79,23 +71,23 @@ export const EditablePSDText: React.FC<EditablePSDTextProps> = ({
         onTextChange(newText);
     };
 
-    return (
-        <div 
-      className= { className }
-    style = {{
-        ...cssStyle,
-    outline: editable ? 'none' : undefined,
-        userSelect: editable ? 'text' : undefined,
-            cursor: editable ? 'text' : undefined,
-      }}
-contentEditable = { editable }
-suppressContentEditableWarning = { true }
-onInput = { handleInput }
-onClick = { onClick }
-    >
-    { textStyle.text || '' }
-    </div>
-  );
+    return React.createElement(
+        'div',
+        {
+            className,
+            style: {
+                ...cssStyle,
+                outline: editable ? 'none' : undefined,
+                userSelect: editable ? 'text' : undefined,
+                cursor: editable ? 'text' : undefined
+            },
+            contentEditable: editable,
+            suppressContentEditableWarning: true,
+            onInput: handleInput,
+            onClick
+        },
+        textStyle.text || ''
+    );
 };
 
 /**
