@@ -1,161 +1,51 @@
 
-import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { EditorElement } from "./types";
 import { isValidImageUrl } from "./context/elements/imageOperations";
 
 interface ElementRendererProps {
   element: EditorElement;
-  onContentChange?: (newContent: string) => void;
 }
 
-export const ElementRenderer = ({ element, onContentChange }: ElementRendererProps) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const editableRef = useRef<HTMLDivElement>(null);
-  const doubleClickTimerRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // Handle click or double click for text editing
-  const handleClick = () => {
-    // Only enable editing for text, paragraphs, and buttons
-    if (!['text', 'button'].includes(element.type)) return;
-    
-    if (doubleClickTimerRef.current) {
-      // Double click detected
-      clearTimeout(doubleClickTimerRef.current);
-      doubleClickTimerRef.current = null;
-      setIsEditing(true);
-    } else {
-      // Set timer for detecting slow double click
-      doubleClickTimerRef.current = setTimeout(() => {
-        doubleClickTimerRef.current = null;
-      }, 300);
-    }
-  };
-  
-  // Handle content changes
-  const handleTextChange = () => {
-    if (editableRef.current && onContentChange) {
-      onContentChange(editableRef.current.innerText);
-    }
-  };
-  
-  // Handle blur event to end editing
-  const handleBlur = () => {
-    setIsEditing(false);
-    handleTextChange();
-  };
-  
-  // Handle keydown events to exit editing with Enter or Escape keys
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleBlur();
-    }
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      setIsEditing(false);
-    }
-    e.stopPropagation(); // Prevent keyboard shortcuts from triggering when editing
-  };
-  
-  useEffect(() => {
-    // Focus editable element when entering edit mode
-    if (isEditing && editableRef.current) {
-      editableRef.current.focus();
-      
-      // Place cursor at the end of the content
-      const range = document.createRange();
-      const selection = window.getSelection();
-      range.selectNodeContents(editableRef.current);
-      range.collapse(false);
-      selection?.removeAllRanges();
-      selection?.addRange(range);
-    }
-  }, [isEditing]);
-
+export const ElementRenderer = ({ element }: ElementRendererProps) => {
   if (element.type === "text") {
     return (
-      <div
-        ref={editableRef}
-        contentEditable={isEditing}
-        suppressContentEditableWarning={true}
-        onClick={handleClick}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        onInput={handleTextChange}
-        style={{
-          fontSize: element.style.fontSize,
-          fontWeight: element.style.fontWeight,
-          fontStyle: element.style.fontStyle,
-          textDecoration: element.style.textDecoration,
-          color: element.style.color,
-          fontFamily: element.style.fontFamily,
-          lineHeight: element.style.lineHeight,
-          letterSpacing: element.style.letterSpacing ? `${element.style.letterSpacing}px` : undefined,
-          textAlign: element.style.textAlign,
-          width: "100%",
-          height: "100%",
-          margin: 0,
-          padding: "4px",
-          boxSizing: "border-box",
-          overflow: "hidden",
-          wordBreak: "break-word",
-          backgroundColor: element.style.backgroundColor,
-          outline: isEditing ? '2px solid rgba(59, 130, 246, 0.5)' : 'none',
-          cursor: isEditing ? 'text' : 'default',
-        }}
-      >
+      <p style={{
+        fontSize: element.style.fontSize,
+        fontWeight: element.style.fontWeight,
+        fontStyle: element.style.fontStyle,
+        textDecoration: element.style.textDecoration,
+        color: element.style.color,
+        fontFamily: element.style.fontFamily,
+        lineHeight: element.style.lineHeight,
+        letterSpacing: element.style.letterSpacing ? `${element.style.letterSpacing}px` : undefined,
+        textAlign: element.style.textAlign,
+        width: "100%",
+        height: "100%",
+        margin: 0,
+        padding: "4px",
+        boxSizing: "border-box",
+        overflow: "hidden",
+        wordBreak: "break-word",
+        backgroundColor: element.style.backgroundColor,
+      }}>
         {element.content}
-      </div>
+      </p>
     );
   } 
   
   if (element.type === "button") {
-    if (isEditing) {
-      return (
-        <div
-          ref={editableRef}
-          contentEditable={true}
-          suppressContentEditableWarning={true}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          onInput={handleTextChange}
-          style={{
-            fontSize: element.style.fontSize,
-            color: element.style.color,
-            fontFamily: element.style.fontFamily,
-            backgroundColor: element.style.backgroundColor,
-            padding: element.style.padding || "8px 16px",
-            width: "100%",
-            height: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxSizing: "border-box",
-            borderRadius: "0.375rem",
-            outline: '2px solid rgba(59, 130, 246, 0.5)',
-            cursor: 'text',
-          }}
-        >
-          {element.content}
-        </div>
-      );
-    }
-    
     return (
-      <Button 
-        style={{
-          fontSize: element.style.fontSize,
-          color: element.style.color,
-          fontFamily: element.style.fontFamily,
-          backgroundColor: element.style.backgroundColor,
-          padding: element.style.padding,
-          width: "100%",
-          height: "100%",
-          boxSizing: "border-box",
-        }}
-        onClick={handleClick}
-      >
+      <Button style={{
+        fontSize: element.style.fontSize,
+        color: element.style.color,
+        fontFamily: element.style.fontFamily,
+        backgroundColor: element.style.backgroundColor,
+        padding: element.style.padding,
+        width: "100%",
+        height: "100%",
+        boxSizing: "border-box",
+      }}>
         {element.content}
       </Button>
     );
