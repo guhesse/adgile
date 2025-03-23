@@ -121,7 +121,7 @@ function createTextLayerData(node: any, textStyle: TextLayerStyle) {
         x: node.left || 0,
         y: node.top || 0,
         width: (node.right || 0) - (node.left || 0) + 15,
-        height: (node.bottom || 0) - (node.top || 0) + 10,
+        height: (node.bottom || 0) - (node.top || 0) + 20,
         textContent: textStyle.text || '',
         textStyle: textStyle
     };

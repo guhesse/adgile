@@ -537,8 +537,13 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
       toast.success(`Importados ${elements.length} elementos do arquivo PSD.`);
     }
 
+    // Invertendo a ordem dos elementos para corresponder à ordem de camadas do Photoshop
+    // No Photoshop, as camadas superiores na lista são renderizadas por cima das inferiores
+    const reversedElements = [...elements].reverse();
+    psdLogger.info(`Ordem das camadas invertida para corresponder à ordem de renderização do Photoshop`);
+
     // Return just the elements - artboard background will be managed separately
-    return elements;
+    return reversedElements;
   } catch (error) {
     psdLogger.error("Error importing PSD file:", error);
     toast.error("Falha ao interpretar o arquivo PSD. Verifique se é um PSD válido.");
