@@ -61,8 +61,8 @@ export const useCanvasKeyboardShortcuts = ({
         // adjust the image position within the container instead of moving the element
         if (altKey && selectedElement.type === 'image' && selectedElement.style.objectFit === 'cover') {
           if (updateElementStyle) {
-            const currentX = selectedElement.style.objectPositionX ?? 50;
-            const currentY = selectedElement.style.objectPositionY ?? 50;
+            const currentX = selectedElement.style.objectPositionX || 50;
+            const currentY = selectedElement.style.objectPositionY || 50;
             
             switch (e.key) {
               case 'ArrowLeft':
