@@ -27,7 +27,7 @@ export const useCanvasKeyboardShortcuts = ({
       }
 
       // Don't handle keyboard shortcuts when meta key (Command on Mac, Ctrl on Windows) is pressed
-      // to avoid interfering with browser shortcuts
+      // to avoid interfering with browser shortcuts (except for Undo)
       if (e.metaKey || e.ctrlKey) {
         // Handle undo with Command/Ctrl+Z
         if (e.key === 'z') {
@@ -53,52 +53,27 @@ export const useCanvasKeyboardShortcuts = ({
       if (selectedElement && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         e.preventDefault();
         
-        const altKey = e.altKey;
         const shiftKey = e.shiftKey;
         const step = shiftKey ? 10 : 1;
         
-        // If Alt key is pressed and the selected element is an image with objectFit=cover,
-        // adjust the image position within the container instead of moving the element
-        if (altKey && selectedElement.type === 'image' && selectedElement.style.objectFit === 'cover') {
-          if (updateElementStyle) {
-            const currentX = selectedElement.style.objectPositionX || 50;
-            const currentY = selectedElement.style.objectPositionY || 50;
-            
-            switch (e.key) {
-              case 'ArrowLeft':
-                updateElementStyle('objectPositionX', Math.max(0, currentX - step));
-                break;
-              case 'ArrowRight':
-                updateElementStyle('objectPositionX', Math.min(100, currentX + step));
-                break;
-              case 'ArrowUp':
-                updateElementStyle('objectPositionY', Math.max(0, currentY - step));
-                break;
-              case 'ArrowDown':
-                updateElementStyle('objectPositionY', Math.min(100, currentY + step));
-                break;
-            }
-          }
-        } else {
-          // Move the entire element
-          if (updateElementStyle) {
-            const currentX = selectedElement.style.x;
-            const currentY = selectedElement.style.y;
-            
-            switch (e.key) {
-              case 'ArrowLeft':
-                updateElementStyle('x', currentX - step);
-                break;
-              case 'ArrowRight':
-                updateElementStyle('x', currentX + step);
-                break;
-              case 'ArrowUp':
-                updateElementStyle('y', currentY - step);
-                break;
-              case 'ArrowDown':
-                updateElementStyle('y', currentY + step);
-                break;
-            }
+        // Move the entire element
+        if (updateElementStyle) {
+          const currentX = selectedElement.style.x;
+          const currentY = selectedElement.style.y;
+          
+          switch (e.key) {
+            case 'ArrowLeft':
+              updateElementStyle('x', currentX - step);
+              break;
+            case 'ArrowRight':
+              updateElementStyle('x', currentX + step);
+              break;
+            case 'ArrowUp':
+              updateElementStyle('y', currentY - step);
+              break;
+            case 'ArrowDown':
+              updateElementStyle('y', currentY + step);
+              break;
           }
         }
       }

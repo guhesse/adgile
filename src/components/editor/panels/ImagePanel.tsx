@@ -16,7 +16,7 @@ import { EditorElement } from "../types";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Image, Link, CornerDownLeft, CornerDownRight, CornerUpLeft, CornerUpRight, Minus, Plus, AlignCenter, AlignLeft, AlignRight, Maximize, MinusCircle, PlusCircle, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Palette, RefreshCw, Droplets, Sun, Contrast } from "lucide-react";
+import { Image, Link, Palette } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface ImagePanelProps {
@@ -28,7 +28,6 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
   const {
     updateElementContent,
     handleImageUpload,
-    updateElementAttribute,
   } = useCanvas();
 
   const [activeTab, setActiveTab] = useState<string>("content");
@@ -89,8 +88,8 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
     const url = e.target.value;
     setLinkUrl(url);
     
-    if (updateElementAttribute) {
-      updateElementAttribute('link', url);
+    if (selectedElement.link !== undefined) {
+      selectedElement.link = url;
     }
   };
 
@@ -98,28 +97,22 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
     const text = e.target.value;
     setAltText(text);
     
-    if (updateElementAttribute) {
-      updateElementAttribute('alt', text);
+    if (selectedElement.alt !== undefined) {
+      selectedElement.alt = text;
     }
   };
 
   const handleOpenInNewTabChange = (checked: boolean) => {
     setOpenInNewTab(checked);
     
-    if (updateElementAttribute) {
-      updateElementAttribute('openInNewTab', checked);
+    if (selectedElement.openInNewTab !== undefined) {
+      selectedElement.openInNewTab = checked;
     }
   };
 
   const handleObjectFitChange = (value: string) => {
     if (updateElementStyle) {
       updateElementStyle("objectFit", value);
-      
-      if (value === "cover") {
-        updateElementStyle("objectPositionX", 50);
-        updateElementStyle("objectPositionY", 50);
-        updateElementStyle("objectScale", 100);
-      }
     }
   };
 
@@ -129,39 +122,7 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
     }
   };
 
-  const handleOverlayOpacityChange = (value: number[]) => {
-    if (updateElementStyle) {
-      updateElementStyle("overlayOpacity", value[0] / 100);
-    }
-  };
-
-  const handleOverlayColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const color = e.target.value;
-    setOverlayColor(color);
-    if (updateElementStyle) {
-      updateElementStyle("overlayColor", color);
-    }
-  };
-
-  const handlePositionXChange = (value: number[]) => {
-    if (updateElementStyle) {
-      updateElementStyle("objectPositionX", value[0]);
-    }
-  };
-
-  const handlePositionYChange = (value: number[]) => {
-    if (updateElementStyle) {
-      updateElementStyle("objectPositionY", value[0]);
-    }
-  };
-
-  const handleScaleChange = (value: number[]) => {
-    if (updateElementStyle) {
-      updateElementStyle("objectScale", value[0]);
-    }
-  };
-
-  // New filter handlers
+  // Filter handlers
   const handleHueRotateChange = (value: number[]) => {
     if (updateElementStyle) {
       updateElementStyle("hueRotate", value[0]);
@@ -212,10 +173,6 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
         updateElementStyle("brightness", 1);
         updateElementStyle("contrast", 1);
         updateElementStyle("saturate", 1);
-        
-        // Remove overlay since we're using filters
-        updateElementStyle("overlayColor", undefined);
-        updateElementStyle("overlayOpacity", undefined);
       }
     }
   };
@@ -229,8 +186,6 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
       updateElementStyle("saturate", 1);
     }
   };
-
-  const showPositionControls = selectedElement.style.objectFit === "cover";
 
   return (
     <div className="p-4 space-y-4 bg-white rounded-lg">
@@ -299,78 +254,6 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
               </Button>
             </div>
             
-            {showPositionControls && (
-              <div className="mt-6">
-                <div className="text-center text-sm text-gray-500 mb-2">Posição e Escala</div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between text-xs text-gray-500 mb-1">
-                      <span>Posição X</span>
-                      <span>{selectedElement.style.objectPositionX || 50}%</span>
-                    </div>
-                    <div className="flex items-center">
-                      <ArrowLeft className="w-4 h-4 text-gray-400 mr-2" />
-                      <Slider 
-                        defaultValue={[selectedElement.style.objectPositionX || 50]}
-                        value={[selectedElement.style.objectPositionX || 50]}
-                        min={0}
-                        max={100}
-                        step={1}
-                        onValueChange={handlePositionXChange}
-                      />
-                      <ArrowRight className="w-4 h-4 text-gray-400 ml-2" />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between text-xs text-gray-500 mb-1">
-                      <span>Posição Y</span>
-                      <span>{selectedElement.style.objectPositionY || 50}%</span>
-                    </div>
-                    <div className="flex items-center">
-                      <ArrowUp className="w-4 h-4 text-gray-400 mr-2" />
-                      <Slider 
-                        defaultValue={[selectedElement.style.objectPositionY || 50]}
-                        value={[selectedElement.style.objectPositionY || 50]}
-                        min={0}
-                        max={100}
-                        step={1}
-                        onValueChange={handlePositionYChange}
-                      />
-                      <ArrowDown className="w-4 h-4 text-gray-400 ml-2" />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between text-xs text-gray-500 mb-1">
-                      <span>Escala</span>
-                      <span>{selectedElement.style.objectScale || 100}%</span>
-                    </div>
-                    <div className="flex items-center">
-                      <MinusCircle className="w-4 h-4 text-gray-400 mr-2" />
-                      <Slider 
-                        defaultValue={[selectedElement.style.objectScale || 100]}
-                        value={[selectedElement.style.objectScale || 100]}
-                        min={100}
-                        max={200}
-                        step={1}
-                        onValueChange={handleScaleChange}
-                      />
-                      <PlusCircle className="w-4 h-4 text-gray-400 ml-2" />
-                    </div>
-                  </div>
-                </div>
-                
-                {showPositionControls && (
-                  <div className="mt-1 px-2 py-1 bg-gray-100 rounded text-xs text-gray-600">
-                    <p>Dica: Use <kbd className="px-1 py-0.5 bg-gray-200 rounded">Alt</kbd> + teclas de seta para ajustar a posição da imagem dentro do container.</p>
-                    <p className="mt-1">Use <kbd className="px-1 py-0.5 bg-gray-200 rounded">Shift</kbd> + teclas de seta para mover em incrementos maiores.</p>
-                  </div>
-                )}
-              </div>
-            )}
-            
             <div className="mt-6">
               <div className="text-center text-sm text-gray-500 mb-2">Vincular a</div>
               <Select defaultValue="web">
@@ -431,37 +314,31 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
             <Separator className="my-4" />
             
             <div className="flex items-center justify-between mb-4">
-              <div className="text-sm text-gray-500">Modo de colorização</div>
-              <div className="flex items-center">
-                <Label htmlFor="filter-mode" className="mr-2 text-xs text-gray-600">
-                  {useFilters ? "Filtros CSS" : "Sobreposição de Cor"}
-                </Label>
-                <Switch
-                  checked={useFilters}
-                  onCheckedChange={toggleFilterMode}
-                  id="filter-mode"
-                />
-              </div>
+              <div className="text-sm text-gray-500">Filtros CSS</div>
+              <Switch
+                checked={useFilters}
+                onCheckedChange={toggleFilterMode}
+                id="filter-mode"
+              />
             </div>
             
-            {useFilters ? (
+            {useFilters && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <div className="text-sm font-medium">Filtros CSS</div>
+                  <div className="text-sm font-medium">Ajustes de Imagem</div>
                   <Button 
                     variant="outline" 
                     size="sm" 
                     onClick={resetFilters}
                     className="text-xs flex items-center"
                   >
-                    <RefreshCw className="w-3 h-3 mr-1" />
                     Resetar
                   </Button>
                 </div>
                 
                 <div>
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
-                    <span className="flex items-center"><RefreshCw className="w-3 h-3 mr-1" /> Matiz (Hue)</span>
+                    <span>Matiz (Hue)</span>
                     <span>{selectedElement.style.hueRotate || 0}°</span>
                   </div>
                   <Slider 
@@ -476,7 +353,7 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
                 
                 <div>
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
-                    <span className="flex items-center"><Image className="w-3 h-3 mr-1" /> Escala de cinza</span>
+                    <span>Escala de cinza</span>
                     <span>{selectedElement.style.grayscale ? selectedElement.style.grayscale * 100 : 0}%</span>
                   </div>
                   <Slider 
@@ -491,7 +368,7 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
                 
                 <div>
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
-                    <span className="flex items-center"><Sun className="w-3 h-3 mr-1" /> Brilho</span>
+                    <span>Brilho</span>
                     <span>{selectedElement.style.brightness ? selectedElement.style.brightness * 100 : 100}%</span>
                   </div>
                   <Slider 
@@ -506,7 +383,7 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
                 
                 <div>
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
-                    <span className="flex items-center"><Contrast className="w-3 h-3 mr-1" /> Contraste</span>
+                    <span>Contraste</span>
                     <span>{selectedElement.style.contrast ? selectedElement.style.contrast * 100 : 100}%</span>
                   </div>
                   <Slider 
@@ -521,7 +398,7 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
                 
                 <div>
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
-                    <span className="flex items-center"><Droplets className="w-3 h-3 mr-1" /> Saturação</span>
+                    <span>Saturação</span>
                     <span>{selectedElement.style.saturate ? selectedElement.style.saturate * 100 : 100}%</span>
                   </div>
                   <Slider 
@@ -538,128 +415,15 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
                   <p>Os filtros CSS preservam a transparência em imagens PNG, ideal para logos e ícones.</p>
                 </div>
               </div>
-            ) : (
-              <div>
-                <div className="text-center text-sm text-gray-500">Sobreposição de Cor</div>
-                <div className="flex items-center justify-between">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="flex items-center w-full">
-                        <div 
-                          className="w-4 h-4 rounded-sm mr-2" 
-                          style={{ backgroundColor: overlayColor }} 
-                        />
-                        <span>{overlayColor}</span>
-                        <Palette className="ml-auto h-4 w-4" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-2">
-                      <div className="space-y-2">
-                        <Input
-                          type="color"
-                          value={overlayColor}
-                          onChange={handleOverlayColorChange}
-                          className="w-full h-8"
-                        />
-                        <Input
-                          type="text"
-                          value={overlayColor}
-                          onChange={handleOverlayColorChange}
-                          className="w-full"
-                        />
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                
-                <div className="mt-2">
-                  <div className="flex justify-between text-xs text-gray-500 mb-1">
-                    <span>Opacidade da Cor</span>
-                    <span>{selectedElement.style.overlayOpacity ? selectedElement.style.overlayOpacity * 100 : 0}%</span>
-                  </div>
-                  <Slider 
-                    defaultValue={[selectedElement.style.overlayOpacity ? selectedElement.style.overlayOpacity * 100 : 0]}
-                    value={[selectedElement.style.overlayOpacity ? selectedElement.style.overlayOpacity * 100 : 0]}
-                    max={100}
-                    step={1}
-                    onValueChange={handleOverlayOpacityChange}
-                  />
-                </div>
-                
-                <div className="mt-1 px-2 py-1 bg-gray-100 rounded text-xs text-gray-600">
-                  <p>A sobreposição de cor pode afetar a transparência em imagens PNG. Para preservar a transparência, use o modo de Filtros CSS.</p>
-                </div>
-              </div>
-            )}
-            
-            <Separator className="my-4" />
-            
-            {showPositionControls && (
-              <>
-                <div className="text-center text-sm text-gray-500">Posição e Escala</div>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between text-xs text-gray-500 mb-1">
-                      <span>Posição X</span>
-                      <span>{selectedElement.style.objectPositionX || 50}%</span>
-                    </div>
-                    <div className="flex items-center">
-                      <ArrowLeft className="w-4 h-4 text-gray-400 mr-2" />
-                      <Slider 
-                        defaultValue={[selectedElement.style.objectPositionX || 50]}
-                        value={[selectedElement.style.objectPositionX || 50]}
-                        min={0}
-                        max={100}
-                        step={1}
-                        onValueChange={handlePositionXChange}
-                      />
-                      <ArrowRight className="w-4 h-4 text-gray-400 ml-2" />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between text-xs text-gray-500 mb-1">
-                      <span>Posição Y</span>
-                      <span>{selectedElement.style.objectPositionY || 50}%</span>
-                    </div>
-                    <div className="flex items-center">
-                      <ArrowUp className="w-4 h-4 text-gray-400 mr-2" />
-                      <Slider 
-                        defaultValue={[selectedElement.style.objectPositionY || 50]}
-                        value={[selectedElement.style.objectPositionY || 50]}
-                        min={0}
-                        max={100}
-                        step={1}
-                        onValueChange={handlePositionYChange}
-                      />
-                      <ArrowDown className="w-4 h-4 text-gray-400 ml-2" />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between text-xs text-gray-500 mb-1">
-                      <span>Escala</span>
-                      <span>{selectedElement.style.objectScale || 100}%</span>
-                    </div>
-                    <div className="flex items-center">
-                      <MinusCircle className="w-4 h-4 text-gray-400 mr-2" />
-                      <Slider 
-                        defaultValue={[selectedElement.style.objectScale || 100]}
-                        value={[selectedElement.style.objectScale || 100]}
-                        min={100}
-                        max={200}
-                        step={1}
-                        onValueChange={handleScaleChange}
-                      />
-                      <PlusCircle className="w-4 h-4 text-gray-400 ml-2" />
-                    </div>
-                  </div>
-                </div>
-              </>
             )}
           </div>
         </TabsContent>
       </Tabs>
+      
+      <div className="mt-2 px-2 py-1 bg-gray-100 rounded text-xs text-gray-600">
+        <p>Dica: Use as teclas de seta para mover os elementos no canvas.</p>
+        <p className="mt-1">Use <kbd className="px-1 py-0.5 bg-gray-200 rounded">Shift</kbd> + teclas de seta para mover em incrementos maiores.</p>
+      </div>
     </div>
   );
 };
