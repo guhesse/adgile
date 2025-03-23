@@ -4,14 +4,14 @@ import { mapPSDFontToWebFont } from './fontMapper';
 // Sistema de logs centralizado - simplificado apenas para fontes
 const logger = {
   enabled: process.env.NODE_ENV === 'development',
-  
+
   // Log apenas para informações de fonte
   font: (layerName: string, message: string, data?: any) => {
     if (logger.enabled) {
       console.log(`🔤 Fonte "${layerName}": ${message}`, data || '');
     }
   },
-  
+
   // Log para resumo final de extração
   summary: (layerName: string, fontFamily: string, fontSize: number) => {
     if (logger.enabled) {
@@ -27,25 +27,30 @@ const logger = {
  * @returns A TextLayerStyle object with the extracted style information
  */
 export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle | null => {
+  if (!textData) {
+    console.error(`❌ Dados brutos ausentes para a camada "${node.name}".`);
+    return null;
+  }
+
   try {
     // Informações detalhadas para diagnóstico
     console.group(`📋 DIAGNÓSTICO DE FONTE [${node.name}]`);
     console.log(`originalFont: "${textData.originalFont || 'não definida'}"`);
     console.log(`fontName: "${textData.fontName || 'não definida'}"`);
     console.log(`fontIndex: ${textData.fontIndex || 'não definido'}`);
-    console.log(`_styles: ${JSON.stringify(textData._styles ? {Font: textData._styles.Font} : 'não disponível')}`);
-    
+    console.log(`_styles: ${JSON.stringify(textData._styles ? { Font: textData._styles.Font } : 'não disponível')}`);
+
     // Verificar disponibilidade de FontSet
     const hasFontSet = !!(textData.engineData?.ResourceDict?.FontSet);
     console.log(`FontSet disponível: ${hasFontSet}`);
-    
+
     if (hasFontSet) {
       const fontSet = textData.engineData.ResourceDict.FontSet;
       const fontIndex = textData._styles?.Font?.[0] || textData.fontIndex || 0;
-      
+
       console.log(`Índice da fonte: ${fontIndex}`);
       console.log(`FontSet.length: ${fontSet.length}`);
-      
+
       if (fontSet[fontIndex]) {
         console.log(`FontSet[${fontIndex}].Name: "${fontSet[fontIndex].Name}"`);
       } else if (fontSet.length > 0) {
@@ -80,13 +85,13 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
 
       // ABORDAGEM DIRETA PARA OBTER A FONTE
       let fontFound = false;
-      
+
       // Opção 1: Usar fontName diretamente (a mais confiável)
       if (textData.fontName) {
         textStyle.fontFamily = textData.fontName.split('-')[0]; // Remover sufixo como "-Regular"
         logger.font(node.name, `Usando fontName direto: ${textStyle.fontFamily}`);
         fontFound = true;
-      } 
+      }
       // Opção 2: Usar originalFont 
       else if (textData.originalFont) {
         textStyle.fontFamily = textData.originalFont.split('-')[0];
@@ -97,7 +102,7 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
       else if (textData._styles?.Font && textData.engineData?.ResourceDict?.FontSet) {
         const fontIndex = textData._styles.Font[0] || 0;
         const fontSet = textData.engineData.ResourceDict.FontSet;
-        
+
         if (fontSet[fontIndex] && fontSet[fontIndex].Name) {
           textStyle.fontFamily = fontSet[fontIndex].Name.split('-')[0];
           logger.font(node.name, `Usando fonte do FontSet[${fontIndex}]: ${textStyle.fontFamily}`);
@@ -108,7 +113,7 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
           fontFound = true;
         }
       }
-      
+
       // SUPER FORÇA A FONTE PARA ROBOTO COMO ÚLTIMO RECURSO
       if (!fontFound || textStyle.fontFamily === 'Arial') {
         if (textData.engineData?.ResourceDict?.FontSet) {
@@ -134,9 +139,9 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
         else if (fullName.includes('light')) textStyle.fontWeight = '300';
         else if (fullName.includes('medium')) textStyle.fontWeight = '500';
         else if (fullName.includes('regular')) textStyle.fontWeight = 'normal';
-        
+
         if (fullName.includes('italic')) textStyle.fontStyle = 'italic';
-        
+
         logger.font(node.name, `Estilo da fonte Roboto: peso=${textStyle.fontWeight}, estilo=${textStyle.fontStyle}`);
       }
 
@@ -169,7 +174,7 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
       // Extrair outras propriedades...
       if (typeof textData.colors === 'function') {
         const colors = textData.colors();
-        
+
         if (colors && colors.length > 0 && Array.isArray(colors[0]) && colors[0].length >= 3) {
           // Converter RGB para hexadecimal
           const [r, g, b] = colors[0].slice(0, 3).map(Math.round);
@@ -179,7 +184,7 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
 
       if (typeof textData.alignment === 'function') {
         const alignmentValue = textData.alignment();
-        
+
         if (alignmentValue !== undefined) {
           // Mapear valores de alinhamento
           const alignmentMap: Record<string, string> = {
@@ -188,33 +193,33 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
             '2': 'center',
             '3': 'justify'
           };
-          
+
           const alignment = alignmentMap[alignmentValue.toString()] || 'left';
           textStyle.alignment = alignment;
         }
       }
-      
+
       if (textData.tracking !== undefined) {
         textStyle.letterSpacing = textData.tracking / 1000; // Convertendo para em
       }
-      
+
       if (textData.engineData) {
-        if (textData.engineData.ResourceDict && 
-            textData.engineData.ResourceDict.FontSet && 
-            textData.engineData.ResourceDict.FontSet[0] && 
-            textData.engineData.ResourceDict.FontSet[0].FontDict && 
-            textData.engineData.ResourceDict.FontSet[0].FontDict.Leading) {
+        if (textData.engineData.ResourceDict &&
+          textData.engineData.ResourceDict.FontSet &&
+          textData.engineData.ResourceDict.FontSet[0] &&
+          textData.engineData.ResourceDict.FontSet[0].FontDict &&
+          textData.engineData.ResourceDict.FontSet[0].FontDict.Leading) {
           const leadingValue = textData.engineData.ResourceDict.FontSet[0].FontDict.Leading;
           if (!textStyle.lineHeight && textStyle.fontSize) {
             textStyle.lineHeight = leadingValue / textStyle.fontSize;
           }
         }
-        
-        if (textData.engineData.ResourceDict && 
-            textData.engineData.ResourceDict.FontSet && 
-            textData.engineData.ResourceDict.FontSet[0] && 
-            textData.engineData.ResourceDict.FontSet[0].FontDict && 
-            textData.engineData.ResourceDict.FontSet[0].FontDict.Tracking) {
+
+        if (textData.engineData.ResourceDict &&
+          textData.engineData.ResourceDict.FontSet &&
+          textData.engineData.ResourceDict.FontSet[0] &&
+          textData.engineData.ResourceDict.FontSet[0].FontDict &&
+          textData.engineData.ResourceDict.FontSet[0].FontDict.Tracking) {
           const trackingValue = textData.engineData.ResourceDict.FontSet[0].FontDict.Tracking;
           textStyle.letterSpacing = trackingValue / 1000; // Convertendo para em
         }
@@ -245,28 +250,28 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
 };
 
 // Função auxiliar para buscar propriedades em objetos aninhados
-function findAllPropertiesDeep(obj: any, propertyNames: string[]): Array<{path: string, value: any}> {
-  const result: Array<{path: string, value: any}> = [];
-  
+function findAllPropertiesDeep(obj: any, propertyNames: string[]): Array<{ path: string, value: any }> {
+  const result: Array<{ path: string, value: any }> = [];
+
   function search(currentObj: any, currentPath: string = '') {
     if (!currentObj || typeof currentObj !== 'object') return;
-    
+
     for (const key in currentObj) {
       const newPath = currentPath ? `${currentPath}.${key}` : key;
-      
+
       if (propertyNames.includes(key) && currentObj[key]) {
         result.push({
           path: newPath,
           value: currentObj[key]
         });
       }
-      
+
       if (typeof currentObj[key] === 'object') {
         search(currentObj[key], newPath);
       }
     }
   }
-  
+
   search(obj);
   return result;
 }
