@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { EditorElement } from "./types";
 import { isValidImageUrl } from "./context/elements/imageOperations";
@@ -20,6 +21,29 @@ const renderImageElement = (element: EditorElement) => {
   const scale = style.objectFit === "cover" && style.objectScale ? 
     `scale(${style.objectScale / 100})` : "none";
   
+  // Apply CSS filters if they exist
+  let filterStyle = "";
+  
+  if (style.hueRotate !== undefined) {
+    filterStyle += `hue-rotate(${style.hueRotate}deg) `;
+  }
+  
+  if (style.grayscale !== undefined) {
+    filterStyle += `grayscale(${style.grayscale}) `;
+  }
+  
+  if (style.brightness !== undefined) {
+    filterStyle += `brightness(${style.brightness}) `;
+  }
+  
+  if (style.contrast !== undefined) {
+    filterStyle += `contrast(${style.contrast}) `;
+  }
+  
+  if (style.saturate !== undefined) {
+    filterStyle += `saturate(${style.saturate}) `;
+  }
+  
   return (
     <div className="relative w-full h-full overflow-hidden">
       <img
@@ -31,12 +55,13 @@ const renderImageElement = (element: EditorElement) => {
           objectFit: style.objectFit || "contain",
           objectPosition,
           transform: scale,
+          filter: filterStyle || undefined,
         }}
         draggable={false}
       />
       
-      {/* Color overlay layer */}
-      {style.overlayColor && style.overlayOpacity && style.overlayOpacity > 0 && (
+      {/* Color overlay layer - only render if not using filters */}
+      {!filterStyle && style.overlayColor && style.overlayOpacity && style.overlayOpacity > 0 && (
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
