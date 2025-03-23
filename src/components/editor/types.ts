@@ -40,7 +40,7 @@ export type EditorElement = {
     borderBottomLeftRadius?: number;
     borderBottomRightRadius?: number;
     objectFit?: "contain" | "cover" | "fill" | "none" | "scale-down";
-    objectPosition?: string;
+    objectPosition?: "left" | "center" | "right" | "top" | "bottom" | string;
     objectPositionX?: number; // Nova propriedade para controle preciso da posição X
     objectPositionY?: number; // Nova propriedade para controle preciso da posição Y
     objectScale?: number; // Nova propriedade para controle de escala
@@ -50,7 +50,6 @@ export type EditorElement = {
     gridColumn?: string;
     gridRow?: string;
     opacity?: number;
-    rotation?: number;
     // Valores para manter a proporção original da imagem
     originalWidth?: number;
     originalHeight?: number;
@@ -59,18 +58,6 @@ export type EditorElement = {
     yPercent?: number;
     widthPercent?: number;
     heightPercent?: number;
-    // Propriedades para máscaras e recortes
-    hasMask?: boolean;
-    maskInfo?: {
-      top: number;
-      left: number;
-      bottom: number;
-      right: number;
-      width: number;
-      height: number;
-      invert?: boolean;
-      disabled?: boolean;
-    };
   };
   columns?: number;
   childElements?: EditorElement[];
@@ -82,8 +69,6 @@ export type EditorElement = {
   sizeId?: string; // The banner size this element belongs to
   linkedElementId?: string; // ID of the linked element in other sizes
   isIndividuallyPositioned?: boolean; // Whether this element has been individually positioned
-  artboardSize?: string; // Tamanho do artboard ao qual o elemento pertence
-  psdLayerData?: any; // Dados da camada PSD original
 };
 
 // Novo tipo para compartilhar entre componentes

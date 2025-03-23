@@ -1,57 +1,34 @@
-
-// Tipos de dados para o gerenciamento de marca e estilos
-
-export interface ColorItem {
-  id: string;
+export interface BrandGroup {
+  id: number;
   name: string;
+  items: BrandItem[];
+  isOpen?: boolean;
+  icon?: string;
+}
+
+export interface BrandItem {
+  id: number;
+  name: string;
+  type: 'color' | 'textStyle';
+  color?: string;
+  textStyle?: TextStyle;
+}
+
+export interface TextStyle {
+  id: number;
+  name: string;
+  style: {
+    fontSize: number;
+    fontWeight: string;
+    fontFamily: string;
+    lineHeight?: number;
+    letterSpacing?: number;
+    color?: string;
+  };
+}
+
+export interface FolderIcon {
+  name: string;
+  icon: React.ReactNode;
   value: string;
-}
-
-export interface ColorGroup {
-  id: string;
-  name: string;
-  colors: ColorItem[];
-}
-
-export interface TextStyleItem {
-  id: string;
-  name: string;
-  fontFamily: string;
-  fontSize: number;
-  fontWeight: string;
-  fontStyle: string;
-  color: string;
-  lineHeight: number;
-  letterSpacing: number;
-  textAlign: string;
-  textTransform?: string;
-}
-
-export interface TextStyleGroup {
-  id: string;
-  name: string;
-  styles: TextStyleItem[];
-}
-
-export interface BrandAsset {
-  id: string;
-  name: string;
-  type: 'logo' | 'image' | 'icon';
-  url: string;
-  description?: string;
-  tags?: string[];
-}
-
-export interface BrandAssetGroup {
-  id: string;
-  name: string;
-  assets: BrandAsset[];
-}
-
-export interface BrandData {
-  id: string;
-  name: string;
-  colorGroups: ColorGroup[];
-  textStyleGroups: TextStyleGroup[];
-  assetGroups: BrandAssetGroup[];
 }

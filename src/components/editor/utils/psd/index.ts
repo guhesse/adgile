@@ -1,10 +1,13 @@
 
-// Re-export types
-export type { PSDFileData, TextLayerStyle, LayerData, PSDMaskData } from './types';
-
-// Re-export utilities
+// Re-export all PSD utility functions for easier imports
 export { importPSDFile } from './importPSD';
-export { saveImageToStorage, getPSDMetadata, savePSDDataToStorage, getPSDDataByKey, removePSDData } from './storage';
-export { logBasicPSDInfo, logTreeStructure, logImportSummary } from './psdLogger';
-export { convertPSDColorToHex } from './formatters';
-export { getAllLayers } from './psdUtils';
+export { parsePSDFile } from './psdParser';
+export {
+  savePSDDataToStorage,
+  getPSDDataFromStorage,
+  getPSDMetadata,
+  savePSDMetadata,
+  removePSDData
+} from './storage';
+export type { PSDFileData, PSDLayerInfo } from './types';
+

@@ -1,67 +1,50 @@
-
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useCanvas } from "../CanvasContext";
-import { Slider } from "@/components/ui/slider";
 import { useState, useEffect } from "react";
-import { useHotkeys } from "react-hotkeys-hook";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useCanvas } from "../CanvasContext";
+import { EditorElement } from "../types";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Image, Link, CornerDownLeft, CornerDownRight, CornerUpLeft, CornerUpRight, Minus, Plus, AlignCenter, AlignLeft, AlignRight, Maximize, MinusCircle, PlusCircle, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Palette } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-export const ImagePanel = () => {
+interface ImagePanelProps {
+  selectedElement: EditorElement;
+  updateElementStyle?: (property: string, value: any) => void;
+}
+
+const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) => {
   const {
-    selectedElement,
-    updateElementStyle,
-    updateElement,
+    updateElementContent,
+    handleImageUpload,
+    updateElementAttribute,
   } = useCanvas();
 
-  const [objectScale, setObjectScale] = useState<number>(100);
-  const [objectPositionX, setObjectPositionX] = useState<number>(50);
-  const [objectPositionY, setObjectPositionY] = useState<number>(50);
+  const [activeTab, setActiveTab] = useState<string>("content");
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [linkUrl, setLinkUrl] = useState<string>("");
+  const [altText, setAltText] = useState<string>("");
+  const [openInNewTab, setOpenInNewTab] = useState<boolean>(false);
   const [overlayColor, setOverlayColor] = useState<string>("#000000");
-  const [overlayOpacity, setOverlayOpacity] = useState<number>(0);
-  
+
   useEffect(() => {
     if (selectedElement && selectedElement.type === "image") {
-      // Load current values when selected element changes
-      setObjectScale(selectedElement.style.objectScale || 100);
-      setObjectPositionX(selectedElement.style.objectPositionX || 50);
-      setObjectPositionY(selectedElement.style.objectPositionY || 50);
+      setImageUrl(selectedElement.content as string);
+      setAltText(selectedElement.alt || "");
+      setLinkUrl(selectedElement.link || "");
+      setOpenInNewTab(selectedElement.openInNewTab || false);
       setOverlayColor(selectedElement.style.overlayColor || "#000000");
-      setOverlayOpacity(selectedElement.style.overlayOpacity || 0);
-    }
-  }, [selectedElement]);
-
-  // Use arrow keys to move the image within the container when in scale mode
-  useHotkeys('alt+left', () => {
-    if (selectedElement?.type === 'image' && selectedElement.style.objectFit === 'scale-down') {
-      const newX = Math.max(0, (selectedElement.style.objectPositionX || 50) - 1);
-      setObjectPositionX(newX);
-      updateElementStyle(selectedElement.id, { objectPositionX: newX });
-    }
-  }, [selectedElement]);
-
-  useHotkeys('alt+right', () => {
-    if (selectedElement?.type === 'image' && selectedElement.style.objectFit === 'scale-down') {
-      const newX = Math.min(100, (selectedElement.style.objectPositionX || 50) + 1);
-      setObjectPositionX(newX);
-      updateElementStyle(selectedElement.id, { objectPositionX: newX });
-    }
-  }, [selectedElement]);
-
-  useHotkeys('alt+up', () => {
-    if (selectedElement?.type === 'image' && selectedElement.style.objectFit === 'scale-down') {
-      const newY = Math.max(0, (selectedElement.style.objectPositionY || 50) - 1);
-      setObjectPositionY(newY);
-      updateElementStyle(selectedElement.id, { objectPositionY: newY });
-    }
-  }, [selectedElement]);
-
-  useHotkeys('alt+down', () => {
-    if (selectedElement?.type === 'image' && selectedElement.style.objectFit === 'scale-down') {
-      const newY = Math.min(100, (selectedElement.style.objectPositionY || 50) + 1);
-      setObjectPositionY(newY);
-      updateElementStyle(selectedElement.id, { objectPositionY: newY });
     }
   }, [selectedElement]);
 
@@ -69,208 +52,412 @@ export const ImagePanel = () => {
     return null;
   }
 
-  const handleObjectFitChange = (value: string) => {
-    const newStyle: any = {
-      objectFit: value as "contain" | "cover" | "fill" | "none" | "scale-down",
-    };
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    try {
+      const uploadedUrl = await handleImageUpload(files[0]);
+      updateElementContent(uploadedUrl);
+      setImageUrl(uploadedUrl);
+    } catch (error) {
+      console.error("Error uploading image:", error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const url = e.target.value;
+    setImageUrl(url);
+    updateElementContent(url);
+  };
+
+  const handleLinkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const url = e.target.value;
+    setLinkUrl(url);
     
-    updateElementStyle(selectedElement.id, newStyle);
+    if (updateElementAttribute) {
+      updateElementAttribute('link', url);
+    }
   };
 
-  const handleOpacityChange = (value: number) => {
-    updateElementStyle(selectedElement.id, { opacity: value / 100 });
+  const handleAltChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const text = e.target.value;
+    setAltText(text);
+    
+    if (updateElementAttribute) {
+      updateElementAttribute('alt', text);
+    }
   };
 
-  const handleScaleChange = (value: number[]) => {
-    const scaleValue = value[0];
-    setObjectScale(scaleValue);
-    updateElementStyle(selectedElement.id, { objectScale: scaleValue });
+  const handleOpenInNewTabChange = (checked: boolean) => {
+    setOpenInNewTab(checked);
+    
+    if (updateElementAttribute) {
+      updateElementAttribute('openInNewTab', checked);
+    }
   };
 
-  const handlePositionXChange = (value: number[]) => {
-    const posX = value[0];
-    setObjectPositionX(posX);
-    updateElementStyle(selectedElement.id, { objectPositionX: posX });
+  const handleObjectFitChange = (value: string) => {
+    if (updateElementStyle) {
+      updateElementStyle("objectFit", value);
+      
+      if (value === "cover") {
+        updateElementStyle("objectPositionX", 50);
+        updateElementStyle("objectPositionY", 50);
+        updateElementStyle("objectScale", 100);
+      }
+    }
   };
 
-  const handlePositionYChange = (value: number[]) => {
-    const posY = value[0];
-    setObjectPositionY(posY);
-    updateElementStyle(selectedElement.id, { objectPositionY: posY });
+  const handleOpacityChange = (value: number[]) => {
+    if (updateElementStyle) {
+      updateElementStyle("opacity", value[0] / 100);
+    }
+  };
+
+  const handleOverlayOpacityChange = (value: number[]) => {
+    if (updateElementStyle) {
+      updateElementStyle("overlayOpacity", value[0] / 100);
+    }
   };
 
   const handleOverlayColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const color = e.target.value;
     setOverlayColor(color);
-    updateElementStyle(selectedElement.id, { overlayColor: color });
+    if (updateElementStyle) {
+      updateElementStyle("overlayColor", color);
+    }
   };
 
-  const handleOverlayOpacityChange = (value: number[]) => {
-    const opacity = value[0];
-    setOverlayOpacity(opacity);
-    updateElementStyle(selectedElement.id, { overlayOpacity: opacity / 100 });
+  const handlePositionXChange = (value: number[]) => {
+    if (updateElementStyle) {
+      updateElementStyle("objectPositionX", value[0]);
+    }
   };
 
-  const handleAltTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const alt = e.target.value;
-    updateElement(selectedElement.id, { alt });
+  const handlePositionYChange = (value: number[]) => {
+    if (updateElementStyle) {
+      updateElementStyle("objectPositionY", value[0]);
+    }
   };
+
+  const handleScaleChange = (value: number[]) => {
+    if (updateElementStyle) {
+      updateElementStyle("objectScale", value[0]);
+    }
+  };
+
+  const showPositionControls = selectedElement.style.objectFit === "cover";
 
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <Tabs defaultValue="basic">
-        <TabsList className="grid w-full grid-cols-2 mb-2">
-          <TabsTrigger value="basic">Básico</TabsTrigger>
-          <TabsTrigger value="style">Estilo</TabsTrigger>
+    <div className="p-4 space-y-4 bg-white rounded-lg">
+      <div className="flex items-center justify-center">
+        <div className="text-lg font-medium">Imagem</div>
+      </div>
+      
+      <Tabs defaultValue="content" value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="content" className={activeTab === "content" ? "bg-purple-600 text-white" : ""}>
+            Conteúdo
+          </TabsTrigger>
+          <TabsTrigger value="style" className={activeTab === "style" ? "bg-purple-600 text-white" : ""}>
+            Estilo
+          </TabsTrigger>
         </TabsList>
-
-        <TabsContent value="basic" className="space-y-4">
-          <div className="flex flex-col gap-4">
-            <div>
-              <Label htmlFor="alt-text">Texto Alternativo</Label>
-              <Input
-                id="alt-text"
-                placeholder="Descreva a imagem..."
-                value={selectedElement.alt || ""}
-                onChange={handleAltTextChange}
-              />
+        
+        <TabsContent value="content" className="space-y-4 mt-4">
+          <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-200 rounded-md bg-gray-50">
+            <Image className="w-8 h-8 text-gray-400 mb-2" />
+            <input
+              type="file"
+              id="image-upload"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="hidden"
+            />
+            <label
+              htmlFor="image-upload"
+              className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 cursor-pointer"
+            >
+              {isUploading ? "Carregando..." : "Escolher imagem"}
+            </label>
+            <div className="mt-2 text-sm text-gray-500">ou</div>
+            <Input
+              placeholder="URL da imagem"
+              value={imageUrl}
+              onChange={handleUrlChange}
+              className="mt-2"
+            />
+          </div>
+          
+          <div className="space-y-4">
+            <div className="text-center text-sm text-gray-500">Tamanho</div>
+            <div className="flex justify-center bg-gray-100 rounded-md p-1">
+              <Button 
+                variant={selectedElement.style.objectFit === "contain" ? "default" : "ghost"}
+                className={`flex-1 ${selectedElement.style.objectFit === "contain" ? "bg-white shadow-sm" : ""}`}
+                onClick={() => handleObjectFitChange("contain")}
+              >
+                Original
+              </Button>
+              <Button 
+                variant={selectedElement.style.objectFit === "fill" ? "default" : "ghost"}
+                className={`flex-1 ${selectedElement.style.objectFit === "fill" ? "bg-white shadow-sm" : ""}`}
+                onClick={() => handleObjectFitChange("fill")}
+              >
+                Preencher
+              </Button>
+              <Button 
+                variant={selectedElement.style.objectFit === "cover" ? "default" : "ghost"}
+                className={`flex-1 ${selectedElement.style.objectFit === "cover" ? "bg-purple-600 text-white" : ""}`}
+                onClick={() => handleObjectFitChange("cover")}
+              >
+                Escala
+              </Button>
             </div>
-
-            <div>
-              <Label>Ajuste da Imagem</Label>
-              <div className="grid grid-cols-3 gap-2 mt-1">
-                <Button
-                  variant={selectedElement.style.objectFit === "cover" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handleObjectFitChange("cover")}
-                >
-                  Cobrir
-                </Button>
-                <Button
-                  variant={selectedElement.style.objectFit === "contain" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handleObjectFitChange("contain")}
-                >
-                  Conter
-                </Button>
-                <Button
-                  variant={selectedElement.style.objectFit === "scale-down" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handleObjectFitChange("scale-down")}
-                >
-                  Escala
-                </Button>
+            
+            {showPositionControls && (
+              <div className="mt-6">
+                <div className="text-center text-sm text-gray-500 mb-2">Posição e Escala</div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Posição X</span>
+                      <span>{selectedElement.style.objectPositionX || 50}%</span>
+                    </div>
+                    <div className="flex items-center">
+                      <ArrowLeft className="w-4 h-4 text-gray-400 mr-2" />
+                      <Slider 
+                        defaultValue={[selectedElement.style.objectPositionX || 50]}
+                        min={0}
+                        max={100}
+                        step={1}
+                        onValueChange={handlePositionXChange}
+                      />
+                      <ArrowRight className="w-4 h-4 text-gray-400 ml-2" />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Posição Y</span>
+                      <span>{selectedElement.style.objectPositionY || 50}%</span>
+                    </div>
+                    <div className="flex items-center">
+                      <ArrowUp className="w-4 h-4 text-gray-400 mr-2" />
+                      <Slider 
+                        defaultValue={[selectedElement.style.objectPositionY || 50]}
+                        min={0}
+                        max={100}
+                        step={1}
+                        onValueChange={handlePositionYChange}
+                      />
+                      <ArrowDown className="w-4 h-4 text-gray-400 ml-2" />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Escala</span>
+                      <span>{selectedElement.style.objectScale || 100}%</span>
+                    </div>
+                    <div className="flex items-center">
+                      <MinusCircle className="w-4 h-4 text-gray-400 mr-2" />
+                      <Slider 
+                        defaultValue={[selectedElement.style.objectScale || 100]}
+                        min={100}
+                        max={200}
+                        step={1}
+                        onValueChange={handleScaleChange}
+                      />
+                      <PlusCircle className="w-4 h-4 text-gray-400 ml-2" />
+                    </div>
+                  </div>
+                </div>
+                
+                {showPositionControls && (
+                  <div className="mt-1 px-2 py-1 bg-gray-100 rounded text-xs text-gray-600">
+                    <p>Dica: Use <kbd className="px-1 py-0.5 bg-gray-200 rounded">Alt</kbd> + teclas de seta para ajustar a posição da imagem dentro do container.</p>
+                    <p className="mt-1">Use <kbd className="px-1 py-0.5 bg-gray-200 rounded">Shift</kbd> + teclas de seta para mover em incrementos maiores.</p>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <div className="mt-6">
+              <div className="text-center text-sm text-gray-500 mb-2">Vincular a</div>
+              <Select defaultValue="web">
+                <SelectTrigger>
+                  <SelectValue placeholder="Tipo de link" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="web">Página da Web</SelectItem>
+                  <SelectItem value="email">E-mail</SelectItem>
+                  <SelectItem value="phone">Telefone</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Input
+                placeholder="Link"
+                value={linkUrl}
+                onChange={handleLinkChange}
+                className="mt-2"
+              />
+              
+              <div className="flex items-center mt-2">
+                <Switch
+                  checked={openInNewTab}
+                  onCheckedChange={handleOpenInNewTabChange}
+                  id="open-new-tab"
+                />
+                <Label htmlFor="open-new-tab" className="ml-2 text-sm text-gray-600">
+                  Abrir link em nova guia
+                </Label>
               </div>
             </div>
-
-            {selectedElement.style.objectFit === "scale-down" && (
+            
+            <div className="mt-4">
+              <div className="text-center text-sm text-gray-500 mb-2">Texto alternativo</div>
+              <Input
+                placeholder="Descreva o que vê na imagem"
+                value={altText}
+                onChange={handleAltChange}
+                className="mt-1"
+              />
+            </div>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="style" className="space-y-4 mt-4">
+          <div className="space-y-4">
+            <div className="text-center text-sm text-gray-500">Opacidade</div>
+            <div className="w-full">
+              <Slider 
+                defaultValue={[selectedElement.style.opacity ? selectedElement.style.opacity * 100 : 100]}
+                max={100}
+                step={1}
+                onValueChange={handleOpacityChange}
+              />
+            </div>
+            
+            <Separator className="my-4" />
+            
+            <div className="text-center text-sm text-gray-500">Sobreposição de Cor</div>
+            <div className="flex items-center justify-between">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="flex items-center w-full">
+                    <div 
+                      className="w-4 h-4 rounded-sm mr-2" 
+                      style={{ backgroundColor: overlayColor }} 
+                    />
+                    <span>{overlayColor}</span>
+                    <Palette className="ml-auto h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-2">
+                  <div className="space-y-2">
+                    <Input
+                      type="color"
+                      value={overlayColor}
+                      onChange={handleOverlayColorChange}
+                      className="w-full h-8"
+                    />
+                    <Input
+                      type="text"
+                      value={overlayColor}
+                      onChange={handleOverlayColorChange}
+                      className="w-full"
+                    />
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+            
+            <div className="mt-2">
+              <div className="flex justify-between text-xs text-gray-500 mb-1">
+                <span>Opacidade da Cor</span>
+                <span>{selectedElement.style.overlayOpacity ? selectedElement.style.overlayOpacity * 100 : 0}%</span>
+              </div>
+              <Slider 
+                defaultValue={[selectedElement.style.overlayOpacity ? selectedElement.style.overlayOpacity * 100 : 0]}
+                max={100}
+                step={1}
+                onValueChange={handleOverlayOpacityChange}
+              />
+            </div>
+            
+            <Separator className="my-4" />
+            
+            {showPositionControls && (
               <>
-                <div>
-                  <div className="flex justify-between">
-                    <Label>Escala</Label>
-                    <div className="text-xs text-gray-500">{objectScale}%</div>
+                <div className="text-center text-sm text-gray-500">Posição e Escala</div>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Posição X</span>
+                      <span>{selectedElement.style.objectPositionX || 50}%</span>
+                    </div>
+                    <div className="flex items-center">
+                      <ArrowLeft className="w-4 h-4 text-gray-400 mr-2" />
+                      <Slider 
+                        defaultValue={[selectedElement.style.objectPositionX || 50]}
+                        min={0}
+                        max={100}
+                        step={1}
+                        onValueChange={handlePositionXChange}
+                      />
+                      <ArrowRight className="w-4 h-4 text-gray-400 ml-2" />
+                    </div>
                   </div>
-                  <Slider
-                    defaultValue={[100]}
-                    value={[objectScale]}
-                    max={200}
-                    min={20}
-                    step={1}
-                    onValueChange={handleScaleChange}
-                    className="mt-1"
-                  />
-                  <div className="mt-1 text-xs text-gray-400">Alt + Setas para ajustar posição</div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between">
-                    <Label>Posição Horizontal</Label>
-                    <div className="text-xs text-gray-500">{objectPositionX}%</div>
+                  
+                  <div>
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Posição Y</span>
+                      <span>{selectedElement.style.objectPositionY || 50}%</span>
+                    </div>
+                    <div className="flex items-center">
+                      <ArrowUp className="w-4 h-4 text-gray-400 mr-2" />
+                      <Slider 
+                        defaultValue={[selectedElement.style.objectPositionY || 50]}
+                        min={0}
+                        max={100}
+                        step={1}
+                        onValueChange={handlePositionYChange}
+                      />
+                      <ArrowDown className="w-4 h-4 text-gray-400 ml-2" />
+                    </div>
                   </div>
-                  <Slider
-                    defaultValue={[50]}
-                    value={[objectPositionX]}
-                    max={100}
-                    min={0}
-                    step={1}
-                    onValueChange={handlePositionXChange}
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex justify-between">
-                    <Label>Posição Vertical</Label>
-                    <div className="text-xs text-gray-500">{objectPositionY}%</div>
+                  
+                  <div>
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Escala</span>
+                      <span>{selectedElement.style.objectScale || 100}%</span>
+                    </div>
+                    <div className="flex items-center">
+                      <MinusCircle className="w-4 h-4 text-gray-400 mr-2" />
+                      <Slider 
+                        defaultValue={[selectedElement.style.objectScale || 100]}
+                        min={100}
+                        max={200}
+                        step={1}
+                        onValueChange={handleScaleChange}
+                      />
+                      <PlusCircle className="w-4 h-4 text-gray-400 ml-2" />
+                    </div>
                   </div>
-                  <Slider
-                    defaultValue={[50]}
-                    value={[objectPositionY]}
-                    max={100}
-                    min={0}
-                    step={1}
-                    onValueChange={handlePositionYChange}
-                    className="mt-1"
-                  />
                 </div>
               </>
             )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="style" className="space-y-4">
-          <div>
-            <div className="flex justify-between">
-              <Label htmlFor="opacity">Opacidade</Label>
-              <div className="text-xs text-gray-500">
-                {Math.round((selectedElement.style.opacity || 1) * 100)}%
-              </div>
-            </div>
-            <Slider
-              defaultValue={[100]}
-              value={[(selectedElement.style.opacity || 1) * 100]}
-              max={100}
-              step={1}
-              onValueChange={(value) => handleOpacityChange(value[0])}
-              className="mt-1"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="overlay-color">Cor de Sobreposição</Label>
-            <div className="flex gap-2 mt-1">
-              <Input
-                type="color"
-                id="overlay-color"
-                value={overlayColor}
-                onChange={handleOverlayColorChange}
-                className="w-12 h-8 p-1"
-              />
-              <Input
-                type="text"
-                value={overlayColor}
-                onChange={handleOverlayColorChange}
-                className="flex-1"
-              />
-            </div>
-          </div>
-
-          <div>
-            <div className="flex justify-between">
-              <Label htmlFor="overlay-opacity">Opacidade da Sobreposição</Label>
-              <div className="text-xs text-gray-500">{overlayOpacity}%</div>
-            </div>
-            <Slider
-              defaultValue={[0]}
-              value={[overlayOpacity]}
-              max={100}
-              step={1}
-              onValueChange={(value) => handleOverlayOpacityChange(value)}
-              className="mt-1"
-            />
           </div>
         </TabsContent>
       </Tabs>
     </div>
   );
 };
+
+export default ImagePanel;

@@ -7,7 +7,6 @@ import { useCanvasKeyboardShortcuts } from "./canvas/hooks/useCanvasKeyboardShor
 import { useCanvasZoomAndPan } from "./canvas/hooks/useCanvasZoomAndPan";
 import { useCanvasInitialization } from "./canvas/hooks/useCanvasInitialization";
 import { constrainAllElements } from "./utils/containerUtils";
-import { useHotkeys } from "react-hotkeys-hook";
 
 export const CanvasWorkspace = () => {
   const {
@@ -85,31 +84,6 @@ export const CanvasWorkspace = () => {
     canvasNavMode,
     activeSizes
   });
-
-  // Keyboard navigation for selected elements
-  useHotkeys('left', () => {
-    if (selectedElement && canvasNavMode === 'edit' && !isResizing && !isDragging) {
-      updateElementStyle(selectedElement.id, { x: Math.max(0, selectedElement.style.x - 1) });
-    }
-  }, [selectedElement, canvasNavMode, isResizing, isDragging]);
-
-  useHotkeys('right', () => {
-    if (selectedElement && canvasNavMode === 'edit' && !isResizing && !isDragging) {
-      updateElementStyle(selectedElement.id, { x: selectedElement.style.x + 1 });
-    }
-  }, [selectedElement, canvasNavMode, isResizing, isDragging]);
-
-  useHotkeys('up', () => {
-    if (selectedElement && canvasNavMode === 'edit' && !isResizing && !isDragging) {
-      updateElementStyle(selectedElement.id, { y: Math.max(0, selectedElement.style.y - 1) });
-    }
-  }, [selectedElement, canvasNavMode, isResizing, isDragging]);
-
-  useHotkeys('down', () => {
-    if (selectedElement && canvasNavMode === 'edit' && !isResizing && !isDragging) {
-      updateElementStyle(selectedElement.id, { y: selectedElement.style.y + 1 });
-    }
-  }, [selectedElement, canvasNavMode, isResizing, isDragging]);
 
   // Effect to ensure all elements stay within the bounds of the artboard
   useEffect(() => {
