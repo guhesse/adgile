@@ -11,6 +11,140 @@ import { convertPSDColorToHex } from './formatters';
  */
 export type { PSDFileData } from './types';
 
+// Log levels
+enum LogLevel {
+  DEBUG = 0,
+  INFO = 1,
+  WARN = 2,
+  ERROR = 3,
+  NONE = 4
+}
+
+// Configuração de log - altere para controlar o nível de informações
+const LOG_LEVEL = LogLevel.INFO;
+
+/**
+ * Função de log centralizada para PSD Import
+ */
+const psdLogger = {
+  debug: (message: string, ...data: any[]) => {
+    if (LOG_LEVEL <= LogLevel.DEBUG) {
+      console.log(`[PSD Debug] ${message}`, ...data);
+    }
+  },
+  info: (message: string, ...data: any[]) => {
+    if (LOG_LEVEL <= LogLevel.INFO) {
+      console.log(`[PSD Info] ${message}`, ...data);
+    }
+  },
+  warn: (message: string, ...data: any[]) => {
+    if (LOG_LEVEL <= LogLevel.WARN) {
+      console.warn(`[PSD Warning] ${message}`, ...data);
+    }
+  },
+  error: (message: string, ...data: any[]) => {
+    if (LOG_LEVEL <= LogLevel.ERROR) {
+      console.error(`[PSD Error] ${message}`, ...data);
+    }
+  }
+};
+
+/**
+ * Interface que representa os dados de máscara de uma camada PSD
+ */
+export interface PSDMaskData {
+  top: number;
+  left: number;
+  bottom: number;
+  right: number;
+  width: number;
+  height: number;
+  defaultColor?: number;
+  relative?: boolean;
+  disabled?: boolean;
+  invert?: boolean;
+  hasValidMask: boolean;
+}
+
+/**
+ * Processa as informações de máscara de uma camada PSD
+ * @param layer Camada do PSD
+ * @returns Informações da máscara processadas
+ */
+export const extractMaskData = (layer: any): PSDMaskData | null => {
+  // Verificar se a camada tem informações de máscara
+  if (!layer || !layer.mask) {
+    return null;
+  }
+
+  try {
+    const mask = layer.mask;
+    psdLogger.debug(`Processando máscara para camada: ${layer.name || 'sem nome'}`, mask);
+    
+    // Verifica se a máscara tem dimensões válidas
+    const hasValidDimensions = 
+      typeof mask.width === 'number' && 
+      typeof mask.height === 'number' && 
+      mask.width > 0 && 
+      mask.height > 0;
+    
+    if (!hasValidDimensions) {
+      // Se mask existe mas não tem dimensões válidas, pode ser outro tipo de objeto
+      if (typeof mask.export === 'function') {
+        // Tenta usar o método export() se disponível
+        try {
+          const exportedMask = mask.export();
+          psdLogger.debug(`Máscara exportada para camada ${layer.name}:`, exportedMask);
+          
+          if (exportedMask && 
+              typeof exportedMask.width === 'number' && 
+              typeof exportedMask.height === 'number' && 
+              exportedMask.width > 0 && 
+              exportedMask.height > 0) {
+            return {
+              top: exportedMask.top || 0,
+              left: exportedMask.left || 0,
+              bottom: exportedMask.bottom || 0,
+              right: exportedMask.right || 0,
+              width: exportedMask.width,
+              height: exportedMask.height,
+              defaultColor: exportedMask.defaultColor,
+              relative: exportedMask.relative,
+              disabled: exportedMask.disabled,
+              invert: exportedMask.invert,
+              hasValidMask: true
+            };
+          }
+        } catch (exportError) {
+          psdLogger.warn(`Erro ao exportar máscara para camada ${layer.name}:`, exportError);
+        }
+      }
+      
+      return null;
+    }
+    
+    const maskData: PSDMaskData = {
+      top: mask.top || 0,
+      left: mask.left || 0,
+      bottom: mask.bottom || 0,
+      right: mask.right || 0,
+      width: mask.width,
+      height: mask.height,
+      defaultColor: mask.defaultColor,
+      relative: mask.relative,
+      disabled: mask.disabled,
+      invert: mask.invert,
+      hasValidMask: true
+    };
+    
+    psdLogger.debug(`Máscara válida encontrada para camada ${layer.name}: ${maskData.width}×${maskData.height}`);
+    return maskData;
+  } catch (error) {
+    psdLogger.warn(`Erro ao processar máscara para camada ${layer.name || 'sem nome'}:`, error);
+    return null;
+  }
+};
+
 /**
  * Import a PSD file and convert it to editor elements
  * @param file The PSD file to import
@@ -21,36 +155,36 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
   try {
     // Parse the PSD file
     const { psd, psdData, extractedImages, textLayers } = await parsePSDFile(file);
-    
+
     // Log summary of extracted assets
-    console.log(`PSD Parser extraiu ${extractedImages.size} imagens e ${textLayers?.size || 0} camadas de texto`);
-    console.log(`Imagens extraídas: ${Array.from(extractedImages.keys()).join(', ')}`);
-    
+    psdLogger.info(`PSD Parser extraiu ${extractedImages.size} imagens e ${textLayers?.size || 0} camadas de texto`);
+    psdLogger.debug(`Imagens extraídas: ${Array.from(extractedImages.keys()).join(', ')}`);
+
     // Extract background color if available
     let backgroundColor = '#ffffff'; // Default white
     try {
       if (psd.tree) {
         const tree = psd.tree();
         // Try to find a background layer
-        const bgLayer = tree.children?.find((child: any) => 
-          child.name?.toLowerCase().includes('background') || 
+        const bgLayer = tree.children?.find((child: any) =>
+          child.name?.toLowerCase().includes('background') ||
           child.name?.toLowerCase().includes('bg')
         );
-        
+
         if (bgLayer && bgLayer.fill && bgLayer.fill.color) {
           backgroundColor = convertPSDColorToHex(bgLayer.fill.color);
-          console.log(`Extracted background color: ${backgroundColor}`);
+          psdLogger.debug(`Extracted background color: ${backgroundColor}`);
         }
-        
+
         // Store in psdData
         psdData.backgroundColor = backgroundColor;
       }
     } catch (bgError) {
-      console.error("Error extracting background color:", bgError);
+      psdLogger.error("Error extracting background color:", bgError);
     }
-    
+
     // Log raw PSD data for debugging (complete structure in one place)
-    console.log("=== RAW PSD DATA ===");
+    psdLogger.debug("=== RAW PSD DATA ===");
     try {
       // Get comprehensive PSD data
       const rawData = {
@@ -61,25 +195,26 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
         extractedImages: Array.from(extractedImages.keys()),
         treeStructure: psd.tree && typeof psd.tree === 'function' ? psd.tree() : null
       };
-      console.log(rawData);
+      psdLogger.debug("PSD Structure:", rawData);
     } catch (logError) {
-      console.error("Error logging full PSD structure:", logError);
+      psdLogger.error("Error logging full PSD structure:", logError);
     }
-    
+
     // Process layers
     const elements: EditorElement[] = [];
-    
+    const maskedElementsCount = { count: 0 };
+
     // Processar camadas de texto primeiro usando a nova abordagem
     const processedTextLayerNames = new Set<string>(); // Rastrear camadas de texto processadas
 
     if (textLayers.size > 0) {
-      console.log("=== PROCESSANDO CAMADAS DE TEXTO EXTRAÍDAS ===");
+      psdLogger.debug("=== PROCESSANDO CAMADAS DE TEXTO EXTRAÍDAS ===");
       for (const [layerName, textStyle] of textLayers.entries()) {
-        console.log(`Processando camada de texto: ${layerName}`);
-        
+        psdLogger.debug(`Processando camada de texto: ${layerName}`);
+
         // Encontrar informações da camada nos dados do PSD
         const layerInfo = psdData.layers.find(layer => layer.name === layerName && layer.type === 'text');
-        
+
         if (layerInfo) {
           const element: EditorElement = {
             id: `text_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -95,8 +230,8 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
             },
             sizeId: 'global'
           };
-          
-          console.log(`Elemento de texto criado:`, {
+
+          psdLogger.debug(`Elemento de texto criado:`, {
             id: element.id,
             content: element.content,
             fontFamily: element.style.fontFamily,
@@ -105,48 +240,109 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
             fontStyle: element.style.fontStyle,
             color: element.style.color
           });
-          
+
           elements.push(element);
           processedTextLayerNames.add(layerName); // Marcar camada como processada
         } else {
-          console.log(`Informações de posição não encontradas para camada de texto: ${layerName}`);
+          psdLogger.warn(`Informações de posição não encontradas para camada de texto: ${layerName}`);
         }
       }
     }
-    
+
     // Processar todas as camadas, ignorando as camadas de texto já processadas
     for (const layer of psd.layers) {
       if (layer.name && processedTextLayerNames.has(layer.name)) {
-        console.log(`Pulando camada de texto já processada: ${layer.name}`);
+        psdLogger.debug(`Pulando camada de texto já processada: ${layer.name}`);
         continue; // Ignorar camadas de texto já processadas
       }
 
+      // Verificar se a camada tem máscara antes de processar
+      const maskData = extractMaskData(layer);
+      
+      // Processar a camada normalmente
       const element = await processLayer(layer, selectedSize, psdData, extractedImages);
+      
       if (element) {
         // Assign the sizeId as 'global' to ensure elements are visible in all artboards
         element.sizeId = 'global';
+        
+        // Se encontramos dados de máscara válidos, anexamos ao elemento
+        if (maskData && maskData.hasValidMask) {
+          element.psdLayerData = element.psdLayerData || {};
+          element.psdLayerData.mask = maskData;
+          
+          // Adicionar informações de máscara ao estilo do elemento
+          element.style = {
+            ...element.style,
+            hasMask: true,
+            maskInfo: {
+              top: maskData.top,
+              left: maskData.left,
+              bottom: maskData.bottom,
+              right: maskData.right,
+              width: maskData.width,
+              height: maskData.height,
+              invert: maskData.invert || false,
+              disabled: maskData.disabled || false
+            }
+          };
+          
+          maskedElementsCount.count++;
+          psdLogger.debug(`Aplicada máscara à camada "${layer.name || 'sem nome'}": ${maskData.width}×${maskData.height}`);
+        }
+        
         elements.push(element);
       }
     }
-    
+
     // If no elements were processed directly from psd.layers,
     // try to use the tree() to get layers
     if (elements.length === 0 && psd.tree && typeof psd.tree === 'function') {
       const tree = psd.tree();
-      console.log("Processando árvore do PSD para extração de camadas");
-      
+      psdLogger.info("Processando árvore do PSD para extração de camadas");
+
       // Check if the tree has descendants method
       if (tree.descendants && typeof tree.descendants === 'function') {
         const descendants = tree.descendants();
-        console.log(`Encontrados ${descendants.length} descendentes na árvore do PSD`);
-        
+        psdLogger.info(`Encontrados ${descendants.length} descendentes na árvore do PSD`);
+
         for (const node of descendants) {
           if (!node.isGroup || (typeof node.isGroup === 'function' && !node.isGroup())) {
-            console.log(`Processando nó: ${node.name}`);
+            psdLogger.debug(`Processando nó: ${node.name}`);
+            
+            // Verificar se o nó tem máscara
+            const maskData = extractMaskData(node);
+            
             const element = await processLayer(node, selectedSize, psdData, extractedImages);
             if (element) {
               // Assign 'global' sizeId for visibility in all artboards
               element.sizeId = 'global';
+              
+              // Se encontramos dados de máscara válidos, anexamos ao elemento
+              if (maskData && maskData.hasValidMask) {
+                element.psdLayerData = element.psdLayerData || {};
+                element.psdLayerData.mask = maskData;
+                
+                // Adicionar informações de máscara ao estilo do elemento
+                element.style = {
+                  ...element.style,
+                  hasMask: true,
+                  maskInfo: {
+                    top: maskData.top,
+                    left: maskData.left,
+                    bottom: maskData.bottom,
+                    right: maskData.right,
+                    width: maskData.width,
+                    height: maskData.height,
+                    invert: maskData.invert || false,
+                    disabled: maskData.disabled || false
+                  }
+                };
+                
+                maskedElementsCount.count++;
+                psdLogger.debug(`Aplicada máscara ao nó "${node.name || 'sem nome'}": ${maskData.width}×${maskData.height}`);
+              }
+              
               elements.push(element);
             }
           }
@@ -156,7 +352,7 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
         const processChildrenRecursively = async (children: any[]) => {
           for (const child of children) {
             if (!child.isGroup || (typeof child.isGroup === 'function' && !child.isGroup())) {
-              console.log(`Processando filho: ${child.name}`);
+              psdLogger.debug(`Processando filho: ${child.name}`);
               const element = await processLayer(child, selectedSize, psdData, extractedImages);
               if (element) {
                 // Assign 'global' sizeId for visibility in all artboards
@@ -164,86 +360,88 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
                 elements.push(element);
               }
             }
-            
+
             if (child.children && Array.isArray(child.children)) {
               await processChildrenRecursively(child.children);
             }
           }
         };
-        
+
         await processChildrenRecursively(tree.children);
       }
     }
-    
+
     // Calculate percentage values - important for responsive behavior
     calculatePercentageValues(elements, selectedSize);
-    
+
     // Allow elements to extend slightly beyond artboard boundaries
     // but still ensure they're connected to the artboard
     elements.forEach(element => {
       // Ensure all elements have the 'global' sizeId
       element.sizeId = 'global';
-      
+
       // If element extends beyond right edge by more than 50%
       if (element.style.x > selectedSize.width * 1.5) {
         element.style.x = selectedSize.width - element.style.width / 2;
       }
-      
+
       // If element extends beyond bottom edge by more than 50%
       if (element.style.y > selectedSize.height * 1.5) {
         element.style.y = selectedSize.height - element.style.height / 2;
       }
-      
+
       // If element is completely off-screen to the left
       if (element.style.x + element.style.width < -element.style.width * 0.5) {
         element.style.x = -element.style.width / 2;
       }
-      
+
       // If element is completely off-screen to the top
       if (element.style.y + element.style.height < -element.style.height * 0.5) {
         element.style.y = -element.style.height / 2;
       }
-      
+
       // Recalculate percentages after adjustments
       element.style.xPercent = (element.style.x / selectedSize.width) * 100;
       element.style.yPercent = (element.style.y / selectedSize.height) * 100;
       element.style.widthPercent = (element.style.width / selectedSize.width) * 100;
       element.style.heightPercent = (element.style.height / selectedSize.height) * 100;
     });
-    
+
     // Don't create the artboard background element as it will be managed separately
-    
+
     // Try to save PSD data to localStorage
     try {
       const storageKey = savePSDDataToStorage(file.name, psdData);
-      
+
       // Display information about saved PSD data
       const psdDataKeys = getPSDMetadata();
       if (psdDataKeys.length > 0) {
-        console.log(`PSD data disponíveis no localStorage: ${psdDataKeys.length}`);
+        psdLogger.debug(`PSD data disponíveis no localStorage: ${psdDataKeys.length}`);
       }
     } catch (error) {
-      console.error("Error saving PSD data to localStorage:", error);
+      psdLogger.error("Error saving PSD data to localStorage:", error);
       // This is non-critical, so we can continue even if storage fails
     }
-    
+
     // Log summary of imported elements
     const textElements = elements.filter(el => el.type === 'text').length;
     const imageElements = elements.filter(el => el.type === 'image').length;
-    
-    console.log(`Importação finalizada: ${elements.length} elementos (${textElements} textos, ${imageElements} imagens)`);
-    
+    const maskedElements = elements.filter(el => el.style && el.style.hasMask).length;
+
+    psdLogger.info(`Importação finalizada: ${elements.length} elementos (${textElements} textos, ${imageElements} imagens, ${maskedElements} com máscaras)`);
+
     if (elements.length === 0) {
       toast.warning("Nenhuma camada visível encontrada no arquivo PSD.");
     } else {
       toast.success(`Importados ${elements.length} elementos do arquivo PSD.`);
     }
-    
+
     // Return just the elements - artboard background will be managed separately
     return elements;
   } catch (error) {
-    console.error("Error importing PSD file:", error);
+    psdLogger.error("Error importing PSD file:", error);
     toast.error("Falha ao interpretar o arquivo PSD. Verifique se é um PSD válido.");
     throw error;
   }
 };
+     

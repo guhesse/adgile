@@ -48,17 +48,17 @@ export const handleImageUpload = async (file: File): Promise<string> => {
 // Function to check if an image URL is valid
 export const isValidImageUrl = (url: string): boolean => {
   if (!url) return false;
-  
+
   // Check if it's a data URL
   if (url.startsWith('data:image/')) {
     return true;
   }
-  
+
   // Check if it's a web URL with image extension
   const extensions = ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp'];
-  return extensions.some(ext => url.toLowerCase().endsWith(ext)) || 
-         url.includes('/image') || 
-         url.includes('/img');
+  return extensions.some(ext => url.toLowerCase().endsWith(ext)) ||
+    url.includes('/image') ||
+    url.includes('/img');
 };
 
 // Function to load an image from a URL and return a promise

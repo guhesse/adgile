@@ -21,7 +21,7 @@ export interface PSDFileData {
   backgroundColor?: string;
 
   /** Information about layers in the PSD */
-  layers: PSDLayer[];
+  layers: LayerData[];
 }
 
 /**
@@ -108,4 +108,31 @@ export interface PSDLayer {
   textContent?: string;
   textStyle?: TextLayerStyle;
   imageData?: string;
+}
+
+export interface MaskData {
+  top: number;
+  left: number;
+  bottom: number;
+  right: number;
+  width: number;
+  height: number;
+  defaultColor: number;
+  relative: boolean;
+  disabled: boolean;
+  invert: boolean;
+}
+
+export interface LayerData {
+  id: string;
+  name: string;
+  type: 'text' | 'image' | 'group';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  textContent?: string;
+  textStyle?: TextLayerStyle;
+  src?: string;
+  mask?: MaskData | null;
 }

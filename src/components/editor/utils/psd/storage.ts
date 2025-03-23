@@ -15,7 +15,7 @@ const PSD_IMAGE_PREFIX = 'adgile_psd_image_';
 export const savePSDDataToStorage = (filename: string, data: PSDFileData): string => {
   const cleanName = filename.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
   const key = `${PSD_DATA_PREFIX}${cleanName}_${Date.now()}`;
-  
+
   try {
     // Limitar o tamanho dos dados a serem armazenados
     const safeData = {
@@ -23,22 +23,32 @@ export const savePSDDataToStorage = (filename: string, data: PSDFileData): strin
       layers: data.layers.map(layer => ({
         ...layer,
         // Limitar tamanho dos dados de imagem para evitar estouro de armazenamento
-        imageData: layer.imageData && layer.imageData.length > 1000 ? 
-          layer.imageData.substring(0, 100) + '...[truncated]' : 
+        imageData: layer.imageData && layer.imageData.length > 1000 ?
+          layer.imageData.substring(0, 100) + '...[truncated]' :
           layer.imageData
       }))
     };
-    
-    localStorage.setItem(key, JSON.stringify(safeData));
-    console.log(`PSD data saved to localStorage with key: ${key}`);
-    
+
+    try {
+      localStorage.setItem(key, JSON.stringify(safeData));
+      console.log(`PSD data saved to localStorage with key: ${key}`);
+    } catch (storageError) {
+      // Não emitir erro, apenas registrar no console
+      console.warn('Não foi possível salvar os dados PSD no localStorage, armazenamento temporário não disponível');
+    }
+
     // Atualizar o registro de metadados
-    updatePSDMetadata(key, filename);
-    
+    try {
+      updatePSDMetadata(key, filename);
+    } catch (metadataError) {
+      // Silenciar erro de metadata
+      console.warn('Não foi possível atualizar metadados de PSD');
+    }
+
     return key;
   } catch (error) {
-    console.error('Error saving PSD data to localStorage:', error);
-    
+    console.warn('Erro ao preparar dados do PSD para armazenamento');
+
     // Em caso de erro, tentar uma versão ainda mais simplificada sem os dados de imagem
     try {
       const minimalData = {
@@ -48,13 +58,20 @@ export const savePSDDataToStorage = (filename: string, data: PSDFileData): strin
           imageData: undefined
         }))
       };
-      
-      localStorage.setItem(key, JSON.stringify(minimalData));
-      updatePSDMetadata(key, filename);
+
+      try {
+        localStorage.setItem(key, JSON.stringify(minimalData));
+        updatePSDMetadata(key, filename);
+      } catch (minimalError) {
+        // Silenciar erro
+        console.warn('Não foi possível salvar dados mínimos do PSD');
+      }
+
       return key;
-    } catch (minimalError) {
-      console.error('Erro ao salvar dados mínimos do PSD:', minimalError);
-      throw minimalError;
+    } catch (minimalPreparationError) {
+      // Silenciar erro de preparação de dados mínimos
+      console.warn('Erro ao preparar dados mínimos do PSD');
+      return key; // Retornar a chave mesmo assim
     }
   }
 };
@@ -68,15 +85,24 @@ export const savePSDDataToStorage = (filename: string, data: PSDFileData): strin
 export const saveImageToStorage = (imageData: string, layerName: string): string => {
   const cleanName = layerName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
   const key = `${PSD_IMAGE_PREFIX}${cleanName}_${Date.now()}`;
-  
+
   try {
     localStorage.setItem(key, imageData);
     console.log(`Image saved to localStorage with key: ${key}`);
-    return key;
   } catch (error) {
-    console.error('Error saving image to localStorage:', error);
-    throw error;
+    // Silenciar erro, apenas registrar aviso no console 
+    // ATIVAR NOVAMENTE ESSE DAQUI PARA TESTAR COM O BANCO DE DADOS.
+    // AAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    // AAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    // AAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    // AAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    // AAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    // AAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    // AAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    // console.warn(`Não foi possível salvar imagem "${layerName}" no localStorage, cota excedida.`);
   }
+
+  return key; // Retornar a chave mesmo em caso de erro
 };
 
 /**
@@ -100,12 +126,12 @@ const updatePSDMetadata = (key: string, filename: string): void => {
     filename,
     date: new Date().toISOString()
   });
-  
+
   // Manter apenas os 10 mais recentes
   while (metadata.length > 10) {
     metadata.shift();
   }
-  
+
   localStorage.setItem('adgile_psd_metadata', JSON.stringify(metadata));
 };
 
@@ -113,7 +139,7 @@ const updatePSDMetadata = (key: string, filename: string): void => {
  * Recupera metadados dos PSDs salvos
  * @returns Lista de metadados dos PSDs
  */
-export const getPSDMetadata = (): Array<{key: string, filename: string, date: string}> => {
+export const getPSDMetadata = (): Array<{ key: string, filename: string, date: string }> => {
   const metadata = localStorage.getItem('adgile_psd_metadata');
   return metadata ? JSON.parse(metadata) : [];
 };

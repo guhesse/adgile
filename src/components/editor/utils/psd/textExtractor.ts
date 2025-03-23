@@ -3,7 +3,7 @@ import { mapPSDFontToWebFont } from './fontMapper';
 
 // Sistema de logs centralizado - simplificado apenas para fontes
 const logger = {
-  enabled: process.env.NODE_ENV === 'development',
+  enabled: false, // Desabilitar logs alterando para false
 
   // Log apenas para informações de fonte
   font: (layerName: string, message: string, data?: any) => {
@@ -34,28 +34,28 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
 
   try {
     // Informações detalhadas para diagnóstico
-    console.group(`📋 DIAGNÓSTICO DE FONTE [${node.name}]`);
-    console.log(`originalFont: "${textData.originalFont || 'não definida'}"`);
-    console.log(`fontName: "${textData.fontName || 'não definida'}"`);
-    console.log(`fontIndex: ${textData.fontIndex || 'não definido'}`);
-    console.log(`_styles: ${JSON.stringify(textData._styles ? { Font: textData._styles.Font } : 'não disponível')}`);
+    // console.group(`📋 DIAGNÓSTICO DE FONTE [${node.name}]`);
+    // console.log(`originalFont: "${textData.originalFont || 'não definida'}"`);
+    // console.log(`fontName: "${textData.fontName || 'não definida'}"`);
+    // console.log(`fontIndex: ${textData.fontIndex || 'não definido'}`);
+    // console.log(`_styles: ${JSON.stringify(textData._styles ? { Font: textData._styles.Font } : 'não disponível')}`);
 
     // Verificar disponibilidade de FontSet
     const hasFontSet = !!(textData.engineData?.ResourceDict?.FontSet);
-    console.log(`FontSet disponível: ${hasFontSet}`);
+    // console.log(`FontSet disponível: ${hasFontSet}`);
 
     if (hasFontSet) {
       const fontSet = textData.engineData.ResourceDict.FontSet;
       const fontIndex = textData._styles?.Font?.[0] || textData.fontIndex || 0;
 
-      console.log(`Índice da fonte: ${fontIndex}`);
-      console.log(`FontSet.length: ${fontSet.length}`);
+      // console.log(`Índice da fonte: ${fontIndex}`);
+      // console.log(`FontSet.length: ${fontSet.length}`);
 
-      if (fontSet[fontIndex]) {
-        console.log(`FontSet[${fontIndex}].Name: "${fontSet[fontIndex].Name}"`);
-      } else if (fontSet.length > 0) {
-        console.log(`FontSet[0].Name: "${fontSet[0].Name}"`);
-      }
+      // if (fontSet[fontIndex]) {
+      //   console.log(`FontSet[${fontIndex}].Name: "${fontSet[fontIndex].Name}"`);
+      // } else if (fontSet.length > 0) {
+      //   console.log(`FontSet[0].Name: "${fontSet[0].Name}"`);
+      // }
     }
     console.groupEnd();
 

@@ -21,7 +21,7 @@ export function processLayers(
             if (isTextLayer(node)) {
                 processTextLayer(node, psdData, textLayers);
             } else if (!node.isGroup() && node.layer?.image) {
-                processImageLayer(node, extractedImages);
+                processImageLayer(node, extractedImages, psdData);
             }
         } catch (error) {
             console.error(`Erro ao processar camada "${node.name}":`, error);
@@ -58,15 +58,58 @@ function processTextLayer(
     }
 }
 
-function processImageLayer(node: any, extractedImages: Map<string, string>) {
+function processImageLayer(
+    node: any, 
+    extractedImages: Map<string, string>, 
+    psdData: PSDFileData
+) {
     try {
         const png = node.layer.image.toPng();
         if (png) {
             const imageData = png.src || png;
             extractedImages.set(node.name, imageData);
+            
+            // Adicionar informações sobre a camada de imagem ao psdData
+            const layerData = {
+                id: generateLayerId(node.name),
+                name: node.name,
+                type: 'image',
+                x: node.left || 0,
+                y: node.top || 0,
+                width: (node.right || 0) - (node.left || 0),
+                height: (node.bottom || 0) - (node.top || 0),
+                src: node.name,
+                mask: null
+            };
+            
+            // Verificar se a camada possui máscara
+            if (node.layer.mask && node.layer.mask.width && node.layer.mask.height) {
+                layerData.mask = {
+                    top: node.layer.mask.top,
+                    left: node.layer.mask.left,
+                    bottom: node.layer.mask.bottom,
+                    right: node.layer.mask.right,
+                    width: node.layer.mask.width,
+                    height: node.layer.mask.height,
+                    defaultColor: node.layer.mask.defaultColor,
+                    relative: node.layer.mask.relative,
+                    disabled: node.layer.mask.disabled,
+                    invert: node.layer.mask.invert
+                };
+                
+                // Se a máscara estiver habilitada, usar suas dimensões para o recorte
+                if (!layerData.mask.disabled) {
+                    layerData.width = layerData.mask.width;
+                    layerData.height = layerData.mask.height;
+                    layerData.x = layerData.mask.left;
+                    layerData.y = layerData.mask.top;
+                }
+            }
+            
+            psdData.layers.push(layerData);
         }
-    } catch {
-        // Silêncio no erro de extração de imagem
+    } catch (error) {
+        console.error(`Erro ao processar camada de imagem "${node.name}":`, error);
     }
 }
 

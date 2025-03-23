@@ -1,10 +1,10 @@
 export function logBasicPSDInfo(psd: any) {
-    console.log("=== INFORMAÇÕES BÁSICAS DO PSD ===");
-    console.log("Width:", psd.header.width);
-    console.log("Height:", psd.header.height);
-    console.log("Channels:", psd.header.channels);
-    console.log("Bit Depth:", psd.header.depth);
-    console.log("Color Mode:", psd.header.mode);
+    // console.log("=== INFORMAÇÕES BÁSICAS DO PSD ===");
+    // console.log("Width:", psd.header.width);
+    // console.log("Height:", psd.header.height);
+    // console.log("Channels:", psd.header.channels);
+    // console.log("Bit Depth:", psd.header.depth);
+    // console.log("Color Mode:", psd.header.mode);
 }
 
 export function logTreeStructure(tree: any) {

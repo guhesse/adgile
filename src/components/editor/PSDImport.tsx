@@ -7,6 +7,149 @@ import { useState } from "react";
 import { BannerSize } from "./types";
 import { convertTextStyleToCSS } from './utils/psd/textRenderer';
 
+// Log levels
+enum LogLevel {
+  DEBUG = 0,
+  INFO = 1,
+  WARN = 2,
+  ERROR = 3,
+  NONE = 4
+}
+
+// Configuração de log - altere para controlar o nível de informações
+const LOG_LEVEL = LogLevel.INFO;
+
+/**
+ * Função de log centralizada para o componente PSDImport
+ */
+const importLogger = {
+  debug: (message: string, ...data: any[]) => {
+    if (LOG_LEVEL <= LogLevel.DEBUG) {
+      console.log(`[PSDImport Debug] ${message}`, ...data);
+    }
+  },
+  info: (message: string, ...data: any[]) => {
+    if (LOG_LEVEL <= LogLevel.INFO) {
+      console.log(`[PSDImport Info] ${message}`, ...data);
+    }
+  },
+  warn: (message: string, ...data: any[]) => {
+    if (LOG_LEVEL <= LogLevel.WARN) {
+      console.warn(`[PSDImport Warning] ${message}`, ...data);
+    }
+  },
+  error: (message: string, ...data: any[]) => {
+    if (LOG_LEVEL <= LogLevel.ERROR) {
+      console.error(`[PSDImport Error] ${message}`, ...data);
+    }
+  }
+};
+
+/**
+ * Interface para representar as informações de máscara de uma camada PSD
+ */
+interface MaskInfo {
+  top: number;
+  left: number;
+  bottom: number;
+  right: number;
+  width: number;
+  height: number;
+  defaultColor: number;
+  relative: boolean;
+  disabled: boolean;
+  invert: boolean;
+  hasValidMask: boolean;
+}
+
+/**
+ * Processa as informações de máscara de uma camada PSD
+ */
+const processMaskInfo = (layer: any): MaskInfo => {
+  // Valor padrão se não houver máscara
+  const defaultMask: MaskInfo = {
+    top: 0,
+    left: 0,
+    bottom: 0,
+    right: 0,
+    width: 0,
+    height: 0,
+    defaultColor: 0,
+    relative: false,
+    disabled: false,
+    invert: false,
+    hasValidMask: false
+  };
+
+  // Verifica se a camada existe e tem informações de máscara
+  if (!layer || !layer.mask) {
+    return defaultMask;
+  }
+
+  try {
+    const mask = layer.mask;
+    
+    // Verifica se a máscara tem dimensões válidas
+    const hasValidDimensions = 
+      mask.width && 
+      mask.height && 
+      mask.width > 0 && 
+      mask.height > 0;
+    
+    return {
+      top: mask.top || 0,
+      left: mask.left || 0,
+      bottom: mask.bottom || 0,
+      right: mask.right || 0,
+      width: mask.width || 0,
+      height: mask.height || 0,
+      defaultColor: mask.defaultColor || 0,
+      relative: mask.relative || false,
+      disabled: mask.disabled || false,
+      invert: mask.invert || false,
+      hasValidMask: hasValidDimensions
+    };
+  } catch (error) {
+    importLogger.warn("Erro ao processar informações de máscara:", error);
+    return defaultMask;
+  }
+};
+
+/**
+ * Aplicar informações de máscara a um elemento após a importação
+ */
+const applyMaskInfoToElement = (element: any, maskInfo: MaskInfo): any => {
+  // Se não houver máscara válida, retorna o elemento sem alterações
+  if (!maskInfo.hasValidMask) {
+    return element;
+  }
+
+  // Aplicamos as dimensões da máscara para o elemento
+  return {
+    ...element,
+    style: {
+      ...element.style,
+      // Definimos clipPath para usar as dimensões da máscara como recorte
+      clipPath: `inset(0px 0px 0px 0px)`,
+      // Dimensões baseadas na máscara
+      width: maskInfo.width,
+      height: maskInfo.height,
+      // Adicionamos propriedades específicas para reconhecer que tem máscara
+      hasMask: true,
+      maskInfo: {
+        top: maskInfo.top,
+        left: maskInfo.left,
+        bottom: maskInfo.bottom,
+        right: maskInfo.right,
+        width: maskInfo.width,
+        height: maskInfo.height,
+        invert: maskInfo.invert,
+        disabled: maskInfo.disabled
+      }
+    }
+  };
+};
+
 export const PSDImport = () => {
   const { selectedSize, setElements, addCustomSize, setSelectedSize } = useCanvas();
   const [isImporting, setIsImporting] = useState(false);
@@ -34,9 +177,9 @@ export const PSDImport = () => {
       const loadingToast = toast.loading(`Importando ${file.name}... Este processo pode levar alguns segundos.`);
       
       // Log file information
-      console.log("=== PSD IMPORT STARTED ===");
-      console.log("Importando arquivo PSD:", file.name, "Tamanho:", Math.round(file.size / 1024), "KB");
-      console.log("Estrutura de importação:", {
+      importLogger.info("=== PSD IMPORT STARTED ===");
+      importLogger.info(`Importando arquivo PSD: ${file.name}, Tamanho: ${Math.round(file.size / 1024)} KB`);
+      importLogger.debug("Estrutura de importação:", {
         passos: [
           "1. Leitura do arquivo PSD",
           "2. Extração das dimensões do documento",
@@ -44,13 +187,14 @@ export const PSDImport = () => {
           "4. Processamento das camadas",
           "5. Extração de texto e formatação",
           "6. Extração de imagens",
-          "7. Criação de elementos na canvas"
+          "7. Processamento de máscaras de camada",
+          "8. Criação de elementos na canvas"
         ]
       });
       
       // Get PSD file dimensions first
       const { width, height } = await getPSDDimensions(file);
-      console.log("Dimensões detectadas:", width, "×", height, "pixels");
+      importLogger.info(`Dimensões detectadas: ${width} × ${height} pixels`);
       
       if (width && height) {
         // Create a custom size based on the PSD dimensions
@@ -61,31 +205,58 @@ export const PSDImport = () => {
           height
         };
         
-        console.log("Criando tamanho personalizado:", customSizeName, `(${width}×${height}px)`);
+        importLogger.info(`Criando tamanho personalizado: ${customSizeName} (${width}×${height}px)`);
         
         // Add the custom size to active sizes and select it
         addCustomSize(customSize);
         
         // Import PSD file with the new custom size
-        console.log("Iniciando processamento das camadas...");
+        importLogger.debug("Iniciando processamento das camadas...");
         const elements = await importPSDFile(file, customSize);
-        console.log("Camadas processadas:", elements.length);
+        importLogger.info(`Camadas processadas: ${elements.length}`);
+        
+        // Processar máscaras para cada elemento
+        const elementsWithMasks = elements.map(element => {
+          // Verificar se o elemento tem informações de camada PSD original
+          if (element.psdLayerData) {
+            const maskInfo = processMaskInfo(element.psdLayerData);
+            
+            if (maskInfo.hasValidMask) {
+              importLogger.debug(`Máscara detectada para camada '${element.psdLayerData.name || 'sem nome'}':`, {
+                dimensões: `${maskInfo.width}×${maskInfo.height}`,
+                posição: `(${maskInfo.left},${maskInfo.top})`,
+                invertida: maskInfo.invert,
+                desativada: maskInfo.disabled
+              });
+              
+              return applyMaskInfoToElement(element, maskInfo);
+            }
+          }
+          
+          return element;
+        });
+        
+        // Contar elementos com máscara
+        const maskedElements = elementsWithMasks.filter(el => el.style && el.style.hasMask).length;
+        if (maskedElements > 0) {
+          importLogger.info(`Processadas ${maskedElements} camadas com máscaras`);
+        }
         
         // Ensure ALL elements have global sizeId to appear in all formats
-        const globalElements = elements.map(element => ({
+        const globalElements = elementsWithMasks.map(element => ({
           ...element,
           sizeId: 'global'
         }));
         
-        console.log("Aplicando sizeId global a todos os elementos");
+        importLogger.debug("Aplicando sizeId global a todos os elementos");
         
         // Additional logging for text elements to debug styling
         const textElementsCount = globalElements.filter(el => el.type === 'text').length;
         if (textElementsCount > 0) {
-          console.log("=== DETALHAMENTO DE ELEMENTOS DE TEXTO ===");
+          importLogger.debug("=== DETALHAMENTO DE ELEMENTOS DE TEXTO ===");
           globalElements.filter(el => el.type === 'text').forEach((textElement, index) => {
-            console.log(`Texto #${index + 1}: "${textElement.content}"`);
-            console.log(`Estilos aplicados:`, {
+            importLogger.debug(`Texto #${index + 1}: "${textElement.content}"`);
+            importLogger.debug(`Estilos aplicados:`, {
               fontFamily: textElement.style.fontFamily || 'Não definido',
               fontSize: textElement.style.fontSize || 'Não definido',
               fontWeight: textElement.style.fontWeight || 'Não definido',
@@ -112,26 +283,27 @@ export const PSDImport = () => {
         const imageElements = globalElements.filter(el => el.type === 'image').length;
         const containerElements = globalElements.filter(el => el.type === 'container').length;
         
-        console.log("=== PSD IMPORT COMPLETED ===");
-        console.log("Resumo da importação:", {
+        importLogger.info("=== PSD IMPORT COMPLETED ===");
+        importLogger.info("Resumo da importação:", {
           total: globalElements.length,
           textos: textCount,
           imagens: imageElements,
-          containers: containerElements
+          containers: containerElements,
+          comMáscaras: maskedElements
         });
         
         if (globalElements.length === 0) {
           toast.warning("Nenhum elemento foi importado do arquivo PSD. Verifique os logs para mais detalhes.");
         } else {
-          toast.success(`Importados ${globalElements.length} elementos do arquivo PSD. (${textCount} textos, ${imageElements} imagens, ${containerElements} containers)`);
+          toast.success(`Importados ${globalElements.length} elementos do arquivo PSD. (${textCount} textos, ${imageElements} imagens, ${containerElements} containers, ${maskedElements} com máscaras)`);
         }
       } else {
         toast.dismiss(loadingToast);
         toast.error("Não foi possível determinar as dimensões do arquivo PSD.");
       }
     } catch (error) {
-      console.error("=== PSD IMPORT ERROR ===");
-      console.error("Erro ao importar arquivo PSD:", error);
+      importLogger.error("=== PSD IMPORT ERROR ===");
+      importLogger.error("Erro ao importar arquivo PSD:", error);
       toast.error("Falha ao importar arquivo PSD. Verifique o console para detalhes.");
     } finally {
       // Reset importing state
@@ -154,7 +326,7 @@ export const PSDImport = () => {
           const PSD = (await import('psd.js')).default;
           
           // Parse the PSD file
-          console.log("Analisando estrutura do PSD para obter dimensões...");
+          importLogger.debug("Analisando estrutura do PSD para obter dimensões...");
           const psd = new PSD(new Uint8Array(reader.result as ArrayBuffer));
           await psd.parse();
           
@@ -162,18 +334,18 @@ export const PSDImport = () => {
           const width = psd.header.width;
           const height = psd.header.height;
           
-          console.log(`PSD dimensions detected: ${width}x${height}`);
+          importLogger.debug(`PSD dimensions detected: ${width}x${height}`);
           resolve({ width, height });
         } catch (error) {
-          console.error("Error reading PSD dimensions:", error);
+          importLogger.error("Error reading PSD dimensions:", error);
           // If dimensions can't be determined, use default values
-          console.log("Usando dimensões padrão (1440×1660) devido a erro na leitura");
+          importLogger.warn("Usando dimensões padrão (1440×1660) devido a erro na leitura");
           resolve({ width: 1440, height: 1660 });
         }
       };
       
       reader.onerror = () => {
-        console.error("Error reading file");
+        importLogger.error("Error reading file");
         resolve({ width: 1440, height: 1660 });
       };
       
