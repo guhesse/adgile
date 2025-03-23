@@ -3,7 +3,7 @@ import { BannerSize, CanvasNavigationMode, EditorElement } from "../types";
 import { ElementRenderer } from "../ElementRenderer";
 import { ElementHandles } from "./ElementHandles";
 import { calculateSmartPosition } from "../utils/grid/responsivePosition";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useMemo } from "react";
 
 interface CanvasElementProps {
   element: EditorElement;
@@ -79,6 +79,19 @@ export const CanvasElement = ({
     position = calculateSmartPosition(element, sourceSize, canvasSize);
   }
 
+  // Calculate the object position style for images
+  const objectPositionStyle = useMemo(() => {
+    if (isImage && element.style.objectFit === "cover") {
+      // Use objectPositionX and objectPositionY if available
+      if (element.style.objectPositionX !== undefined && element.style.objectPositionY !== undefined) {
+        return `${element.style.objectPositionX}% ${element.style.objectPositionY}%`;
+      }
+      // Fallback to default center position
+      return "50% 50%";
+    }
+    return undefined;
+  }, [isImage, element.style.objectFit, element.style.objectPositionX, element.style.objectPositionY]);
+
   // Apply the final position style
   let positionStyle: React.CSSProperties = {
     position: "absolute",
@@ -111,30 +124,41 @@ export const CanvasElement = ({
     handleMouseDown(e, element);
   }, [element, handleMouseDown]);
 
+  // Create the element style with all needed properties
+  const elementStyle: React.CSSProperties = {
+    ...positionStyle,
+    animationPlayState: element.style.animationPlayState,
+    animationDelay: element.style.animationDelay != null ? `${element.style.animationDelay}s` : undefined,
+    animationDuration: element.style.animationDuration != null ? `${element.style.animationDuration}s` : undefined,
+    backgroundColor: isContainer
+      ? isHovered ? "rgba(200, 220, 255, 0.5)" : "rgba(240, 240, 240, 0.5)"
+      : element.style.backgroundColor,
+    border: isContainer
+      ? isHovered ? "1px dashed #4080ff" : "1px dashed #aaa"
+      : undefined,
+    zIndex: isDragging && isSelected ? 1000 : zIndex,
+    transition: isExiting ? "none" : (isDragging ? "none" : "all 0.1s ease-out"),
+    overflow: isContainer ? "hidden" : "visible",
+    cursor: canvasNavMode === 'pan' ? 'grab' : 'move',
+    userSelect: "none",
+    opacity: element.style.opacity !== undefined ? element.style.opacity : 1,
+    boxShadow: isSelected ? "0 0 0 2px #2563eb" : (isExiting ? "0 0 0 2px #ff4040" : undefined),
+    outline: "none",
+    touchAction: "none", // Prevents touch scrolling during drags
+  };
+
+  // For image elements, add the object-fit and object-position styles
+  if (isImage) {
+    elementStyle.objectFit = element.style.objectFit;
+    if (objectPositionStyle) {
+      elementStyle.objectPosition = objectPositionStyle;
+    }
+  }
+
   return (
     <div
       ref={elementRef}
-      style={{
-        ...positionStyle,
-        animationPlayState: element.style.animationPlayState,
-        animationDelay: element.style.animationDelay != null ? `${element.style.animationDelay}s` : undefined,
-        animationDuration: element.style.animationDuration != null ? `${element.style.animationDuration}s` : undefined,
-        backgroundColor: isContainer
-          ? isHovered ? "rgba(200, 220, 255, 0.5)" : "rgba(240, 240, 240, 0.5)"
-          : element.style.backgroundColor,
-        border: isContainer
-          ? isHovered ? "1px dashed #4080ff" : "1px dashed #aaa"
-          : undefined,
-        zIndex: isDragging && isSelected ? 1000 : zIndex,
-        transition: isExiting ? "none" : (isDragging ? "none" : "all 0.1s ease-out"),
-        overflow: isContainer ? "hidden" : "visible",
-        cursor: canvasNavMode === 'pan' ? 'grab' : 'move',
-        userSelect: "none",
-        opacity: element.style.opacity !== undefined ? element.style.opacity : 1,
-        boxShadow: isSelected ? "0 0 0 2px #2563eb" : (isExiting ? "0 0 0 2px #ff4040" : undefined),
-        outline: "none",
-        touchAction: "none", // Prevents touch scrolling during drags
-      }}
+      style={elementStyle}
       className={`${isSelected ? "outline-2 outline-blue-600" : ""} ${element.style.animation || ""}`}
       onMouseDown={handleElementMouseDown}
       onDragStart={handleDragStart}
