@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { EditorElement } from "./types";
 import { isValidImageUrl } from "./context/elements/imageOperations";
@@ -6,6 +5,50 @@ import { isValidImageUrl } from "./context/elements/imageOperations";
 interface ElementRendererProps {
   element: EditorElement;
 }
+
+const renderImageElement = (element: EditorElement) => {
+  const { content, style, alt } = element;
+  
+  // Calculate position based on objectPositionX and objectPositionY
+  let objectPosition = style.objectPosition || "center";
+  
+  if (style.objectFit === "cover" && style.objectPositionX !== undefined && style.objectPositionY !== undefined) {
+    objectPosition = `${style.objectPositionX}% ${style.objectPositionY}%`;
+  }
+  
+  // Apply scale transform if defined and using cover object-fit
+  const scale = style.objectFit === "cover" && style.objectScale ? 
+    `scale(${style.objectScale / 100})` : "none";
+  
+  return (
+    <div className="relative w-full h-full overflow-hidden">
+      <img
+        src={content as string}
+        alt={alt || ""}
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: style.objectFit || "contain",
+          objectPosition,
+          transform: scale,
+        }}
+        draggable={false}
+      />
+      
+      {/* Color overlay layer */}
+      {style.overlayColor && style.overlayOpacity && style.overlayOpacity > 0 && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundColor: style.overlayColor,
+            opacity: style.overlayOpacity,
+            mixBlendMode: "normal",
+          }}
+        />
+      )}
+    </div>
+  );
+};
 
 export const ElementRenderer = ({ element }: ElementRendererProps) => {
   if (element.type === "text") {
@@ -70,15 +113,7 @@ export const ElementRenderer = ({ element }: ElementRendererProps) => {
     };
     
     const imageElement = hasValidImage ? (
-      <img
-        src={element.content as string}
-        alt={element.alt || "Image element"}
-        className="w-full h-full"
-        style={{
-          objectFit: element.style.objectFit || "cover",
-          objectPosition: element.style.objectPosition || "center",
-        }}
-      />
+      renderImageElement(element)
     ) : (
       <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-500 text-sm p-2 text-center">
         {element.alt || element.content || "Imagem"}

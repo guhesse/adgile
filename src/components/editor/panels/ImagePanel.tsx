@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,7 +15,8 @@ import { EditorElement } from "../types";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Image, Link, CornerDownLeft, CornerDownRight, CornerUpLeft, CornerUpRight, Minus, Plus, AlignCenter, AlignLeft, AlignRight } from "lucide-react";
+import { Image, Link, CornerDownLeft, CornerDownRight, CornerUpLeft, CornerUpRight, Minus, Plus, AlignCenter, AlignLeft, AlignRight, Maximize, MinusCircle, PlusCircle, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Palette } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface ImagePanelProps {
   selectedElement: EditorElement;
@@ -27,6 +27,7 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
   const {
     updateElementContent,
     handleImageUpload,
+    updateElementAttribute,
   } = useCanvas();
 
   const [activeTab, setActiveTab] = useState<string>("content");
@@ -35,16 +36,17 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
   const [linkUrl, setLinkUrl] = useState<string>("");
   const [altText, setAltText] = useState<string>("");
   const [openInNewTab, setOpenInNewTab] = useState<boolean>(false);
+  const [overlayColor, setOverlayColor] = useState<string>("#000000");
 
-  // Initialize state with selected element values when it changes
-  useState(() => {
+  useEffect(() => {
     if (selectedElement && selectedElement.type === "image") {
       setImageUrl(selectedElement.content as string);
       setAltText(selectedElement.alt || "");
       setLinkUrl(selectedElement.link || "");
       setOpenInNewTab(selectedElement.openInNewTab || false);
+      setOverlayColor(selectedElement.style.overlayColor || "#000000");
     }
-  });
+  }, [selectedElement]);
 
   if (!selectedElement || selectedElement.type !== "image") {
     return null;
@@ -76,43 +78,37 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
     const url = e.target.value;
     setLinkUrl(url);
     
-    // Update the element in the canvas context
-    const updatedElement: Partial<EditorElement> = {
-      ...selectedElement,
-      link: url,
-    };
-    // We need to cast here because updateElementContent expects a string
-    updateElementContent(selectedElement.content as string);
+    if (updateElementAttribute) {
+      updateElementAttribute('link', url);
+    }
   };
 
   const handleAltChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const text = e.target.value;
     setAltText(text);
     
-    // Update the element in the canvas context
-    const updatedElement: Partial<EditorElement> = {
-      ...selectedElement,
-      alt: text,
-    };
-    // We need to cast here because updateElementContent expects a string
-    updateElementContent(selectedElement.content as string);
+    if (updateElementAttribute) {
+      updateElementAttribute('alt', text);
+    }
   };
 
   const handleOpenInNewTabChange = (checked: boolean) => {
     setOpenInNewTab(checked);
     
-    // Update the element in the canvas context
-    const updatedElement: Partial<EditorElement> = {
-      ...selectedElement,
-      openInNewTab: checked,
-    };
-    // We need to cast here because updateElementContent expects a string
-    updateElementContent(selectedElement.content as string);
+    if (updateElementAttribute) {
+      updateElementAttribute('openInNewTab', checked);
+    }
   };
 
   const handleObjectFitChange = (value: string) => {
     if (updateElementStyle) {
       updateElementStyle("objectFit", value);
+      
+      if (value === "cover") {
+        updateElementStyle("objectPositionX", 50);
+        updateElementStyle("objectPositionY", 50);
+        updateElementStyle("objectScale", 100);
+      }
     }
   };
 
@@ -121,6 +117,40 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
       updateElementStyle("opacity", value[0] / 100);
     }
   };
+
+  const handleOverlayOpacityChange = (value: number[]) => {
+    if (updateElementStyle) {
+      updateElementStyle("overlayOpacity", value[0] / 100);
+    }
+  };
+
+  const handleOverlayColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const color = e.target.value;
+    setOverlayColor(color);
+    if (updateElementStyle) {
+      updateElementStyle("overlayColor", color);
+    }
+  };
+
+  const handlePositionXChange = (value: number[]) => {
+    if (updateElementStyle) {
+      updateElementStyle("objectPositionX", value[0]);
+    }
+  };
+
+  const handlePositionYChange = (value: number[]) => {
+    if (updateElementStyle) {
+      updateElementStyle("objectPositionY", value[0]);
+    }
+  };
+
+  const handleScaleChange = (value: number[]) => {
+    if (updateElementStyle) {
+      updateElementStyle("objectScale", value[0]);
+    }
+  };
+
+  const showPositionControls = selectedElement.style.objectFit === "cover";
 
   return (
     <div className="p-4 space-y-4 bg-white rounded-lg">
@@ -189,15 +219,74 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
               </Button>
             </div>
             
-            <div className="mt-6">
-              <div className="text-center text-sm text-gray-500 mb-2">Escala</div>
-              <Slider 
-                defaultValue={[selectedElement.style.opacity ? selectedElement.style.opacity * 100 : 100]}
-                max={100}
-                step={1}
-                onValueChange={handleOpacityChange}
-              />
-            </div>
+            {showPositionControls && (
+              <div className="mt-6">
+                <div className="text-center text-sm text-gray-500 mb-2">Posição e Escala</div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Posição X</span>
+                      <span>{selectedElement.style.objectPositionX || 50}%</span>
+                    </div>
+                    <div className="flex items-center">
+                      <ArrowLeft className="w-4 h-4 text-gray-400 mr-2" />
+                      <Slider 
+                        defaultValue={[selectedElement.style.objectPositionX || 50]}
+                        min={0}
+                        max={100}
+                        step={1}
+                        onValueChange={handlePositionXChange}
+                      />
+                      <ArrowRight className="w-4 h-4 text-gray-400 ml-2" />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Posição Y</span>
+                      <span>{selectedElement.style.objectPositionY || 50}%</span>
+                    </div>
+                    <div className="flex items-center">
+                      <ArrowUp className="w-4 h-4 text-gray-400 mr-2" />
+                      <Slider 
+                        defaultValue={[selectedElement.style.objectPositionY || 50]}
+                        min={0}
+                        max={100}
+                        step={1}
+                        onValueChange={handlePositionYChange}
+                      />
+                      <ArrowDown className="w-4 h-4 text-gray-400 ml-2" />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Escala</span>
+                      <span>{selectedElement.style.objectScale || 100}%</span>
+                    </div>
+                    <div className="flex items-center">
+                      <MinusCircle className="w-4 h-4 text-gray-400 mr-2" />
+                      <Slider 
+                        defaultValue={[selectedElement.style.objectScale || 100]}
+                        min={100}
+                        max={200}
+                        step={1}
+                        onValueChange={handleScaleChange}
+                      />
+                      <PlusCircle className="w-4 h-4 text-gray-400 ml-2" />
+                    </div>
+                  </div>
+                </div>
+                
+                {showPositionControls && (
+                  <div className="mt-1 px-2 py-1 bg-gray-100 rounded text-xs text-gray-600">
+                    <p>Dica: Use <kbd className="px-1 py-0.5 bg-gray-200 rounded">Alt</kbd> + teclas de seta para ajustar a posição da imagem dentro do container.</p>
+                    <p className="mt-1">Use <kbd className="px-1 py-0.5 bg-gray-200 rounded">Shift</kbd> + teclas de seta para mover em incrementos maiores.</p>
+                  </div>
+                )}
+              </div>
+            )}
             
             <div className="mt-6">
               <div className="text-center text-sm text-gray-500 mb-2">Vincular a</div>
@@ -257,33 +346,113 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
             
             <Separator className="my-4" />
             
-            <div className="text-center text-sm text-gray-500">Posição</div>
-            <div className="flex justify-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => updateElementStyle && updateElementStyle("objectPosition", "left")}
-                className={selectedElement.style.objectPosition === "left" ? "bg-purple-100" : ""}
-              >
-                <AlignLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => updateElementStyle && updateElementStyle("objectPosition", "center")}
-                className={selectedElement.style.objectPosition === "center" ? "bg-purple-100" : ""}
-              >
-                <AlignCenter className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => updateElementStyle && updateElementStyle("objectPosition", "right")}
-                className={selectedElement.style.objectPosition === "right" ? "bg-purple-100" : ""}
-              >
-                <AlignRight className="h-4 w-4" />
-              </Button>
+            <div className="text-center text-sm text-gray-500">Sobreposição de Cor</div>
+            <div className="flex items-center justify-between">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="flex items-center w-full">
+                    <div 
+                      className="w-4 h-4 rounded-sm mr-2" 
+                      style={{ backgroundColor: overlayColor }} 
+                    />
+                    <span>{overlayColor}</span>
+                    <Palette className="ml-auto h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-2">
+                  <div className="space-y-2">
+                    <Input
+                      type="color"
+                      value={overlayColor}
+                      onChange={handleOverlayColorChange}
+                      className="w-full h-8"
+                    />
+                    <Input
+                      type="text"
+                      value={overlayColor}
+                      onChange={handleOverlayColorChange}
+                      className="w-full"
+                    />
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
+            
+            <div className="mt-2">
+              <div className="flex justify-between text-xs text-gray-500 mb-1">
+                <span>Opacidade da Cor</span>
+                <span>{selectedElement.style.overlayOpacity ? selectedElement.style.overlayOpacity * 100 : 0}%</span>
+              </div>
+              <Slider 
+                defaultValue={[selectedElement.style.overlayOpacity ? selectedElement.style.overlayOpacity * 100 : 0]}
+                max={100}
+                step={1}
+                onValueChange={handleOverlayOpacityChange}
+              />
+            </div>
+            
+            <Separator className="my-4" />
+            
+            {showPositionControls && (
+              <>
+                <div className="text-center text-sm text-gray-500">Posição e Escala</div>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Posição X</span>
+                      <span>{selectedElement.style.objectPositionX || 50}%</span>
+                    </div>
+                    <div className="flex items-center">
+                      <ArrowLeft className="w-4 h-4 text-gray-400 mr-2" />
+                      <Slider 
+                        defaultValue={[selectedElement.style.objectPositionX || 50]}
+                        min={0}
+                        max={100}
+                        step={1}
+                        onValueChange={handlePositionXChange}
+                      />
+                      <ArrowRight className="w-4 h-4 text-gray-400 ml-2" />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Posição Y</span>
+                      <span>{selectedElement.style.objectPositionY || 50}%</span>
+                    </div>
+                    <div className="flex items-center">
+                      <ArrowUp className="w-4 h-4 text-gray-400 mr-2" />
+                      <Slider 
+                        defaultValue={[selectedElement.style.objectPositionY || 50]}
+                        min={0}
+                        max={100}
+                        step={1}
+                        onValueChange={handlePositionYChange}
+                      />
+                      <ArrowDown className="w-4 h-4 text-gray-400 ml-2" />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Escala</span>
+                      <span>{selectedElement.style.objectScale || 100}%</span>
+                    </div>
+                    <div className="flex items-center">
+                      <MinusCircle className="w-4 h-4 text-gray-400 mr-2" />
+                      <Slider 
+                        defaultValue={[selectedElement.style.objectScale || 100]}
+                        min={100}
+                        max={200}
+                        step={1}
+                        onValueChange={handleScaleChange}
+                      />
+                      <PlusCircle className="w-4 h-4 text-gray-400 ml-2" />
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </TabsContent>
       </Tabs>

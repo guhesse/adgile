@@ -1,3 +1,4 @@
+
 export type BannerSize = {
   name: string;
   width: number;
@@ -40,6 +41,11 @@ export type EditorElement = {
     borderBottomRightRadius?: number;
     objectFit?: "contain" | "cover" | "fill" | "none" | "scale-down";
     objectPosition?: "left" | "center" | "right" | "top" | "bottom" | string;
+    objectPositionX?: number; // Nova propriedade para controle preciso da posição X
+    objectPositionY?: number; // Nova propriedade para controle preciso da posição Y
+    objectScale?: number; // Nova propriedade para controle de escala
+    overlayColor?: string; // Nova propriedade para sobreposição de cor
+    overlayOpacity?: number; // Nova propriedade para opacidade da sobreposição
     gridArea?: string;
     gridColumn?: string;
     gridRow?: string;

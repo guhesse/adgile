@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TextPanel } from "./panels/TextPanel";
@@ -45,11 +46,6 @@ const PropertyPanel: React.FC<PropertyPanelProps> = ({ psdBackgroundColor }) => 
     }
   };
 
-  // Log para verificação
-  React.useEffect(() => {
-    console.log("PropertyPanel - psdBackgroundColor:", psdBackgroundColor);
-  }, [psdBackgroundColor]);
-
   return (
     <div className="p-4 space-y-4 bg-secondary rounded-md h-full">
       <div className="flex items-center justify-center">
@@ -66,9 +62,6 @@ const PropertyPanel: React.FC<PropertyPanelProps> = ({ psdBackgroundColor }) => 
             <>
               <TabsTrigger value="content">Conteúdo</TabsTrigger>
               <TabsTrigger value="style">Estilo</TabsTrigger>
-              {selectedElement.type === "image" && (
-                <TabsTrigger value="image">Imagem</TabsTrigger>
-              )}
             </>
           ) : (
             <TabsTrigger value="artboard">Prancheta</TabsTrigger>
@@ -84,6 +77,12 @@ const PropertyPanel: React.FC<PropertyPanelProps> = ({ psdBackgroundColor }) => 
                   updateElementStyle={updateElementStyle}
                   updateElementContent={updateElementContent}
                   activeTab={activeTab}
+                />
+              )}
+              {selectedElement.type === "image" && (
+                <ImagePanel 
+                  selectedElement={selectedElement} 
+                  updateElementStyle={updateElementStyle} 
                 />
               )}
               {selectedElement.type === "button" && (
@@ -106,6 +105,12 @@ const PropertyPanel: React.FC<PropertyPanelProps> = ({ psdBackgroundColor }) => 
                   activeTab={activeTab}
                 />
               )}
+              {selectedElement.type === "image" && (
+                <ImagePanel 
+                  selectedElement={selectedElement} 
+                  updateElementStyle={updateElementStyle} 
+                />
+              )}
               {selectedElement.type === "button" && (
                 <ButtonPanel 
                   element={selectedElement} 
@@ -116,14 +121,6 @@ const PropertyPanel: React.FC<PropertyPanelProps> = ({ psdBackgroundColor }) => 
               )}
               {selectedElement.type === "layout" && <LayoutPanel />}
               {selectedElement.type === "container" && <ContainerPanel />}
-            </TabsContent>
-            <TabsContent value="image" className="space-y-2">
-              {selectedElement.type === "image" && (
-                <ImagePanel 
-                  selectedElement={selectedElement} 
-                  updateElementStyle={updateElementStyle} 
-                />
-              )}
             </TabsContent>
           </>
         ) : (
