@@ -26,6 +26,7 @@ const PropertyPanel: React.FC<PropertyPanelProps> = ({ psdBackgroundColor }) => 
     selectedSize,
     updateElementStyle,
     updateElementContent,
+    updateElementAttribute,
     artboardBackgroundColor,
     updateArtboardBackground
   } = useCanvas();

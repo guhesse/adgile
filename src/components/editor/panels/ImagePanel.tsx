@@ -16,7 +16,7 @@ import { EditorElement } from "../types";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Image, Link, CornerDownLeft, CornerDownRight, CornerUpLeft, CornerUpRight, Minus, Plus, AlignCenter, AlignLeft, AlignRight, Maximize, MinusCircle, PlusCircle, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Palette, RefreshCw, Droplets, Sun, Contrast } from "lucide-react";
+import { Image, Link, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Palette, RefreshCw, Droplets, Sun, Contrast, MinusCircle, PlusCircle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface ImagePanelProps {
@@ -115,10 +115,18 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
     if (updateElementStyle) {
       updateElementStyle("objectFit", value);
       
+      // Quando mudar para o modo "cover", inicialize as propriedades de posição e escala
       if (value === "cover") {
-        updateElementStyle("objectPositionX", 50);
-        updateElementStyle("objectPositionY", 50);
-        updateElementStyle("objectScale", 100);
+        // Inicializar propriedades de posição apenas se não estiverem definidas
+        if (selectedElement.style.objectPositionX === undefined) {
+          updateElementStyle("objectPositionX", 50);
+        }
+        if (selectedElement.style.objectPositionY === undefined) {
+          updateElementStyle("objectPositionY", 50);
+        }
+        if (selectedElement.style.objectScale === undefined) {
+          updateElementStyle("objectScale", 100);
+        }
       }
     }
   };
@@ -161,7 +169,7 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
     }
   };
 
-  // New filter handlers
+  // Filter handlers
   const handleHueRotateChange = (value: number[]) => {
     if (updateElementStyle) {
       updateElementStyle("hueRotate", value[0]);
@@ -230,7 +238,23 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
     }
   };
 
+  // Garantir que os controles de posição apareçam para qualquer imagem com objectFit="cover"
   const showPositionControls = selectedElement.style.objectFit === "cover";
+
+  // Se não tivermos valores de posição definidos, inicialize-os
+  useEffect(() => {
+    if (selectedElement.style.objectFit === "cover" && updateElementStyle) {
+      if (selectedElement.style.objectPositionX === undefined) {
+        updateElementStyle("objectPositionX", 50);
+      }
+      if (selectedElement.style.objectPositionY === undefined) {
+        updateElementStyle("objectPositionY", 50);
+      }
+      if (selectedElement.style.objectScale === undefined) {
+        updateElementStyle("objectScale", 100);
+      }
+    }
+  }, [selectedElement.style.objectFit, updateElementStyle, selectedElement]);
 
   return (
     <div className="p-4 space-y-4 bg-white rounded-lg">
@@ -307,13 +331,13 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
                   <div>
                     <div className="flex justify-between text-xs text-gray-500 mb-1">
                       <span>Posição X</span>
-                      <span>{selectedElement.style.objectPositionX || 50}%</span>
+                      <span>{selectedElement.style.objectPositionX ?? 50}%</span>
                     </div>
                     <div className="flex items-center">
                       <ArrowLeft className="w-4 h-4 text-gray-400 mr-2" />
                       <Slider 
-                        defaultValue={[selectedElement.style.objectPositionX || 50]}
-                        value={[selectedElement.style.objectPositionX || 50]}
+                        defaultValue={[selectedElement.style.objectPositionX ?? 50]}
+                        value={[selectedElement.style.objectPositionX ?? 50]}
                         min={0}
                         max={100}
                         step={1}
@@ -326,13 +350,13 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
                   <div>
                     <div className="flex justify-between text-xs text-gray-500 mb-1">
                       <span>Posição Y</span>
-                      <span>{selectedElement.style.objectPositionY || 50}%</span>
+                      <span>{selectedElement.style.objectPositionY ?? 50}%</span>
                     </div>
                     <div className="flex items-center">
                       <ArrowUp className="w-4 h-4 text-gray-400 mr-2" />
                       <Slider 
-                        defaultValue={[selectedElement.style.objectPositionY || 50]}
-                        value={[selectedElement.style.objectPositionY || 50]}
+                        defaultValue={[selectedElement.style.objectPositionY ?? 50]}
+                        value={[selectedElement.style.objectPositionY ?? 50]}
                         min={0}
                         max={100}
                         step={1}
@@ -345,13 +369,13 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
                   <div>
                     <div className="flex justify-between text-xs text-gray-500 mb-1">
                       <span>Escala</span>
-                      <span>{selectedElement.style.objectScale || 100}%</span>
+                      <span>{selectedElement.style.objectScale ?? 100}%</span>
                     </div>
                     <div className="flex items-center">
                       <MinusCircle className="w-4 h-4 text-gray-400 mr-2" />
                       <Slider 
-                        defaultValue={[selectedElement.style.objectScale || 100]}
-                        value={[selectedElement.style.objectScale || 100]}
+                        defaultValue={[selectedElement.style.objectScale ?? 100]}
+                        value={[selectedElement.style.objectScale ?? 100]}
                         min={100}
                         max={200}
                         step={1}
@@ -362,12 +386,10 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
                   </div>
                 </div>
                 
-                {showPositionControls && (
-                  <div className="mt-1 px-2 py-1 bg-gray-100 rounded text-xs text-gray-600">
-                    <p>Dica: Use <kbd className="px-1 py-0.5 bg-gray-200 rounded">Alt</kbd> + teclas de seta para ajustar a posição da imagem dentro do container.</p>
-                    <p className="mt-1">Use <kbd className="px-1 py-0.5 bg-gray-200 rounded">Shift</kbd> + teclas de seta para mover em incrementos maiores.</p>
-                  </div>
-                )}
+                <div className="mt-1 px-2 py-1 bg-gray-100 rounded text-xs text-gray-600">
+                  <p>Dica: Use <kbd className="px-1 py-0.5 bg-gray-200 rounded">Alt</kbd> + teclas de seta para ajustar a posição da imagem dentro do container.</p>
+                  <p className="mt-1">Use <kbd className="px-1 py-0.5 bg-gray-200 rounded">Shift</kbd> + teclas de seta para mover em incrementos maiores.</p>
+                </div>
               </div>
             )}
             
@@ -601,13 +623,13 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
                   <div>
                     <div className="flex justify-between text-xs text-gray-500 mb-1">
                       <span>Posição X</span>
-                      <span>{selectedElement.style.objectPositionX || 50}%</span>
+                      <span>{selectedElement.style.objectPositionX ?? 50}%</span>
                     </div>
                     <div className="flex items-center">
                       <ArrowLeft className="w-4 h-4 text-gray-400 mr-2" />
                       <Slider 
-                        defaultValue={[selectedElement.style.objectPositionX || 50]}
-                        value={[selectedElement.style.objectPositionX || 50]}
+                        defaultValue={[selectedElement.style.objectPositionX ?? 50]}
+                        value={[selectedElement.style.objectPositionX ?? 50]}
                         min={0}
                         max={100}
                         step={1}
@@ -620,13 +642,13 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
                   <div>
                     <div className="flex justify-between text-xs text-gray-500 mb-1">
                       <span>Posição Y</span>
-                      <span>{selectedElement.style.objectPositionY || 50}%</span>
+                      <span>{selectedElement.style.objectPositionY ?? 50}%</span>
                     </div>
                     <div className="flex items-center">
                       <ArrowUp className="w-4 h-4 text-gray-400 mr-2" />
                       <Slider 
-                        defaultValue={[selectedElement.style.objectPositionY || 50]}
-                        value={[selectedElement.style.objectPositionY || 50]}
+                        defaultValue={[selectedElement.style.objectPositionY ?? 50]}
+                        value={[selectedElement.style.objectPositionY ?? 50]}
                         min={0}
                         max={100}
                         step={1}
@@ -639,13 +661,13 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
                   <div>
                     <div className="flex justify-between text-xs text-gray-500 mb-1">
                       <span>Escala</span>
-                      <span>{selectedElement.style.objectScale || 100}%</span>
+                      <span>{selectedElement.style.objectScale ?? 100}%</span>
                     </div>
                     <div className="flex items-center">
                       <MinusCircle className="w-4 h-4 text-gray-400 mr-2" />
                       <Slider 
-                        defaultValue={[selectedElement.style.objectScale || 100]}
-                        value={[selectedElement.style.objectScale || 100]}
+                        defaultValue={[selectedElement.style.objectScale ?? 100]}
+                        value={[selectedElement.style.objectScale ?? 100]}
                         min={100}
                         max={200}
                         step={1}
