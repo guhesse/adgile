@@ -146,6 +146,92 @@ export const extractMaskData = (layer: any): PSDMaskData | null => {
 };
 
 /**
+ * Ajusta a posição e dimensões de um elemento com base na máscara
+ * @param element Elemento a ser ajustado
+ * @param maskData Dados da máscara
+ * @param canvasSize Tamanho do canvas
+ */
+const adjustElementWithMask = (element: any, maskData: PSDMaskData, canvasSize: BannerSize): any => {
+  if (!maskData.hasValidMask) return element;
+  
+  const originalElement = { ...element };
+  
+  // Log detalhado antes do ajuste
+  psdLogger.debug(`AJUSTE DE MÁSCARA - ANTES:`, {
+    elemento: element._layerName || 'sem nome',
+    tipo: element.type,
+    posição_original: { x: element.style.x, y: element.style.y },
+    dimensões_originais: { w: element.style.width, h: element.style.height },
+    máscara: {
+      posição: { top: maskData.top, left: maskData.left },
+      dimensões: { width: maskData.width, height: maskData.height }
+    }
+  });
+  
+  // Ajustar posição com base na máscara
+  const adjustedElement = {
+    ...element,
+    style: {
+      ...element.style,
+      // Usar dimensions da máscara
+      width: maskData.width,
+      height: maskData.height,
+      // Ajustar posição para refletir a máscara
+      x: maskData.left,
+      y: maskData.top,
+      // Manter informações da máscara para uso posterior
+      hasMask: true,
+      maskInfo: {
+        top: maskData.top,
+        left: maskData.left,
+        bottom: maskData.bottom,
+        right: maskData.right,
+        width: maskData.width,
+        height: maskData.height,
+        invert: maskData.invert || false,
+        disabled: maskData.disabled || false
+      },
+      // Ajustes especiais para posicionamento
+      objectFit: 'cover',
+      // Usar clipPath para mascaramento visual quando renderizado
+      clipPath: `inset(0px 0px 0px 0px)`
+    }
+  };
+  
+  // Cálculos especiais para ocupar toda a largura/altura do canvas quando necessário
+  const isFullWidth = Math.abs(maskData.width - canvasSize.width) < 10; // Margem de tolerância
+  const isAtBottom = Math.abs((maskData.top + maskData.height) - canvasSize.height) < 10;
+  
+  if (isFullWidth) {
+    psdLogger.debug(`Elemento ${element._layerName || 'sem nome'} parece ocupar toda a largura do canvas.`);
+    adjustedElement.style.width = canvasSize.width;
+    adjustedElement.style.x = 0;
+  }
+  
+  if (isAtBottom) {
+    psdLogger.debug(`Elemento ${element._layerName || 'sem nome'} parece estar no limite inferior do canvas.`);
+    adjustedElement.style.y = canvasSize.height - maskData.height;
+  }
+  
+  // Log detalhado após o ajuste
+  psdLogger.debug(`AJUSTE DE MÁSCARA - DEPOIS:`, {
+    elemento: element._layerName || 'sem nome',
+    posição_ajustada: { x: adjustedElement.style.x, y: adjustedElement.style.y },
+    dimensões_ajustadas: { w: adjustedElement.style.width, h: adjustedElement.style.height },
+    ocupaTodaLargura: isFullWidth,
+    estáNoLimiteInferior: isAtBottom,
+    percentual_canvas: {
+      x: Math.round((adjustedElement.style.x / canvasSize.width) * 100),
+      y: Math.round((adjustedElement.style.y / canvasSize.height) * 100),
+      width: Math.round((adjustedElement.style.width / canvasSize.width) * 100),
+      height: Math.round((adjustedElement.style.height / canvasSize.height) * 100)
+    }
+  });
+  
+  return adjustedElement;
+};
+
+/**
  * Import a PSD file and convert it to editor elements
  * @param file The PSD file to import
  * @param selectedSize The selected banner size
@@ -271,27 +357,15 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
           element.psdLayerData = element.psdLayerData || {};
           element.psdLayerData.mask = maskData;
           
-          // Adicionar informações de máscara ao estilo do elemento
-          element.style = {
-            ...element.style,
-            hasMask: true,
-            maskInfo: {
-              top: maskData.top,
-              left: maskData.left,
-              bottom: maskData.bottom,
-              right: maskData.right,
-              width: maskData.width,
-              height: maskData.height,
-              invert: maskData.invert || false,
-              disabled: maskData.disabled || false
-            }
-          };
-          
+          // Aplicar ajustes específicos para elementos com máscara
+          const adjustedElement = adjustElementWithMask(element, maskData, selectedSize);
           maskedElementsCount.count++;
           psdLogger.debug(`Aplicada máscara à camada "${layer.name || 'sem nome'}": ${maskData.width}×${maskData.height}`);
+          
+          elements.push(adjustedElement);
+        } else {
+          elements.push(element);
         }
-        
-        elements.push(element);
       }
     }
 
@@ -323,27 +397,15 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
                 element.psdLayerData = element.psdLayerData || {};
                 element.psdLayerData.mask = maskData;
                 
-                // Adicionar informações de máscara ao estilo do elemento
-                element.style = {
-                  ...element.style,
-                  hasMask: true,
-                  maskInfo: {
-                    top: maskData.top,
-                    left: maskData.left,
-                    bottom: maskData.bottom,
-                    right: maskData.right,
-                    width: maskData.width,
-                    height: maskData.height,
-                    invert: maskData.invert || false,
-                    disabled: maskData.disabled || false
-                  }
-                };
-                
+                // Aplicar ajustes específicos para elementos com máscara
+                const adjustedElement = adjustElementWithMask(element, maskData, selectedSize);
                 maskedElementsCount.count++;
                 psdLogger.debug(`Aplicada máscara ao nó "${node.name || 'sem nome'}": ${maskData.width}×${maskData.height}`);
+                
+                elements.push(adjustedElement);
+              } else {
+                elements.push(element);
               }
-              
-              elements.push(element);
             }
           }
         }
@@ -353,11 +415,29 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
           for (const child of children) {
             if (!child.isGroup || (typeof child.isGroup === 'function' && !child.isGroup())) {
               psdLogger.debug(`Processando filho: ${child.name}`);
+              
+              // Verificar se o nó tem máscara
+              const maskData = extractMaskData(child);
+              
               const element = await processLayer(child, selectedSize, psdData, extractedImages);
               if (element) {
                 // Assign 'global' sizeId for visibility in all artboards
                 element.sizeId = 'global';
-                elements.push(element);
+                
+                // Se encontramos dados de máscara válidos, anexamos ao elemento
+                if (maskData && maskData.hasValidMask) {
+                  element.psdLayerData = element.psdLayerData || {};
+                  element.psdLayerData.mask = maskData;
+                  
+                  // Aplicar ajustes específicos para elementos com máscara
+                  const adjustedElement = adjustElementWithMask(element, maskData, selectedSize);
+                  maskedElementsCount.count++;
+                  psdLogger.debug(`Aplicada máscara ao filho "${child.name || 'sem nome'}": ${maskData.width}×${maskData.height}`);
+                  
+                  elements.push(adjustedElement);
+                } else {
+                  elements.push(element);
+                }
               }
             }
 
@@ -373,6 +453,27 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
 
     // Calculate percentage values - important for responsive behavior
     calculatePercentageValues(elements, selectedSize);
+
+    // Adicionar logs detalhados para posicionamento de todos os elementos
+    psdLogger.debug("=== RESUMO DE POSICIONAMENTO DOS ELEMENTOS ===");
+    elements.forEach((element, index) => {
+      psdLogger.debug(`Elemento #${index + 1}: ${element._layerName || element.type}`, {
+        tipo: element.type,
+        tem_máscara: element.style.hasMask || false,
+        posição: {
+          x: Math.round(element.style.x),
+          y: Math.round(element.style.y),
+          percentualX: Math.round(element.style.xPercent || 0),
+          percentualY: Math.round(element.style.yPercent || 0)
+        },
+        dimensões: {
+          largura: Math.round(element.style.width),
+          altura: Math.round(element.style.height),
+          percentualLargura: Math.round(element.style.widthPercent || 0),
+          percentualAltura: Math.round(element.style.heightPercent || 0)
+        }
+      });
+    });
 
     // Allow elements to extend slightly beyond artboard boundaries
     // but still ensure they're connected to the artboard
@@ -444,4 +545,3 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
     throw error;
   }
 };
-     
