@@ -6,9 +6,9 @@ interface UseCanvasKeyboardShortcutsProps {
   canvasNavMode: CanvasNavigationMode;
   setCanvasNavMode: (mode: CanvasNavigationMode) => void;
   selectedElement: EditorElement | null;
-  removeElement: (id: string) => void;
+  removeElement: (elementId: string) => void;
   undo: () => void;
-  updateElementStyle?: (property: string, value: any, elementId?: string) => void;
+  updateElementStyle?: (property: string, value: any) => void;
 }
 
 export const useCanvasKeyboardShortcuts = ({
@@ -20,128 +20,93 @@ export const useCanvasKeyboardShortcuts = ({
   updateElementStyle
 }: UseCanvasKeyboardShortcutsProps) => {
   useEffect(() => {
-    const handleSpacebarDown = () => {
-      if (canvasNavMode !== 'pan') {
-        setCanvasNavMode('pan');
-      }
-    };
-
-    const handleSpacebarUp = () => {
-      if (canvasNavMode === 'pan') {
-        setCanvasNavMode('edit');
-      }
-    };
-
-    // Manipular movimento com setas
-    const handleArrowKeys = (e: KeyboardEvent) => {
-      if (!selectedElement || !updateElementStyle) return;
-      
-      // Ignorar quando o usuário está editando texto ou em algum campo de entrada
-      if (
-        document.activeElement?.tagName === 'INPUT' || 
-        document.activeElement?.tagName === 'TEXTAREA' ||
-        document.activeElement?.getAttribute('contenteditable') === 'true'
-      ) {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if editing a text field
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
-      
-      const moveStep = e.shiftKey ? 10 : 1; // Move mais rápido com Shift pressionado
-      let moveX = 0;
-      let moveY = 0;
-      
-      switch (e.key) {
-        case 'ArrowLeft':
-          moveX = -moveStep;
-          break;
-        case 'ArrowRight':
-          moveX = moveStep;
-          break;
-        case 'ArrowUp':
-          moveY = -moveStep;
-          break;
-        case 'ArrowDown':
-          moveY = moveStep;
-          break;
-        default:
-          return; // Não é uma tecla de seta, sair
-      }
-      
-      // Verificar se é uma imagem com objectFit cover e estamos movendo a imagem dentro do container
-      if (selectedElement.type === 'image' && 
-          selectedElement.style.objectFit === 'cover' && 
-          e.altKey) {
-        
-        e.preventDefault(); // Prevenir comportamento padrão
-        
-        // Mover a posição da imagem dentro do container
-        const currentX = selectedElement.style.objectPositionX ?? 50;
-        const currentY = selectedElement.style.objectPositionY ?? 50;
-        
-        // Limitar valores entre 0 e 100
-        const newX = Math.max(0, Math.min(100, currentX + moveX));
-        const newY = Math.max(0, Math.min(100, currentY + moveY));
-        
-        if (moveX !== 0) {
-          updateElementStyle("objectPositionX", newX, selectedElement.id);
-        }
-        
-        if (moveY !== 0) {
-          updateElementStyle("objectPositionY", newY, selectedElement.id);
-        }
-      } else {
-        e.preventDefault(); // Prevenir rolagem da página
-        
-        // Mover a posição do elemento no canvas
-        const currentX = selectedElement.style.x;
-        const currentY = selectedElement.style.y;
-        
-        if (moveX !== 0) {
-          updateElementStyle("x", currentX + moveX, selectedElement.id);
-        }
-        
-        if (moveY !== 0) {
-          updateElementStyle("y", currentY + moveY, selectedElement.id);
-        }
-      }
-    };
 
-    // Handle keyboard shortcuts
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Delete/Backspace to remove selected element
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElement) {
-        // Ignorar quando o usuário está editando texto
-        if (
-          document.activeElement?.tagName === 'INPUT' || 
-          document.activeElement?.tagName === 'TEXTAREA' ||
-          document.activeElement?.getAttribute('contenteditable') === 'true'
-        ) {
-          return;
+      // Don't handle keyboard shortcuts when meta key (Command on Mac, Ctrl on Windows) is pressed
+      // to avoid interfering with browser shortcuts
+      if (e.metaKey || e.ctrlKey) {
+        // Handle undo with Command/Ctrl+Z
+        if (e.key === 'z') {
+          e.preventDefault();
+          undo();
         }
-        
+        return;
+      }
+
+      // Toggle canvas mode with Spacebar
+      if (e.key === ' ' && !e.repeat) {
+        e.preventDefault();
+        setCanvasNavMode(canvasNavMode === 'edit' ? 'pan' : 'edit');
+      }
+
+      // Delete selected element with Delete or Backspace
+      if (selectedElement && (e.key === 'Delete' || e.key === 'Backspace')) {
+        e.preventDefault();
         removeElement(selectedElement.id);
       }
-      
-      // Ctrl+Z to undo
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        e.preventDefault(); // Prevent browser's default undo
-        console.log("Undo shortcut triggered");
-        undo();
-      }
-      
-      // Arrow keys to move elements
-      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-        handleArrowKeys(e);
+
+      // Use arrow keys to move selected element
+      if (selectedElement && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+        
+        const altKey = e.altKey;
+        const shiftKey = e.shiftKey;
+        const step = shiftKey ? 10 : 1;
+        
+        // If Alt key is pressed and the selected element is an image with objectFit=cover,
+        // adjust the image position within the container instead of moving the element
+        if (altKey && selectedElement.type === 'image' && selectedElement.style.objectFit === 'cover') {
+          if (updateElementStyle) {
+            const currentX = selectedElement.style.objectPositionX || 50;
+            const currentY = selectedElement.style.objectPositionY || 50;
+            
+            switch (e.key) {
+              case 'ArrowLeft':
+                updateElementStyle('objectPositionX', Math.max(0, currentX - step));
+                break;
+              case 'ArrowRight':
+                updateElementStyle('objectPositionX', Math.min(100, currentX + step));
+                break;
+              case 'ArrowUp':
+                updateElementStyle('objectPositionY', Math.max(0, currentY - step));
+                break;
+              case 'ArrowDown':
+                updateElementStyle('objectPositionY', Math.min(100, currentY + step));
+                break;
+            }
+          }
+        } else {
+          // Move the entire element
+          if (updateElementStyle) {
+            const currentX = selectedElement.style.x;
+            const currentY = selectedElement.style.y;
+            
+            switch (e.key) {
+              case 'ArrowLeft':
+                updateElementStyle('x', currentX - step);
+                break;
+              case 'ArrowRight':
+                updateElementStyle('x', currentX + step);
+                break;
+              case 'ArrowUp':
+                updateElementStyle('y', currentY - step);
+                break;
+              case 'ArrowDown':
+                updateElementStyle('y', currentY + step);
+                break;
+            }
+          }
+        }
       }
     };
 
-    document.addEventListener('canvas-spacebar-down', handleSpacebarDown);
-    document.addEventListener('canvas-spacebar-up', handleSpacebarUp);
-    document.addEventListener('keydown', handleKeyDown);
-
+    window.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener('canvas-spacebar-down', handleSpacebarDown);
-      document.removeEventListener('canvas-spacebar-up', handleSpacebarUp);
-      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [canvasNavMode, setCanvasNavMode, selectedElement, removeElement, undo, updateElementStyle]);
 };

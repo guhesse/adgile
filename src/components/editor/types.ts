@@ -44,8 +44,14 @@ export type EditorElement = {
     objectPositionX?: number; // Nova propriedade para controle preciso da posição X
     objectPositionY?: number; // Nova propriedade para controle preciso da posição Y
     objectScale?: number; // Nova propriedade para controle de escala
-    overlayColor?: string; // Nova propriedade para sobreposição de cor
-    overlayOpacity?: number; // Nova propriedade para opacidade da sobreposição
+    overlayColor?: string; // Propriedade para sobreposição de cor
+    overlayOpacity?: number; // Propriedade para opacidade da sobreposição
+    // Novas propriedades para filtros CSS
+    hueRotate?: number; // Valor em graus para hue-rotate (0-360)
+    grayscale?: number; // Valor de 0 a 1 (0% a 100%)
+    brightness?: number; // Valor de 0 a 2 (0% a 200%)
+    contrast?: number; // Valor de 0 a 2 (0% a 200%)
+    saturate?: number; // Valor de 0 a 2 (0% a 200%)
     gridArea?: string;
     gridColumn?: string;
     gridRow?: string;

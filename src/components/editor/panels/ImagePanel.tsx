@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,7 @@ import { EditorElement } from "../types";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Image, Link, CornerDownLeft, CornerDownRight, CornerUpLeft, CornerUpRight, Minus, Plus, AlignCenter, AlignLeft, AlignRight, Maximize, MinusCircle, PlusCircle, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Palette } from "lucide-react";
+import { Image, Link, CornerDownLeft, CornerDownRight, CornerUpLeft, CornerUpRight, Minus, Plus, AlignCenter, AlignLeft, AlignRight, Maximize, MinusCircle, PlusCircle, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Palette, RefreshCw, Droplets, Sun, Contrast } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface ImagePanelProps {
@@ -37,6 +38,7 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
   const [altText, setAltText] = useState<string>("");
   const [openInNewTab, setOpenInNewTab] = useState<boolean>(false);
   const [overlayColor, setOverlayColor] = useState<string>("#000000");
+  const [useFilters, setUseFilters] = useState<boolean>(false);
 
   useEffect(() => {
     if (selectedElement && selectedElement.type === "image") {
@@ -45,6 +47,15 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
       setLinkUrl(selectedElement.link || "");
       setOpenInNewTab(selectedElement.openInNewTab || false);
       setOverlayColor(selectedElement.style.overlayColor || "#000000");
+      
+      // Check if we're using filters
+      setUseFilters(
+        selectedElement.style.hueRotate !== undefined || 
+        selectedElement.style.grayscale !== undefined || 
+        selectedElement.style.brightness !== undefined ||
+        selectedElement.style.contrast !== undefined ||
+        selectedElement.style.saturate !== undefined
+      );
     }
   }, [selectedElement]);
 
@@ -150,6 +161,75 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
     }
   };
 
+  // New filter handlers
+  const handleHueRotateChange = (value: number[]) => {
+    if (updateElementStyle) {
+      updateElementStyle("hueRotate", value[0]);
+    }
+  };
+
+  const handleGrayscaleChange = (value: number[]) => {
+    if (updateElementStyle) {
+      updateElementStyle("grayscale", value[0]);
+    }
+  };
+
+  const handleBrightnessChange = (value: number[]) => {
+    if (updateElementStyle) {
+      updateElementStyle("brightness", value[0]);
+    }
+  };
+
+  const handleContrastChange = (value: number[]) => {
+    if (updateElementStyle) {
+      updateElementStyle("contrast", value[0]);
+    }
+  };
+
+  const handleSaturateChange = (value: number[]) => {
+    if (updateElementStyle) {
+      updateElementStyle("saturate", value[0]);
+    }
+  };
+
+  const toggleFilterMode = () => {
+    setUseFilters(!useFilters);
+    
+    if (useFilters) {
+      // Remove filters
+      if (updateElementStyle) {
+        updateElementStyle("hueRotate", undefined);
+        updateElementStyle("grayscale", undefined);
+        updateElementStyle("brightness", undefined);
+        updateElementStyle("contrast", undefined);
+        updateElementStyle("saturate", undefined);
+      }
+    } else {
+      // Initialize filters with default values
+      if (updateElementStyle) {
+        updateElementStyle("hueRotate", 0);
+        updateElementStyle("grayscale", 0);
+        updateElementStyle("brightness", 1);
+        updateElementStyle("contrast", 1);
+        updateElementStyle("saturate", 1);
+        
+        // Remove overlay since we're using filters
+        updateElementStyle("overlayColor", undefined);
+        updateElementStyle("overlayOpacity", undefined);
+      }
+    }
+  };
+
+  const resetFilters = () => {
+    if (updateElementStyle) {
+      updateElementStyle("hueRotate", 0);
+      updateElementStyle("grayscale", 0);
+      updateElementStyle("brightness", 1);
+      updateElementStyle("contrast", 1);
+      updateElementStyle("saturate", 1);
+    }
+  };
+
   const showPositionControls = selectedElement.style.objectFit === "cover";
 
   return (
@@ -233,6 +313,7 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
                       <ArrowLeft className="w-4 h-4 text-gray-400 mr-2" />
                       <Slider 
                         defaultValue={[selectedElement.style.objectPositionX || 50]}
+                        value={[selectedElement.style.objectPositionX || 50]}
                         min={0}
                         max={100}
                         step={1}
@@ -251,6 +332,7 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
                       <ArrowUp className="w-4 h-4 text-gray-400 mr-2" />
                       <Slider 
                         defaultValue={[selectedElement.style.objectPositionY || 50]}
+                        value={[selectedElement.style.objectPositionY || 50]}
                         min={0}
                         max={100}
                         step={1}
@@ -269,6 +351,7 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
                       <MinusCircle className="w-4 h-4 text-gray-400 mr-2" />
                       <Slider 
                         defaultValue={[selectedElement.style.objectScale || 100]}
+                        value={[selectedElement.style.objectScale || 100]}
                         min={100}
                         max={200}
                         step={1}
@@ -338,6 +421,7 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
             <div className="w-full">
               <Slider 
                 defaultValue={[selectedElement.style.opacity ? selectedElement.style.opacity * 100 : 100]}
+                value={[selectedElement.style.opacity ? selectedElement.style.opacity * 100 : 100]}
                 max={100}
                 step={1}
                 onValueChange={handleOpacityChange}
@@ -346,50 +430,167 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
             
             <Separator className="my-4" />
             
-            <div className="text-center text-sm text-gray-500">Sobreposição de Cor</div>
-            <div className="flex items-center justify-between">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="flex items-center w-full">
-                    <div 
-                      className="w-4 h-4 rounded-sm mr-2" 
-                      style={{ backgroundColor: overlayColor }} 
-                    />
-                    <span>{overlayColor}</span>
-                    <Palette className="ml-auto h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-2">
-                  <div className="space-y-2">
-                    <Input
-                      type="color"
-                      value={overlayColor}
-                      onChange={handleOverlayColorChange}
-                      className="w-full h-8"
-                    />
-                    <Input
-                      type="text"
-                      value={overlayColor}
-                      onChange={handleOverlayColorChange}
-                      className="w-full"
-                    />
-                  </div>
-                </PopoverContent>
-              </Popover>
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-sm text-gray-500">Modo de colorização</div>
+              <div className="flex items-center">
+                <Label htmlFor="filter-mode" className="mr-2 text-xs text-gray-600">
+                  {useFilters ? "Filtros CSS" : "Sobreposição de Cor"}
+                </Label>
+                <Switch
+                  checked={useFilters}
+                  onCheckedChange={toggleFilterMode}
+                  id="filter-mode"
+                />
+              </div>
             </div>
             
-            <div className="mt-2">
-              <div className="flex justify-between text-xs text-gray-500 mb-1">
-                <span>Opacidade da Cor</span>
-                <span>{selectedElement.style.overlayOpacity ? selectedElement.style.overlayOpacity * 100 : 0}%</span>
+            {useFilters ? (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div className="text-sm font-medium">Filtros CSS</div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={resetFilters}
+                    className="text-xs flex items-center"
+                  >
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Resetar
+                  </Button>
+                </div>
+                
+                <div>
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span className="flex items-center"><RefreshCw className="w-3 h-3 mr-1" /> Matiz (Hue)</span>
+                    <span>{selectedElement.style.hueRotate || 0}°</span>
+                  </div>
+                  <Slider 
+                    defaultValue={[selectedElement.style.hueRotate || 0]}
+                    value={[selectedElement.style.hueRotate || 0]}
+                    min={0}
+                    max={360}
+                    step={1}
+                    onValueChange={handleHueRotateChange}
+                  />
+                </div>
+                
+                <div>
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span className="flex items-center"><Image className="w-3 h-3 mr-1" /> Escala de cinza</span>
+                    <span>{selectedElement.style.grayscale ? selectedElement.style.grayscale * 100 : 0}%</span>
+                  </div>
+                  <Slider 
+                    defaultValue={[selectedElement.style.grayscale || 0]}
+                    value={[selectedElement.style.grayscale || 0]}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    onValueChange={handleGrayscaleChange}
+                  />
+                </div>
+                
+                <div>
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span className="flex items-center"><Sun className="w-3 h-3 mr-1" /> Brilho</span>
+                    <span>{selectedElement.style.brightness ? selectedElement.style.brightness * 100 : 100}%</span>
+                  </div>
+                  <Slider 
+                    defaultValue={[selectedElement.style.brightness || 1]}
+                    value={[selectedElement.style.brightness || 1]}
+                    min={0}
+                    max={2}
+                    step={0.05}
+                    onValueChange={handleBrightnessChange}
+                  />
+                </div>
+                
+                <div>
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span className="flex items-center"><Contrast className="w-3 h-3 mr-1" /> Contraste</span>
+                    <span>{selectedElement.style.contrast ? selectedElement.style.contrast * 100 : 100}%</span>
+                  </div>
+                  <Slider 
+                    defaultValue={[selectedElement.style.contrast || 1]}
+                    value={[selectedElement.style.contrast || 1]}
+                    min={0}
+                    max={2}
+                    step={0.05}
+                    onValueChange={handleContrastChange}
+                  />
+                </div>
+                
+                <div>
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span className="flex items-center"><Droplets className="w-3 h-3 mr-1" /> Saturação</span>
+                    <span>{selectedElement.style.saturate ? selectedElement.style.saturate * 100 : 100}%</span>
+                  </div>
+                  <Slider 
+                    defaultValue={[selectedElement.style.saturate || 1]}
+                    value={[selectedElement.style.saturate || 1]}
+                    min={0}
+                    max={2}
+                    step={0.05}
+                    onValueChange={handleSaturateChange}
+                  />
+                </div>
+                
+                <div className="mt-1 px-2 py-1 bg-gray-100 rounded text-xs text-gray-600">
+                  <p>Os filtros CSS preservam a transparência em imagens PNG, ideal para logos e ícones.</p>
+                </div>
               </div>
-              <Slider 
-                defaultValue={[selectedElement.style.overlayOpacity ? selectedElement.style.overlayOpacity * 100 : 0]}
-                max={100}
-                step={1}
-                onValueChange={handleOverlayOpacityChange}
-              />
-            </div>
+            ) : (
+              <div>
+                <div className="text-center text-sm text-gray-500">Sobreposição de Cor</div>
+                <div className="flex items-center justify-between">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="flex items-center w-full">
+                        <div 
+                          className="w-4 h-4 rounded-sm mr-2" 
+                          style={{ backgroundColor: overlayColor }} 
+                        />
+                        <span>{overlayColor}</span>
+                        <Palette className="ml-auto h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-2">
+                      <div className="space-y-2">
+                        <Input
+                          type="color"
+                          value={overlayColor}
+                          onChange={handleOverlayColorChange}
+                          className="w-full h-8"
+                        />
+                        <Input
+                          type="text"
+                          value={overlayColor}
+                          onChange={handleOverlayColorChange}
+                          className="w-full"
+                        />
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                
+                <div className="mt-2">
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>Opacidade da Cor</span>
+                    <span>{selectedElement.style.overlayOpacity ? selectedElement.style.overlayOpacity * 100 : 0}%</span>
+                  </div>
+                  <Slider 
+                    defaultValue={[selectedElement.style.overlayOpacity ? selectedElement.style.overlayOpacity * 100 : 0]}
+                    value={[selectedElement.style.overlayOpacity ? selectedElement.style.overlayOpacity * 100 : 0]}
+                    max={100}
+                    step={1}
+                    onValueChange={handleOverlayOpacityChange}
+                  />
+                </div>
+                
+                <div className="mt-1 px-2 py-1 bg-gray-100 rounded text-xs text-gray-600">
+                  <p>A sobreposição de cor pode afetar a transparência em imagens PNG. Para preservar a transparência, use o modo de Filtros CSS.</p>
+                </div>
+              </div>
+            )}
             
             <Separator className="my-4" />
             
@@ -406,6 +607,7 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
                       <ArrowLeft className="w-4 h-4 text-gray-400 mr-2" />
                       <Slider 
                         defaultValue={[selectedElement.style.objectPositionX || 50]}
+                        value={[selectedElement.style.objectPositionX || 50]}
                         min={0}
                         max={100}
                         step={1}
@@ -424,6 +626,7 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
                       <ArrowUp className="w-4 h-4 text-gray-400 mr-2" />
                       <Slider 
                         defaultValue={[selectedElement.style.objectPositionY || 50]}
+                        value={[selectedElement.style.objectPositionY || 50]}
                         min={0}
                         max={100}
                         step={1}
@@ -442,6 +645,7 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
                       <MinusCircle className="w-4 h-4 text-gray-400 mr-2" />
                       <Slider 
                         defaultValue={[selectedElement.style.objectScale || 100]}
+                        value={[selectedElement.style.objectScale || 100]}
                         min={100}
                         max={200}
                         step={1}
