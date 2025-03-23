@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -115,9 +114,9 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
     if (updateElementStyle) {
       updateElementStyle("objectFit", value);
       
-      // Quando mudar para o modo "cover", inicialize as propriedades de posição e escala
+      // When switching to "cover" mode, initialize the position and scale properties
       if (value === "cover") {
-        // Inicializar propriedades de posição apenas se não estiverem definidas
+        // Initialize position properties only if they're not already defined
         if (selectedElement.style.objectPositionX === undefined) {
           updateElementStyle("objectPositionX", 50);
         }
@@ -152,6 +151,7 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
   };
 
   const handlePositionXChange = (value: number[]) => {
+    console.log("Updating objectPositionX to:", value[0]);
     if (updateElementStyle) {
       updateElementStyle("objectPositionX", value[0]);
     }
@@ -238,10 +238,10 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
     }
   };
 
-  // Garantir que os controles de posição apareçam para qualquer imagem com objectFit="cover"
+  // Check if we should show position controls for any image with objectFit="cover"
   const showPositionControls = selectedElement.style.objectFit === "cover";
 
-  // Se não tivermos valores de posição definidos, inicialize-os
+  // Initialize position values if they're undefined
   useEffect(() => {
     if (selectedElement.style.objectFit === "cover" && updateElementStyle) {
       if (selectedElement.style.objectPositionX === undefined) {

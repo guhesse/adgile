@@ -80,17 +80,15 @@ export const CanvasElement = ({
   }
 
   // Calculate the object position style for images
-  const objectPositionStyle = useMemo(() => {
+  const getObjectPositionStyle = () => {
     if (isImage && element.style.objectFit === "cover") {
       // Use objectPositionX and objectPositionY if available
-      if (element.style.objectPositionX !== undefined && element.style.objectPositionY !== undefined) {
-        return `${element.style.objectPositionX}% ${element.style.objectPositionY}%`;
-      }
-      // Fallback to default center position
-      return "50% 50%";
+      const posX = element.style.objectPositionX !== undefined ? element.style.objectPositionX : 50;
+      const posY = element.style.objectPositionY !== undefined ? element.style.objectPositionY : 50;
+      return `${posX}% ${posY}%`;
     }
     return undefined;
-  }, [isImage, element.style.objectFit, element.style.objectPositionX, element.style.objectPositionY]);
+  };
 
   // Apply the final position style
   let positionStyle: React.CSSProperties = {
@@ -150,8 +148,9 @@ export const CanvasElement = ({
   // For image elements, add the object-fit and object-position styles
   if (isImage) {
     elementStyle.objectFit = element.style.objectFit;
-    if (objectPositionStyle) {
-      elementStyle.objectPosition = objectPositionStyle;
+    const objectPositionValue = getObjectPositionStyle();
+    if (objectPositionValue) {
+      elementStyle.objectPosition = objectPositionValue;
     }
   }
 
