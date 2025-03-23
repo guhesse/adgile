@@ -1,679 +1,150 @@
-import { EditorElement, BANNER_SIZES } from "./types";
-import {
-  ChevronDown,
-  ChevronRight,
-  ArrowUpIcon,
-  ArrowDownIcon
-} from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { EditorElement } from "./types";
+import { useState } from "react";
 import { useCanvas } from "./CanvasContext";
 
-interface LayersPanelProps {
-  elements: EditorElement[];
-  selectedElement: EditorElement | null;
-  setSelectedElement: (element: EditorElement) => void;
-  removeElement: (elementId: string) => void;
-}
+// Importando os componentes modulares
+import { LayerItem } from "./layers/components/LayerItem";
+import { ContainerLayer } from "./layers/components/ContainerLayer";
+import { ArtboardHeader } from "./layers/components/ArtboardHeader";
 
-export const LayersPanel = ({ elements, selectedElement, setSelectedElement, removeElement }: LayersPanelProps) => {
-  const [collapsedContainers, setCollapsedContainers] = useState<Record<string, boolean>>({});
-  const [draggedElement, setDraggedElement] = useState<EditorElement | null>(null);
-  const [dragTargetId, setDragTargetId] = useState<string | null>(null);
-  const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
-  const [layerName, setLayerName] = useState<string>("");
-  const editInputRef = useRef<HTMLInputElement>(null);
+// Importando os hooks customizados
+import { useLayerName } from "./layers/hooks/useLayerName";
+import { useDragAndDrop } from "./layers/hooks/useDragAndDrop";
+import { useLayerManagement } from "./layers/hooks/useLayerManagement";
+
+// Importando tipos
+import { LayersPanelProps } from "./layers/types";
+
+export const LayersPanel = ({
+  elements,
+  selectedElement,
+  setSelectedElement,
+  removeElement
+}: LayersPanelProps) => {
   const { setElements } = useCanvas();
 
-  // Usar BANNER_SIZES para obter nome do artboard a partir do tamanho
-  const getArtboardName = (size: string) => {
-    if (!size) return 'Sem tamanho';
-    
-    // Extrair largura e altura do formato "widthxheight"
-    const dimensions = size.split('x');
-    if (dimensions.length !== 2) return size;
-    
-    const width = parseInt(dimensions[0]);
-    const height = parseInt(dimensions[1]);
-    
-    // Encontrar o tamanho correspondente em BANNER_SIZES
-    const bannerSize = BANNER_SIZES.find(
-      bs => bs.width === width && bs.height === height
-    );
-    
-    return bannerSize ? bannerSize.name : size;
-  };
-  
-  // Extrair artboards dos elementos
-  const artboards = Array.from(new Set(elements
-    .filter(el => el.artboardSize)
-    .map(el => el.artboardSize || '300x250')));
-  
-  if (artboards.length === 0) {
-    // Se não houver artboards definidos, assumir um padrão
-    artboards.push('300x250');
-  }
+  // Utilizando os hooks customizados
+  const {
+    collapsedContainers,
+    setCollapsedContainers,
+    toggleCollapse,
+    getArtboardName,
+    moveElementUp,
+    moveElementDown,
+    getArtboards,
+    getElementsByArtboard,
+    getContainersByArtboard,
+    getStandaloneElementsByArtboard
+  } = useLayerManagement(elements, setElements);
 
-  // Toggle container collapse state
-  const toggleCollapse = (containerId: string) => {
-    setCollapsedContainers(prev => ({
-      ...prev,
-      [containerId]: !prev[containerId]
-    }));
-  };
+  const {
+    editingLayerId,
+    setEditingLayerId,
+    layerName,
+    setLayerName,
+    editInputRef,
+    startEditing,
+    saveLayerName,
+    getLayerDisplayName,
+    truncateName
+  } = useLayerName(elements, setElements);
 
-  // Agrupar elementos por artboard
-  const elementsByArtboard: Record<string, EditorElement[]> = {};
-  
-  artboards.forEach(size => {
-    elementsByArtboard[size] = elements.filter(el => 
-      (el.artboardSize === size || (!el.artboardSize && size === artboards[0]))
-    );
-    
-    // Inverter a ordem para que o z-index corresponda à visualização
-    // Os elementos mais acima na lista são renderizados por último (aparecem no topo)
-    elementsByArtboard[size] = [...elementsByArtboard[size]].reverse();
-  });
+  const {
+    draggedElement,
+    setDraggedElement,
+    dragTargetId,
+    setDragTargetId,
+    handleDragStart,
+    handleDragOver,
+    handleDrop,
+    moveElementToContainer
+  } = useDragAndDrop(
+    elements,
+    setElements,
+    selectedElement,
+    setSelectedElement,
+    collapsedContainers,
+    setCollapsedContainers
+  );
 
-  // Find all container/layout elements por artboard
-  const containersByArtboard: Record<string, EditorElement[]> = {};
-  
-  artboards.forEach(size => {
-    containersByArtboard[size] = elementsByArtboard[size].filter(el => 
-      el.type === "layout" || el.type === "container"
-    );
-  });
-
-  // Find elements not inside any container, excluding artboard backgrounds
-  const standaloneElementsByArtboard: Record<string, EditorElement[]> = {};
-  
-  artboards.forEach(size => {
-    const containersInArtboard = containersByArtboard[size];
-    standaloneElementsByArtboard[size] = elementsByArtboard[size].filter(el =>
-      el.type !== "layout" &&
-      el.type !== "container" &&
-      el.type !== "artboard-background" &&
-      !containersInArtboard.some(container =>
-        container.childElements?.some(child => child.id === el.id)
-      )
-    );
-  });
-
-  // Get icon based on element type
-  const renderElementIcon = (type: string) => {
-    switch (type) {
-      case 'text':
-      case 'paragraph':
-        return (
-          <svg width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M11.8333 4.06665H2.5M14.5 8.06665H2.5M10.5667 11.9999H2.5" stroke="#414651" strokeLinecap="round" strokeLinejoin="round"></path>
-          </svg>
-        );
-      case 'image':
-      case 'logo':
-        return (
-          <svg width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M14.5 9.99996L12.4427 7.94263C12.1926 7.69267 11.8536 7.55225 11.5 7.55225C11.1464 7.55225 10.8074 7.69267 10.5573 7.94263L4.5 14M3.83333 2H13.1667C13.903 2 14.5 2.59695 14.5 3.33333V12.6667C14.5 13.403 13.903 14 13.1667 14H3.83333C3.09695 14 2.5 13.403 2.5 12.6667V3.33333C2.5 2.59695 3.09695 2 3.83333 2ZM7.83333 6C7.83333 6.73638 7.23638 7.33333 6.5 7.33333C5.76362 7.33333 5.16667 6.73638 5.16667 6C5.16667 5.26362 5.76362 4.66667 6.5 4.66667C7.23638 4.66667 7.83333 5.26362 7.83333 6Z" stroke="#414651" strokeLinecap="round" strokeLinejoin="round"></path>
-          </svg>
-        );
-      case 'button':
-        return (
-          <svg width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M13.8333 4H3.16666C2.43028 4 1.83333 4.59695 1.83333 5.33333V10.6667C1.83333 11.403 2.43028 12 3.16666 12H13.8333C14.5697 12 15.1667 11.403 15.1667 10.6667V5.33333C15.1667 4.59695 14.5697 4 13.8333 4Z" stroke="#414651" strokeLinecap="round" strokeLinejoin="round"></path>
-          </svg>
-        );
-      case 'layout':
-      case 'container':
-        return (
-          <svg width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M9.83333 2.66667H14.5M9.83333 6H14.5M9.83333 10H14.5M9.83333 13.3333H14.5M3.16667 2H6.5C6.86819 2 7.16667 2.29848 7.16667 2.66667V6C7.16667 6.36819 6.86819 6.66667 6.5 6.66667H3.16667C2.79848 6.66667 2.5 6.36819 2.5 6V2.66667C2.5 2.29848 2.79848 2 3.16667 2ZM3.16667 9.33333H6.5C6.86819 9.33333 7.16667 9.63181 7.16667 10V13.3333C7.16667 13.7015 6.86819 14 6.5 14H3.16667C2.79848 14 2.5 13.7015 2.5 13.3333V10C2.5 9.63181 2.79848 9.33333 3.16667 9.33333Z" stroke="#414651" strokeLinecap="round" strokeLinejoin="round"></path>
-          </svg>
-        );
-      default:
-        return (
-          <svg width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M15.1667 3.99992H1.83333M15.1667 11.9999H1.83333M4.49999 1.33325V14.6666M12.5 1.33325V14.6666" stroke="#414651" strokeLinecap="round" strokeLinejoin="round"></path>
-          </svg>
-        );
-    }
-  };
-
-  // Handle drag start
-  const handleDragStart = (e: React.DragEvent, element: EditorElement) => {
-    e.stopPropagation();
-    setDraggedElement(element);
-    e.dataTransfer.setData('text/plain', element.id);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  // Handle drag over
-  const handleDragOver = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    setDragTargetId(targetId);
-
-    if (collapsedContainers[targetId]) {
-      setCollapsedContainers(prev => ({
-        ...prev,
-        [targetId]: false
-      }));
-    }
-  };
-
-  // Handle drop
-  const handleDrop = (e: React.DragEvent, targetContainerId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    setDragTargetId(null);
-
-    if (!draggedElement) return;
-
-    moveElementToContainer(draggedElement, targetContainerId);
-
-    setDraggedElement(null);
-  };
-
-  // Move element to a different container
-  const moveElementToContainer = (element: EditorElement, targetContainerId: string) => {
-    const updatedElements = [...elements];
-
-    // Se o elemento estiver em um container, remova-o dali
-    if (element.inContainer && element.parentId) {
-      const sourceContainerIndex = updatedElements.findIndex(el => el.id === element.parentId);
-      if (sourceContainerIndex !== -1 && updatedElements[sourceContainerIndex].childElements) {
-        updatedElements[sourceContainerIndex] = {
-          ...updatedElements[sourceContainerIndex],
-          childElements: updatedElements[sourceContainerIndex].childElements?.filter(child => child.id !== element.id) || []
-        };
-      }
-    } else {
-      // Remover elemento autônomo
-      const elementIndex = updatedElements.findIndex(el => el.id === element.id);
-      if (elementIndex !== -1) {
-        updatedElements.splice(elementIndex, 1);
-      }
-    }
-
-    // Handle drop to standalone area
-    if (targetContainerId === 'standalone') {
-      const updatedElement = {
-        ...element,
-        inContainer: false,
-        parentId: undefined,
-        style: {
-          ...element.style,
-          x: 100,
-          y: 100
-        }
-      };
-
-      updatedElements.push(updatedElement);
-      setElements(updatedElements);
-
-      if (selectedElement?.id === element.id) {
-        setSelectedElement(updatedElement);
-      }
-      return;
-    }
-
-    // Adicionar elemento ao container de destino
-    const targetContainerIndex = updatedElements.findIndex(el => el.id === targetContainerId);
-    if (targetContainerIndex === -1) return;
-
-    const targetChildren = updatedElements[targetContainerIndex].childElements || [];
-
-    const updatedElement = {
-      ...element,
-      inContainer: true,
-      parentId: targetContainerId,
-      style: {
-        ...element.style,
-        x: 0,
-        y: 0
-      }
-    };
-
-    updatedElements[targetContainerIndex] = {
-      ...updatedElements[targetContainerIndex],
-      childElements: [...targetChildren, updatedElement]
-    };
-
-    setElements(updatedElements);
-
-    if (selectedElement?.id === element.id) {
-      setSelectedElement(updatedElement);
-    }
-  };
-
-  // Move element up in the layers panel (decrease z-index visualmente, mas aumenta na renderização)
-  const moveElementUp = (elementId: string, parentId?: string) => {
-    const updatedElements = [...elements];
-    
-    if (parentId) {
-      // Move inside container
-      const containerIndex = updatedElements.findIndex(el => el.id === parentId);
-      if (containerIndex !== -1 && updatedElements[containerIndex].childElements) {
-        const childElements = updatedElements[containerIndex].childElements!;
-        const childIndex = childElements.findIndex(c => c.id === elementId);
-        
-        if (childIndex < childElements.length - 1) {
-          const newChildElements = [...childElements];
-          [newChildElements[childIndex], newChildElements[childIndex + 1]] =
-            [newChildElements[childIndex + 1], newChildElements[childIndex]];
-            
-          updatedElements[containerIndex] = {
-            ...updatedElements[containerIndex],
-            childElements: newChildElements
-          };
-            
-          setElements(updatedElements);
-        }
-      }
-    } else {
-      // Move standalone element
-      const elementIndex = updatedElements.findIndex(el => el.id === elementId);
-      
-      if (elementIndex < updatedElements.length - 1 && elementIndex !== -1) {
-        [updatedElements[elementIndex], updatedElements[elementIndex + 1]] =
-          [updatedElements[elementIndex + 1], updatedElements[elementIndex]];
-          
-        setElements(updatedElements);
-      }
-    }
-  };
-
-  // Move element down in the layers panel (increase z-index visualmente, mas diminui na renderização)
-  const moveElementDown = (elementId: string, parentId?: string) => {
-    const updatedElements = [...elements];
-    
-    if (parentId) {
-      // Move inside container
-      const containerIndex = updatedElements.findIndex(el => el.id === parentId);
-      if (containerIndex !== -1 && updatedElements[containerIndex].childElements) {
-        const childElements = updatedElements[containerIndex].childElements!;
-        const childIndex = childElements.findIndex(c => c.id === elementId);
-        
-        if (childIndex > 0) {
-          const newChildElements = [...childElements];
-          [newChildElements[childIndex], newChildElements[childIndex - 1]] =
-            [newChildElements[childIndex - 1], newChildElements[childIndex]];
-            
-          updatedElements[containerIndex] = {
-            ...updatedElements[containerIndex],
-            childElements: newChildElements
-          };
-            
-          setElements(updatedElements);
-        }
-      }
-    } else {
-      // Move standalone element
-      const elementIndex = updatedElements.findIndex(el => el.id === elementId);
-      
-      if (elementIndex > 0) {
-        [updatedElements[elementIndex], updatedElements[elementIndex - 1]] =
-          [updatedElements[elementIndex - 1], updatedElements[elementIndex]];
-          
-        setElements(updatedElements);
-      }
-    }
-  };
-
-  // Truncate layer name for display
-  const truncateName = (name: string, maxLength: number = 20) => {
-    if (!name) return '';
-    return name.length > maxLength ? `${name.substring(0, maxLength)}...` : name;
-  };
-
-  // Obter nome padrão com base no tipo de elemento
-  const getDefaultNameByType = (type: string, element: EditorElement) => {
-    switch (type) {
-      case 'text':
-      case 'paragraph':
-        return 'Texto';
-      case 'image':
-        return 'Imagem';
-      case 'logo':
-        return 'Logo';
-      case 'button':
-        return 'Botão';
-      case 'container':
-      case 'layout':
-        return `Container ${element.columns || 1}×`;
-      default:
-        return type.charAt(0).toUpperCase() + type.slice(1);
-    }
-  };
-
-  // Iniciar edição de nome da camada
-  const startEditing = (element: EditorElement) => {
-    setEditingLayerId(element.id);
-    
-    // Usar o nome personalizado da camada se existir, ou o nome padrão
-    const displayName = element._layerName || getDefaultNameByType(element.type, element);
-    setLayerName(displayName);
-    
-    // Focar no input após renderização
-    setTimeout(() => {
-      if (editInputRef.current) {
-        editInputRef.current.focus();
-        editInputRef.current.select();
-      }
-    }, 10);
-  };
-
-  // Obter o nome para exibição no painel de camadas
-  const getLayerDisplayName = (element: EditorElement) => {
-    return element._layerName || getDefaultNameByType(element.type, element);
-  };
-
-  // Salvar nome da camada
-  const saveLayerName = () => {
-    if (!editingLayerId) return;
-    
-    const updatedElements = elements.map(el => {
-      if (el.id === editingLayerId) {
-        // Adicionar somente o campo _layerName sem modificar outros atributos
-        return { ...el, _layerName: layerName };
-      }
-      
-      // Verificar também elementos dentro de containers
-      if (el.childElements) {
-        const updatedChildren = el.childElements.map(child => {
-          if (child.id === editingLayerId) {
-            // Adicionar somente o campo _layerName sem modificar outros atributos
-            return { ...child, _layerName: layerName };
-          }
-          return child;
-        });
-        
-        return { ...el, childElements: updatedChildren };
-      }
-      
-      return el;
-    });
-    
-    setElements(updatedElements);
-    setEditingLayerId(null);
-  };
-
-  // Manipular keydown para F2 ou Enter/Escape durante edição
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Se estiver editando, não propague eventos de teclado para o canvas
-      if (editingLayerId) {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          saveLayerName();
-        } else if (e.key === 'Escape') {
-          e.preventDefault();
-          setEditingLayerId(null);
-        } else if (e.key === ' ' || e.key === 'Backspace') {
-          // Impedir que o espaço ou backspace sejam capturados pelo canvas
-          e.stopPropagation();
-        }
-        return;
-      }
-      
-      // Se não estiver editando, verificar por F2
-      if (e.key === 'F2' && selectedElement) {
-        e.preventDefault();
-        startEditing(selectedElement);
-      }
-    };
-    
-    // Adicionar handler de evento de teclado
-    window.addEventListener('keydown', handleKeyDown, true); // Use capture phase para pegar antes do canvas
-    
-    return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [selectedElement, editingLayerId, layerName]);
-
-  // Adicionar handler para clicar fora do input de edição
-  useEffect(() => {
-    if (!editingLayerId) return;
-    
-    const handleClickOutside = (e: MouseEvent) => {
-      if (editInputRef.current && !editInputRef.current.contains(e.target as Node)) {
-        saveLayerName();
-      }
-    };
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [editingLayerId, layerName]);
-
-  // Renderizar um artboard/tamanho
-  const renderArtboardHeader = (size: string) => {
-    const isCollapsed = collapsedContainers[`artboard-${size}`];
-    const displayName = getArtboardName(size);
-    
-    return (
-      <div className="flex flex-col items-start w-full">
-        <div className="flex flex-col items-start gap-2 w-full">
-          <div 
-            className="flex min-w-[128px] p-[4px_8px] items-center gap-2 w-full rounded-md cursor-pointer hover:bg-gray-50"
-            onClick={() => toggleCollapse(`artboard-${size}`)}
-          >
-            <svg width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M15.1667 3.99992H1.83333M15.1667 11.9999H1.83333M4.49999 1.33325V14.6666M12.5 1.33325V14.6666" stroke="#414651" strokeLinecap="round" strokeLinejoin="round"></path>
-            </svg>
-            <div className="flex-1 overflow-hidden text-[#414651] font-sans text-xs font-normal leading-5">
-              {displayName}
-            </div>
-            <svg 
-              width="17" height="16" 
-              viewBox="0 0 17 16" 
-              fill="none" 
-              xmlns="http://www.w3.org/2000/svg" 
-              className={`transform ${isCollapsed ? '' : 'rotate-90'}`}
-            >
-              <path d="M4.5 6L8.5 10L12.5 6" stroke="#414651" strokeLinecap="round" strokeLinejoin="round"></path>
-            </svg>
-          </div>
-        </div>
-      </div>
-    );
-  };
+  // Obter dados organizados
+  const artboards = getArtboards();
+  const elementsByArtboard = getElementsByArtboard();
+  const containersByArtboard = getContainersByArtboard();
+  const standaloneElementsByArtboard = getStandaloneElementsByArtboard();
 
   // Renderizar um elemento
   const renderElement = (element: EditorElement, isChild: boolean = false, parentId?: string) => {
-    const isSelected = selectedElement?.id === element.id;
-    const isEditing = editingLayerId === element.id;
-    
     return (
-      <div
+      <LayerItem
         key={element.id}
-        className={`flex h-8 min-w-[128px] p-[4px_8px] items-center gap-2 rounded-md w-full 
-                   ${isSelected ? 'bg-purple-100' : 'hover:bg-gray-50'} 
-                   ${isChild ? 'ml-5' : ''}`}
-        onClick={() => setSelectedElement(element)}
-        onDoubleClick={() => startEditing(element)}
-        draggable
-        onDragStart={(e) => handleDragStart(e, element)}
-      >
-        {renderElementIcon(element.type)}
-        
-        {isEditing ? (
-          <input
-            ref={editInputRef}
-            className="flex-1 bg-white border border-gray-300 rounded px-1 text-xs focus:outline-none focus:border-blue-500"
-            value={layerName}
-            onChange={(e) => setLayerName(e.target.value)}
-            onBlur={saveLayerName}
-            onKeyDown={(e) => {
-              // Parar propagação de qualquer evento de teclado durante a edição
-              e.stopPropagation();
-              if (e.key === 'Enter') {
-                saveLayerName();
-              } else if (e.key === 'Escape') {
-                setEditingLayerId(null);
-              }
-            }}
-          />
-        ) : (
-          <div className="flex-1 overflow-hidden text-[#414651] font-sans text-xs font-normal leading-5">
-            {truncateName(getLayerDisplayName(element))}
-          </div>
-        )}
-        
-        {!isEditing && (
-          <div className="flex items-center gap-1">
-            <button
-              className="p-1 text-gray-400 hover:text-gray-600"
-              onClick={(e) => {
-                e.stopPropagation();
-                moveElementDown(element.id, parentId);
-              }}
-              title="Mover para cima"
-            >
-              <ArrowUpIcon className="h-3 w-3" />
-            </button>
-            <button
-              className="p-1 text-gray-400 hover:text-gray-600"
-              onClick={(e) => {
-                e.stopPropagation();
-                moveElementUp(element.id, parentId);
-              }}
-              title="Mover para baixo"
-            >
-              <ArrowDownIcon className="h-3 w-3" />
-            </button>
-            <button
-              className="ml-1 text-gray-400 hover:text-gray-600 p-1"
-              onClick={(e) => {
-                e.stopPropagation();
-                removeElement(element.id);
-              }}
-              title="Remover"
-            >
-              ×
-            </button>
-          </div>
-        )}
-      </div>
+        element={element}
+        isSelected={selectedElement?.id === element.id}
+        isChild={isChild}
+        parentId={parentId}
+        onSelect={setSelectedElement}
+        onRemove={removeElement}
+        onMoveUp={moveElementUp}
+        onMoveDown={moveElementDown}
+        onStartEditing={startEditing}
+        isEditing={editingLayerId === element.id}
+        layerName={layerName}
+        onLayerNameChange={setLayerName}
+        onSaveLayerName={saveLayerName}
+        onCancelEditing={() => setEditingLayerId(null)}
+        editInputRef={editInputRef}
+        handleDragStart={handleDragStart}
+        getLayerDisplayName={getLayerDisplayName}
+        truncateName={truncateName}
+      />
     );
   };
 
   // Renderizar um container com seus elementos filho
   const renderContainer = (container: EditorElement) => {
-    const isCollapsed = collapsedContainers[container.id];
-    const isSelected = selectedElement?.id === container.id;
-    const isDropTarget = dragTargetId === container.id;
-    const childElements = container.childElements || [];
-    const isEditing = editingLayerId === container.id;
-    
     return (
-      <div
+      <ContainerLayer
         key={container.id}
-        className={`flex flex-col w-full ${isDropTarget ? 'bg-blue-50' : ''}`}
-        onDragOver={(e) => handleDragOver(e, container.id)}
-        onDrop={(e) => handleDrop(e, container.id)}
+        element={container}
+        isSelected={selectedElement?.id === container.id}
+        childElements={container.childElements || []}
+        isCollapsed={!!collapsedContainers[container.id]}
+        onToggleCollapse={toggleCollapse}
+        onSelect={setSelectedElement}
+        onRemove={removeElement}
+        onMoveUp={moveElementUp}
+        onMoveDown={moveElementDown}
+        onStartEditing={startEditing}
+        isEditing={editingLayerId === container.id}
+        layerName={layerName}
+        onLayerNameChange={setLayerName}
+        onSaveLayerName={saveLayerName}
+        onCancelEditing={() => setEditingLayerId(null)}
+        editInputRef={editInputRef}
+        handleDragStart={handleDragStart}
+        getLayerDisplayName={getLayerDisplayName}
+        truncateName={truncateName}
+        renderLayerItem={renderElement}
+        isDropTarget={dragTargetId === container.id}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
         onDragLeave={() => setDragTargetId(null)}
-      >
-        <div
-          className={`flex min-w-[128px] p-[4px_8px] items-center gap-2 w-full rounded-md 
-                     ${isSelected ? 'bg-purple-100' : 'hover:bg-gray-50'}`}
-          onClick={() => setSelectedElement(container)}
-          onDoubleClick={() => startEditing(container)}
-          draggable
-          onDragStart={(e) => handleDragStart(e, container)}
-        >
-          {renderElementIcon(container.type)}
-          
-          {isEditing ? (
-            <input
-              ref={editInputRef}
-              className="flex-1 bg-white border border-gray-300 rounded px-1 text-xs focus:outline-none focus:border-blue-500"
-              value={layerName}
-              onChange={(e) => setLayerName(e.target.value)}
-              onBlur={saveLayerName}
-              onKeyDown={(e) => {
-                // Parar propagação de qualquer evento de teclado durante a edição
-                e.stopPropagation();
-                if (e.key === 'Enter') {
-                  saveLayerName();
-                } else if (e.key === 'Escape') {
-                  setEditingLayerId(null);
-                }
-              }}
-            />
-          ) : (
-            <div className="flex-1 overflow-hidden text-[#414651] font-sans text-xs font-normal leading-5">
-              {truncateName(getLayerDisplayName(container))}
-            </div>
-          )}
-          
-          {!isEditing && (
-            <>
-              <div className="flex items-center gap-1">
-                <button
-                  className="p-1 text-gray-400 hover:text-gray-600"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    moveElementDown(container.id);
-                  }}
-                  title="Mover para cima"
-                >
-                  <ArrowUpIcon className="h-3 w-3" />
-                </button>
-                <button
-                  className="p-1 text-gray-400 hover:text-gray-600"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    moveElementUp(container.id);
-                  }}
-                  title="Mover para baixo"
-                >
-                  <ArrowDownIcon className="h-3 w-3" />
-                </button>
-                <button
-                  className="ml-1 text-gray-400 hover:text-gray-600 p-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeElement(container.id);
-                  }}
-                  title="Remover"
-                >
-                  ×
-                </button>
-                <div
-                  className="cursor-pointer ml-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleCollapse(container.id);
-                  }}
-                >
-                  <svg 
-                    width="17" height="16" 
-                    viewBox="0 0 17 16" 
-                    fill="none" 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    className={`transform ${isCollapsed ? '' : 'rotate-90'}`}
-                  >
-                    <path d="M4.5 6L8.5 10L12.5 6" stroke="#414651" strokeLinecap="round" strokeLinejoin="round"></path>
-                  </svg>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-        
-        {!isCollapsed && (
-          <div className="flex flex-col w-full">
-            {childElements.map((child) => renderElement(child, true, container.id))}
-            
-            {childElements.length === 0 && (
-              <div className="text-xs text-gray-400 py-1 px-2 ml-5">
-                Arraste elementos para aqui
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      />
+    );
+  };
+
+  // Renderizar um artboard/tamanho
+  const renderArtboardHeader = (size: string) => {
+    const isCollapsed = !!collapsedContainers[`artboard-${size}`];
+    const displayName = getArtboardName(size);
+
+    return (
+      <ArtboardHeader
+        size={size}
+        displayName={displayName}
+        isCollapsed={isCollapsed}
+        onToggleCollapse={() => toggleCollapse(`artboard-${size}`)}
+      />
     );
   };
 
@@ -692,32 +163,32 @@ export const LayersPanel = ({ elements, selectedElement, setSelectedElement, rem
               </svg>
             </div>
             <div className="flex flex-col items-start gap-[2px] flex-1">
-              <div className="overflow-hidden text-[#414651] font-sans text-sm font-bold leading-[14px] w-full">
+              <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[#414651] font-sans text-sm font-bold leading-[14px] w-full">
                 Nome do cliente
               </div>
-              <div className="overflow-hidden text-[#414651] font-sans text-xs font-normal leading-4 w-full">
+              <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[#414651] font-sans text-xs font-normal leading-4 w-full">
                 Nome da campanha
               </div>
             </div>
           </div>
         </div>
-        
+
         {/* Divider */}
         <div className="flex flex-col justify-center items-center w-full">
           <div className="w-full h-[1px] bg-[#E9EAEB]"></div>
         </div>
-        
+
         {/* Content section - one section per artboard */}
         <div className="flex flex-col w-[240px] p-[8px_0px] gap-4 overflow-y-auto flex-1">
           {artboards.map((size) => (
             <div key={size} className="flex flex-col w-full gap-2">
               {renderArtboardHeader(size)}
-              
+
               {!collapsedContainers[`artboard-${size}`] && (
                 <div className="flex flex-col px-[10px] gap-2 w-full">
                   {/* Container elements */}
                   {containersByArtboard[size].map(renderContainer)}
-                  
+
                   {/* Standalone elements section */}
                   {standaloneElementsByArtboard[size].length > 0 && (
                     <div
