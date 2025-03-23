@@ -35,7 +35,6 @@ export interface CanvasContextType {
   removeElement: (elementId: string) => void;
   updateElementStyle: (property: string, value: any) => void;
   updateElementContent: (content: string) => void;
-  updateElementAttribute: (attribute: string, value: any) => void;
   handleAddElement: (type: EditorElement["type"]) => void;
   handleAddLayout: (template: any) => void;
   handlePreviewAnimation: () => void;

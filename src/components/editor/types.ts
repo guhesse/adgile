@@ -40,13 +40,13 @@ export type EditorElement = {
     borderBottomLeftRadius?: number;
     borderBottomRightRadius?: number;
     objectFit?: "contain" | "cover" | "fill" | "none" | "scale-down";
-    objectPosition?: string;
-    objectPositionX?: number; // Propriedade para controle preciso da posição X
-    objectPositionY?: number; // Propriedade para controle preciso da posição Y
-    objectScale?: number; // Propriedade para controle de escala
+    objectPosition?: "left" | "center" | "right" | "top" | "bottom" | string;
+    objectPositionX?: number; // Nova propriedade para controle preciso da posição X
+    objectPositionY?: number; // Nova propriedade para controle preciso da posição Y
+    objectScale?: number; // Nova propriedade para controle de escala
     overlayColor?: string; // Propriedade para sobreposição de cor
     overlayOpacity?: number; // Propriedade para opacidade da sobreposição
-    // Propriedades para filtros CSS
+    // Novas propriedades para filtros CSS
     hueRotate?: number; // Valor em graus para hue-rotate (0-360)
     grayscale?: number; // Valor de 0 a 1 (0% a 100%)
     brightness?: number; // Valor de 0 a 2 (0% a 200%)

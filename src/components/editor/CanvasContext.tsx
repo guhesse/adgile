@@ -127,36 +127,6 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
     }
   };
 
-  const updateElementAttribute = (attribute: string, value: any) => {
-    if (!selectedElement) return;
-
-    setElements(prevElements => {
-      return prevElements.map(el => {
-        if (editingMode === 'global' && selectedElement.linkedElementId && 
-            el.linkedElementId === selectedElement.linkedElementId) {
-          return {
-            ...el,
-            [attribute]: value
-          };
-        }
-        else if (el.id === selectedElement.id) {
-          return {
-            ...el,
-            [attribute]: value
-          };
-        }
-        return el;
-      });
-    });
-
-    if (selectedElement) {
-      setSelectedElement({
-        ...selectedElement,
-        [attribute]: value
-      });
-    }
-  };
-
   const handleAddElement = (type: EditorElement["type"]) => {
     const newId = `${type}-${generateRandomId()}`;
     
@@ -400,7 +370,6 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
     removeElement,
     updateElementStyle,
     updateElementContent,
-    updateElementAttribute,
     handleAddElement,
     handleAddLayout,
     handlePreviewAnimation,
