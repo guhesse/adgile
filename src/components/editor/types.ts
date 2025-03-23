@@ -1,3 +1,4 @@
+
 export type BannerSize = {
   name: string;
   width: number;
@@ -63,6 +64,7 @@ export type EditorElement = {
   sizeId?: string; // The banner size this element belongs to
   linkedElementId?: string; // ID of the linked element in other sizes
   isIndividuallyPositioned?: boolean; // Whether this element has been individually positioned
+  artboardSize?: string; // The size of the artboard this element belongs to
 };
 
 // Novo tipo para compartilhar entre componentes

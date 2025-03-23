@@ -1,72 +1,74 @@
+
 /**
- * Mapeia fontes do Photoshop para fontes web equivalentes
+ * Maps PSD font names to web-safe alternatives
  */
-const fontMappings: Record<string, string> = {
-  'Roboto': 'Roboto, sans-serif',
-  'Arial': 'Arial, sans-serif',
-  'Helvetica': 'Helvetica, Arial, sans-serif',
-  'Times': 'Times New Roman, serif',
-  'Times-Roman': 'Times New Roman, serif',
-  'Courier': 'Courier New, monospace',
-  'Verdana': 'Verdana, sans-serif',
-  'Georgia': 'Georgia, serif',
-  'Palatino': 'Palatino Linotype, Book Antiqua, Palatino, serif',
-  'Garamond': 'Garamond, serif',
-  'Bookman': 'Bookman, URW Bookman L, serif',
-  'Trebuchet': 'Trebuchet MS, sans-serif',
-  'Arial-Black': 'Arial Black, Gadget, sans-serif',
-  'Impact': 'Impact, Charcoal, sans-serif',
-  'Tahoma': 'Tahoma, Geneva, sans-serif',
-  'Inter': 'Inter, sans-serif',
-  'Open-Sans': 'Open Sans, sans-serif',
-  'Montserrat': 'Montserrat, sans-serif',
-  'Lato': 'Lato, sans-serif',
+const FONT_MAPPING: Record<string, string> = {
+  'Arial': 'Arial',
+  'ArialMT': 'Arial',
+  'Helvetica': 'Helvetica, Arial',
+  'HelveticaNeue': 'Helvetica Neue, Helvetica, Arial',
+  'TimesNewRoman': 'Times New Roman',
+  'Times': 'Times New Roman',
+  'Courier': 'Courier New',
+  'CourierNew': 'Courier New',
+  'Georgia': 'Georgia',
+  'Verdana': 'Verdana',
+  'Tahoma': 'Tahoma',
+  'Impact': 'Impact',
+  'Roboto': 'Roboto',
+  'OpenSans': 'Open Sans',
+  'Poppins': 'Poppins',
+  'Montserrat': 'Montserrat',
+  'Lato': 'Lato',
+  'SourceSansPro': 'Source Sans Pro',
+  'Oswald': 'Oswald',
+  'Raleway': 'Raleway',
+  'Ubuntu': 'Ubuntu',
+  'PTSans': 'PT Sans',
+  'NotoSans': 'Noto Sans',
+  'Inter': 'Inter'
 };
 
 /**
- * Mapeia uma fonte do PSD para uma fonte web utilizável
- * @param psdFontName Nome da fonte no PSD
- * @returns Nome da fonte web equivalente ou a fonte original se não houver mapeamento
+ * Maps a font name from PSD to a web-safe alternative
+ * @param fontName The original font name from the PSD
+ * @returns Web-safe font name
  */
-export const mapPSDFontToWebFont = (psdFontName: string): string => {
-  if (!psdFontName) return 'Arial, sans-serif';
-
-  // Limpar o nome da fonte para obter apenas o nome base
-  const baseFontName = psdFontName.replace(/-Bold|-Light|-Regular|-Italic|-Medium|-Black/gi, '');
-
-  // Verificar se existe um mapeamento para esta fonte
-  return fontMappings[baseFontName] || `${psdFontName}, Arial, sans-serif`;
-};
-
-/**
- * Adicionar links de importação de fontes ao documento HTML
- * @param fontFamily Nome da família de fonte
- */
-export const addFontImportToDocument = (fontFamily: string): void => {
-  // Prevenção para não adicionar a mesma fonte várias vezes
-  const fontId = `font-import-${fontFamily.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
-
-  if (document.getElementById(fontId)) return;
-
-  const commonWebFonts = [
-    'Arial', 'Helvetica', 'Times New Roman', 'Times', 'Courier New',
-    'Courier', 'Verdana', 'Georgia', 'Palatino', 'Garamond', 'Bookman',
-    'Trebuchet MS', 'Arial Black', 'Impact', 'Tahoma'
-  ];
-
-  // Se for uma fonte padrão do sistema, não precisa importar
-  if (commonWebFonts.some(font => fontFamily.includes(font))) return;
-
-  // Para fontes do Google Fonts
-  const googleFonts = ['Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Inter', 'Poppins'];
-
-  if (googleFonts.some(font => fontFamily.includes(font))) {
-    const fontName = googleFonts.find(font => fontFamily.includes(font));
-    const link = document.createElement('link');
-    link.id = fontId;
-    link.rel = 'stylesheet';
-    link.href = `https://fonts.googleapis.com/css2?family=${fontName}:wght@300;400;500;700&display=swap`;
-    document.head.appendChild(link);
-    console.log(`Adicionada importação de fonte: ${fontName}`);
+export const mapFontName = (fontName: string): string => {
+  // Check if the font is in our mapping
+  const normalizedName = fontName.replace(/[-\s]/g, '');
+  
+  for (const [key, value] of Object.entries(FONT_MAPPING)) {
+    if (normalizedName.toLowerCase().includes(key.toLowerCase())) {
+      return value;
+    }
   }
+  
+  // If not found, remove any styles (like -Bold, -Italic) and return the base font
+  const baseFontName = fontName.split('-')[0];
+  
+  // Return as-is if we don't have a mapping
+  return baseFontName;
+};
+
+/**
+ * Gets a list of all fonts used in the editor elements
+ * @param elements Array of editor elements
+ * @returns Array of unique font names
+ */
+export const getUniqueFonts = (elements: any[]): string[] => {
+  const fontSet = new Set<string>();
+  
+  elements.forEach(element => {
+    if (element.type === 'text' && element.style.fontFamily) {
+      fontSet.add(element.style.fontFamily);
+    }
+    
+    // Check for text in child elements
+    if (element.childElements && element.childElements.length > 0) {
+      getUniqueFonts(element.childElements).forEach(font => fontSet.add(font));
+    }
+  });
+  
+  return Array.from(fontSet);
 };
