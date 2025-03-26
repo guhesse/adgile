@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { AdminLayoutList } from "@/components/editor/admin/AdminLayoutList";
 import { AdminLayoutStats } from "@/components/editor/admin/AdminLayoutStats";
 import { AdminFormatSelector } from "@/components/editor/admin/AdminFormatSelector";
+import { AdminPSDImport } from "@/components/editor/admin/AdminPSDImport";
 import { AIModelManager } from "@/components/editor/ai/AIModelManager";
 import { LayoutTemplate, AdminStats } from "@/components/editor/types/admin";
 import { BannerSize, EditorElement } from "@/components/editor/types";
@@ -38,6 +39,7 @@ const Admin: React.FC = () => {
   });
   const [formats, setFormats] = useState<BannerSize[]>([]);
   const [selectedFormat, setSelectedFormat] = useState<BannerSize | null>(null);
+  const [importMode, setImportMode] = useState<'format' | 'psd'>('format');
   const [savedTemplates, setSavedTemplates] = useState<LayoutTemplate[]>([]);
   const [isModelTrained, setIsModelTrained] = useState(false);
   const [modelMetadata, setModelMetadata] = useState({
@@ -134,6 +136,33 @@ const Admin: React.FC = () => {
   // Handle format selection
   const handleFormatSelect = (format: BannerSize) => {
     setSelectedFormat(format);
+    setImportMode('format');
+  };
+
+  // Handle PSD import
+  const handlePSDImport = (elements: EditorElement[], psdSize: BannerSize) => {
+    console.log("PSD imported with", elements.length, "elements");
+    
+    // Add the PSD size to available formats
+    const existingFormat = formats.find(f => 
+      f.name === psdSize.name || 
+      (f.width === psdSize.width && f.height === psdSize.height)
+    );
+    
+    if (!existingFormat) {
+      setFormats(prev => [...prev, psdSize]);
+    }
+    
+    // Set the PSD size as selected
+    setSelectedFormat(psdSize);
+    setImportMode('psd');
+    
+    // Update the canvas with imported elements
+    if (canvasContextRef.current) {
+      canvasContextRef.current.setElements(elements);
+    }
+    
+    toast.success(`PSD importado com ${elements.length} elementos.`);
   };
 
   // Handle tab change
@@ -309,12 +338,18 @@ const Admin: React.FC = () => {
           {activeTab === "layouts" && (
             <TabsContent value="layouts" className="h-full flex">
               <div className="w-72 border-r overflow-y-auto bg-white p-4">
-                <h3 className="text-sm font-medium mb-4">Select Format</h3>
-                <AdminFormatSelector
-                  formats={formats}
-                  onSelectFormat={handleFormatSelect}
-                  selectedFormat={selectedFormat}
-                />
+                <h3 className="text-sm font-medium mb-4">Fonte do Layout</h3>
+                
+                <AdminPSDImport onPSDImport={handlePSDImport} />
+                
+                <div className="mb-4 border-t pt-4">
+                  <h3 className="text-sm font-medium mb-4">Ou Selecione um Formato</h3>
+                  <AdminFormatSelector
+                    formats={formats}
+                    onSelectFormat={handleFormatSelect}
+                    selectedFormat={selectedFormat}
+                  />
+                </div>
               </div>
 
               <div className="flex-1 flex flex-col">
@@ -327,6 +362,7 @@ const Admin: React.FC = () => {
                           <Canvas
                             editorMode="banner"
                             fixedSize={selectedFormat}
+                            hideImportPSD={true}
                           />
                         );
                       }}
@@ -335,9 +371,9 @@ const Admin: React.FC = () => {
                 ) : (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center max-w-md">
-                      <h3 className="text-lg font-medium mb-2">No Format Selected</h3>
+                      <h3 className="text-lg font-medium mb-2">Nenhum Formato Selecionado</h3>
                       <p className="text-gray-500 mb-4">
-                        Select a format from the sidebar to start creating a template.
+                        Importe um PSD ou selecione um formato para começar a criar um template.
                       </p>
                     </div>
                   </div>

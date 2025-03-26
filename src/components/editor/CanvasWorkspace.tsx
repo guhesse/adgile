@@ -90,7 +90,7 @@ export const CanvasWorkspace = ({ canvasRef }: CanvasWorkspaceProps) => {
 
   // Effect to ensure all elements stay within the bounds of the artboard
   useEffect(() => {
-    if (elements.length > 0) {
+    if (elements.length > 0 && !elements.some(el => el.style.hasMask)) {
       const constrainedElements = constrainAllElements(elements, selectedSize.width, selectedSize.height);
       
       // Only update if elements changed to avoid re-renders
