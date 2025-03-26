@@ -1,5 +1,6 @@
+
 import { EditorElement, BannerSize } from '../../types';
-import { PSDFileData, TextLayerStyle } from './types';
+import { PSDFileData, TextLayerStyle, LayerData } from './types';
 import { addFontImportToDocument } from './fontMapper';
 import { saveImageToStorage } from './storage';
 
@@ -144,9 +145,8 @@ const createImageElement = async (
     return {
       id,
       type: 'image',
-      src: preExtractedImage,
-      alt: layer.name,
       content: preExtractedImage, // Importante: isso garante que a imagem seja usada corretamente
+      alt: layer.name,
       sizeId: 'global',
       style: {
         x,
@@ -167,7 +167,6 @@ const createImageElement = async (
     return null;
   }
 };
-
 
 /**
  * Processa uma camada do PSD e a converte em um elemento de editor
@@ -266,7 +265,7 @@ export const processLayer = async (
           fontSize: textStyle.fontSize || 16,
           fontWeight: textStyle.fontWeight || 'normal',
           fontStyle: textStyle.fontStyle || 'normal',
-          textAlign: textStyle.alignment || 'left',
+          textAlign: textStyle.alignment as "left" | "center" | "right" || 'left',
           color: textStyle.color || '#000000',
           opacity: 1,
           zIndex: 1,
@@ -313,7 +312,7 @@ export const processLayer = async (
           });
           
           // Add to PSD data
-          const layerInfo = {
+          const layerInfo: LayerData = {
             id: element.id,
             name: layer.name || 'Image Layer',
             type: 'image',
@@ -332,7 +331,7 @@ export const processLayer = async (
           logger.error('Erro ao salvar imagem no storage', storageError);
           
           // Still add the element but without storage reference
-          const layerInfo = {
+          const layerInfo: LayerData = {
             id: element.id,
             name: layer.name || 'Image Layer',
             type: 'image',
@@ -372,7 +371,7 @@ export const processLayer = async (
       
       if (element) {
         // Add to PSD data
-        const layerInfo = {
+        const layerInfo: Partial<LayerData> = {
           id: element.id,
           name: layer.name || 'Generic Layer',
           type: element.type as 'image' | 'text' | 'shape' | 'group',
@@ -384,10 +383,11 @@ export const processLayer = async (
         
         if (element.type === 'image' && element.content) {
           try {
-            const imageInfo = {
+            const imageInfo: LayerData = {
               ...layerInfo,
+              type: 'image',
               imageData: element.content as string
-            };
+            } as LayerData;
             
             // Só adiciona se não existir ainda
             if (!psdData.layers.some(l => l.name === layerInfo.name)) {
@@ -398,8 +398,9 @@ export const processLayer = async (
           } catch (storageError) {
             logger.error('Erro ao salvar imagem de camada genérica', storageError);
             
-            const imageInfo = {
-              ...layerInfo,
+            const imageInfo: LayerData = {
+              ...layerInfo as any,
+              type: 'image',
               imageData: element.content as string
             };
             
@@ -411,7 +412,7 @@ export const processLayer = async (
         } else {
           // Só adiciona se não existir ainda
           if (!psdData.layers.some(l => l.name === layerInfo.name)) {
-            psdData.layers.push(layerInfo);
+            psdData.layers.push(layerInfo as LayerData);
           }
         }
       }

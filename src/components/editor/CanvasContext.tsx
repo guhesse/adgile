@@ -379,7 +379,12 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
   }) => {
     if (!selectedElement) return;
     
-    const updatedElement = setConstraints(selectedElement, constraints);
+    const fullConstraints = {
+      horizontal: constraints.horizontal || "left",
+      vertical: constraints.vertical || "top"
+    };
+    
+    const updatedElement = setConstraints(selectedElement, fullConstraints);
     
     setElements(prevElements => 
       prevElements.map(el => el.id === selectedElement.id ? updatedElement : el)
@@ -456,4 +461,3 @@ export const useCanvas = () => {
   }
   return context;
 };
-

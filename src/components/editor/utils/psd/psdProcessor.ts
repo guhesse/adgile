@@ -1,4 +1,5 @@
-import { PSDFileData, TextLayerStyle } from './types';
+
+import { PSDFileData, TextLayerStyle, LayerData } from './types';
 import { extractTextLayerStyle } from './textExtractor';
 import { getAllLayers } from './psdUtils';
 
@@ -70,7 +71,7 @@ function processImageLayer(
             extractedImages.set(node.name, imageData);
             
             // Adicionar informações sobre a camada de imagem ao psdData
-            const layerData = {
+            const layerData: LayerData = {
                 id: generateLayerId(node.name),
                 name: node.name,
                 type: 'image',
@@ -79,7 +80,8 @@ function processImageLayer(
                 width: (node.right || 0) - (node.left || 0),
                 height: (node.bottom || 0) - (node.top || 0),
                 src: node.name,
-                mask: null
+                mask: null,
+                imageData: imageData
             };
             
             // Verificar se a camada possui máscara
@@ -113,7 +115,7 @@ function processImageLayer(
     }
 }
 
-function createTextLayerData(node: any, textStyle: TextLayerStyle) {
+function createTextLayerData(node: any, textStyle: TextLayerStyle): LayerData {
     return {
         id: generateLayerId(node.name),
         name: node.name,

@@ -1,3 +1,4 @@
+
 export type BannerSize = {
   name: string;
   width: number;
@@ -55,8 +56,8 @@ export type EditorElement = {
     gridColumn?: string;
     gridRow?: string;
     opacity?: number;
-    rotation?: number; // Adicionado rotation
-    zIndex?: number; // Adicionado zIndex
+    rotation?: number;
+    zIndex?: number;
     // Valores para manter a proporção original da imagem
     originalWidth?: number;
     originalHeight?: number;
@@ -65,7 +66,7 @@ export type EditorElement = {
     yPercent?: number;
     widthPercent?: number;
     heightPercent?: number;
-    // Constraint-based positioning (new)
+    // Constraint-based positioning
     constraintHorizontal?: "left" | "right" | "center" | "scale";
     constraintVertical?: "top" | "bottom" | "center" | "scale";
     minWidth?: number;  // Minimum width constraint
@@ -73,9 +74,9 @@ export type EditorElement = {
     maxWidth?: number;  // Maximum width constraint
     maxHeight?: number; // Maximum height constraint
     // For masks
-    hasMask?: boolean;  // Added for mask support
-    maskInfo?: any;     // Added for mask info
-    clipPath?: string;  // Support for clip path
+    hasMask?: boolean;
+    maskInfo?: any;
+    clipPath?: string;
   };
   columns?: number;
   childElements?: EditorElement[];
@@ -93,7 +94,7 @@ export type EditorElement = {
     effects?: any[];
     blendMode?: string;
     originalPath?: string;
-    name?: string;  // Added name property
+    name?: string;
   };
   // Responsiveness settings
   responsiveSettings?: {
@@ -102,6 +103,7 @@ export type EditorElement = {
     maximumCharactersPerLine?: number;
     treatmentOverflow?: "wrap" | "truncate" | "expand";
   };
+  src?: string; // Added for image elements
 };
 
 export type EditorMode = "email" | "banner" | "social" | "impressos";
