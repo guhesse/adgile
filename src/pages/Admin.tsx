@@ -13,6 +13,7 @@ import { LayoutTemplate, AdminStats } from "@/components/editor/types/admin";
 import { BannerSize, EditorElement } from "@/components/editor/types";
 import { AdminTrainingPanel } from "@/components/editor/panels/AdminTrainingPanel";
 import { saveToIndexedDB, getFromIndexedDB } from "@/utils/indexedDBUtils";
+import { getOptimizedFormats } from "@/utils/formatGenerator";
 import * as tf from '@tensorflow/tfjs';
 
 // Storage keys
@@ -25,18 +26,6 @@ const determineOrientation = (width: number, height: number): 'vertical' | 'hori
   const ratio = width / height;
   if (ratio >= 0.95 && ratio <= 1.05) return 'square';
   return width > height ? 'horizontal' : 'vertical';
-};
-
-// Generate optimized formats
-const getOptimizedFormats = (): BannerSize[] => {
-  return [
-    { name: "Instagram Story", width: 1080, height: 1920, thumbnail: "vertical-1.png" },
-    { name: "Pinterest Pin", width: 735, height: 1102, thumbnail: "vertical-2.png" },
-    { name: "Facebook Ad", width: 1200, height: 628, thumbnail: "horizontal-1.png" },
-    { name: "Twitter Post", width: 1200, height: 675, thumbnail: "horizontal-2.png" },
-    { name: "Instagram Post", width: 1080, height: 1080, thumbnail: "square-1.png" },
-    { name: "Facebook Profile", width: 360, height: 360, thumbnail: "square-2.png" },
-  ];
 };
 
 const Admin: React.FC = () => {
@@ -356,6 +345,7 @@ const Admin: React.FC = () => {
                 <div className="mb-4 border-t pt-4">
                   <h3 className="text-sm font-medium mb-4">Ou Selecione um Formato</h3>
                   <AdminFormatSelector
+                    formats={formats}
                     onSelectFormat={handleFormatSelect}
                     selectedFormat={selectedFormat}
                   />

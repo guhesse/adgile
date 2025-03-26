@@ -10,9 +10,10 @@ import { constrainAllElements } from "./utils/containerUtils";
 
 interface CanvasWorkspaceProps {
   canvasRef?: React.RefObject<HTMLDivElement>;
+  onElementsChange?: (elements: any[]) => void; // Added callback for elements change
 }
 
-export const CanvasWorkspace = ({ canvasRef }: CanvasWorkspaceProps) => {
+export const CanvasWorkspace = ({ canvasRef, onElementsChange }: CanvasWorkspaceProps) => {
   const {
     elements,
     selectedElement,
@@ -99,6 +100,13 @@ export const CanvasWorkspace = ({ canvasRef }: CanvasWorkspaceProps) => {
       }
     }
   }, [selectedSize, elements.length]);
+
+  // Effect to notify parent when elements change
+  useEffect(() => {
+    if (onElementsChange) {
+      onElementsChange(elements);
+    }
+  }, [elements, onElementsChange]);
 
   // Modify the handleCanvasMouseDown to clear the selection when clicking on the canvas
   const handleCanvasClick = (e: React.MouseEvent) => {
