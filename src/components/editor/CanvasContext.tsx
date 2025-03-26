@@ -12,9 +12,9 @@ import { CanvasContextType } from "./context/CanvasContextTypes";
 import { updateLinkedElementsIntelligently } from "./utils/grid/responsivePosition";
 import { toast } from "sonner";
 import { 
-  detectElementConstraints, 
-  applyResponsiveTransformation, 
-  setElementConstraints
+  detectElementConstraints as detectConstraints, 
+  applyResponsiveTransformation as applyTransformation, 
+  setElementConstraints as setConstraints
 } from "./context/responsive";
 
 interface CanvasProviderProps {
@@ -381,7 +381,12 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
   ) => {
     if (!selectedElement) return;
     
-    const updatedElement = setConstraints(selectedElement, constraints);
+    const fullConstraints = {
+      horizontal: constraints.horizontal || selectedElement.style.constraintHorizontal || "left",
+      vertical: constraints.vertical || selectedElement.style.constraintVertical || "top"
+    };
+    
+    const updatedElement = setConstraints(selectedElement, fullConstraints);
     
     setElements(prevElements => 
       prevElements.map(el => el.id === selectedElement.id ? updatedElement : el)

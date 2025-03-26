@@ -26,8 +26,21 @@ const CanvasContent = ({ editorMode }: CanvasProps) => {
     isPlaying,
     togglePlayPause,
     setCurrentTime,
-    updateAnimations
+    updateAnimations,
+    selectedSize,
+    activeSizes
   } = useCanvas();
+
+  // Add state to control orientation indicator
+  const [showOrientationHelp, setShowOrientationHelp] = useState(false);
+  
+  // Determine if the selected size has vertical orientation
+  const isVerticalLayout = selectedSize && selectedSize.height > selectedSize.width;
+
+  // Toggle orientation help
+  const toggleOrientationHelp = () => {
+    setShowOrientationHelp(!showOrientationHelp);
+  };
 
   return (
     <div className="flex flex-1">
@@ -37,9 +50,53 @@ const CanvasContent = ({ editorMode }: CanvasProps) => {
       {/* Canvas Area */}
       <div className="flex-1 bg-gray-100 overflow-hidden flex flex-col">
         <div className="flex justify-between items-center px-4 py-2 border-b">
-          <CanvasControls />
+          <div className="flex items-center space-x-4">
+            <CanvasControls />
+            
+            {/* Orientation indicator */}
+            <button 
+              className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                isVerticalLayout 
+                  ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' 
+                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+              }`}
+              onClick={toggleOrientationHelp}
+              title={isVerticalLayout ? "Formato Vertical" : "Formato Horizontal"}
+            >
+              {isVerticalLayout ? "Vertical" : "Horizontal"}
+            </button>
+            
+            {/* Multiple sizes indicator - shows how many active sizes exist */}
+            {activeSizes.length > 1 && (
+              <div className="text-xs text-gray-500">
+                {activeSizes.length} tamanhos ativos
+              </div>
+            )}
+          </div>
           <PSDImport />
         </div>
+        
+        {/* Orientation help tooltip */}
+        {showOrientationHelp && (
+          <div className="bg-gray-800 text-white p-3 text-xs max-w-md mx-auto mt-2 rounded-md shadow-lg">
+            <p className="font-semibold mb-1">
+              {isVerticalLayout 
+                ? "Formato Vertical" 
+                : "Formato Horizontal"}
+            </p>
+            <p className="mb-2">
+              {isVerticalLayout 
+                ? "Elementos no topo são posicionados à esquerda em layouts horizontais." 
+                : "Elementos à esquerda são posicionados no topo em layouts verticais."}
+            </p>
+            <p>
+              {isVerticalLayout 
+                ? "Elementos na parte inferior são posicionados à direita em layouts horizontais." 
+                : "Elementos à direita são posicionados na parte inferior em layouts verticais."}
+            </p>
+          </div>
+        )}
+        
         <CanvasWorkspace />
       </div>
 

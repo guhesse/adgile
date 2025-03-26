@@ -1,4 +1,3 @@
-
 import { EditorElement, BannerSize } from '../../types';
 
 // Type for constraint detection results
@@ -185,90 +184,139 @@ const applyOrientationChangeTransformation = (
   const targetWidth = targetSize.width;
   const targetHeight = targetSize.height;
   
-  // Calculate the element's position in the source banner as percentages
+  // Calculate element's position in source as percentages
   const xPercent = (style.x / sourceWidth) * 100;
   const yPercent = (style.y / sourceHeight) * 100;
   const widthPercent = (style.width / sourceWidth) * 100;
   const heightPercent = (style.height / sourceHeight) * 100;
   
-  // For vertical to horizontal transformation:
-  // - Top half elements go to left side
-  // - Bottom half elements go to right side
-  // For horizontal to vertical transformation:
-  // - Left half elements go to top
-  // - Right half elements go to bottom
-  
   if (sourceIsVertical) {
     // Vertical to horizontal transformation
     
-    // Determine if element is in top half or bottom half
+    // Determine quadrant in source (top-left, top-right, bottom-left, bottom-right)
     const isTopHalf = yPercent < 50;
+    const isLeftHalf = xPercent < 50;
     
+    // Positioning strategy based on quadrant
     if (isTopHalf) {
-      // Element is in top half, position to left side
-      style.x = (targetWidth * 0.25) - (style.width / 2);
-      // Maintain vertical position proportionally in the top half
-      style.y = (yPercent / 50) * targetHeight;
+      // Elements in top half go to left side
+      if (isLeftHalf) {
+        // Top-left quadrant to left-top area
+        style.x = targetWidth * 0.25 * (xPercent / 50);
+        style.y = targetHeight * 0.25 * (yPercent / 50);
+      } else {
+        // Top-right quadrant to left-bottom area
+        style.x = targetWidth * 0.25 * ((100 - xPercent) / 50);
+        style.y = targetHeight * 0.25 + (targetHeight * 0.25 * ((yPercent) / 50));
+      }
     } else {
-      // Element is in bottom half, position to right side
-      style.x = (targetWidth * 0.75) - (style.width / 2);
-      // Maintain vertical position proportionally in the bottom half
-      style.y = ((yPercent - 50) / 50) * targetHeight;
+      // Elements in bottom half go to right side
+      if (isLeftHalf) {
+        // Bottom-left quadrant to right-top area
+        style.x = targetWidth * 0.5 + (targetWidth * 0.25 * (xPercent / 50));
+        style.y = targetHeight * 0.25 * ((yPercent - 50) / 50);
+      } else {
+        // Bottom-right quadrant to right-bottom area
+        style.x = targetWidth * 0.5 + (targetWidth * 0.25 * ((100 - xPercent) / 50));
+        style.y = targetHeight * 0.25 + (targetHeight * 0.25 * ((yPercent - 50) / 50));
+      }
     }
     
-    // For text elements, adjust font size based on target dimensions
+    // Scale dimensions to maintain relative proportions
+    // Vertical elements generally need to be wider and shorter in horizontal layout
+    const aspectRatio = style.width / style.height;
+    let newWidth, newHeight;
+    
+    if (widthPercent > 70) {  // If element was very wide in vertical layout
+      newWidth = targetWidth * 0.4;  // Make it less dominant in horizontal
+    } else {
+      newWidth = targetWidth * (widthPercent / 200);  // Scale proportionally but reduce
+    }
+    
+    newHeight = newWidth / aspectRatio;
+    
+    // Ensure height is not too large
+    if (newHeight > targetHeight * 0.7) {
+      newHeight = targetHeight * 0.7;
+      newWidth = newHeight * aspectRatio;
+    }
+    
+    style.width = newWidth;
+    style.height = newHeight;
+    
+    // Special handling for text elements
     if (element.type === 'text' && style.fontSize) {
-      // Scale based on the smallest dimension ratio for legibility
-      const fontScale = Math.min(targetWidth / sourceWidth, targetHeight / sourceHeight);
-      style.fontSize = Math.max(style.fontSize * fontScale * 1.2, 12); // Increase by 20% for better readability
-    }
-    
-    // For images, adjust dimensions while maintaining aspect ratio
-    if (element.type === 'image' || element.type === 'logo') {
-      // Maintain aspect ratio but scale proportionally
-      const aspectRatio = style.width / style.height;
-      
-      // Scale down width for horizontal layout
-      style.width = Math.min(style.width, targetWidth * 0.4);
-      style.height = style.width / aspectRatio;
+      // Scale font size for better legibility in horizontal layout
+      // Text in vertical layouts is typically larger, so reduce it for horizontal
+      const baseSize = style.fontSize;
+      const widthRatio = targetWidth / sourceHeight;  // Note: intentional cross-axis comparison
+      style.fontSize = Math.max(baseSize * widthRatio * 0.7, 12);  // Reduce by 30% but ensure minimum 12px
     }
   } else {
     // Horizontal to vertical transformation
     
-    // Determine if element is in left half or right half
+    // Determine quadrant in source
+    const isTopHalf = yPercent < 50;
     const isLeftHalf = xPercent < 50;
     
+    // Positioning strategy based on quadrant
     if (isLeftHalf) {
-      // Element is in left half, position to top half
-      style.y = (targetHeight * 0.25) - (style.height / 2);
-      // Maintain horizontal position proportionally in the left half
-      style.x = (xPercent / 50) * targetWidth;
+      // Elements in left half go to top portion
+      if (isTopHalf) {
+        // Left-top quadrant to top-left area
+        style.x = targetWidth * 0.25 * (xPercent / 50);
+        style.y = targetHeight * 0.25 * (yPercent / 50);
+      } else {
+        // Left-bottom quadrant to top-right area
+        style.x = targetWidth * 0.25 + (targetWidth * 0.25 * (xPercent / 50));
+        style.y = targetHeight * 0.25 * ((100 - yPercent) / 50);
+      }
     } else {
-      // Element is in right half, position to bottom half
-      style.y = (targetHeight * 0.75) - (style.height / 2);
-      // Maintain horizontal position proportionally in the right half
-      style.x = ((xPercent - 50) / 50) * targetWidth;
+      // Elements in right half go to bottom portion
+      if (isTopHalf) {
+        // Right-top quadrant to bottom-left area
+        style.x = targetWidth * 0.25 * ((100 - xPercent) / 50);
+        style.y = targetHeight * 0.5 + (targetHeight * 0.25 * (yPercent / 50));
+      } else {
+        // Right-bottom quadrant to bottom-right area
+        style.x = targetWidth * 0.25 + (targetWidth * 0.25 * ((100 - xPercent) / 50));
+        style.y = targetHeight * 0.5 + (targetHeight * 0.25 * ((100 - yPercent) / 50));
+      }
     }
     
-    // For text elements, adjust font size
+    // Scale dimensions to maintain relative proportions
+    // Horizontal elements generally need to be narrower but taller in vertical layout
+    const aspectRatio = style.width / style.height;
+    let newWidth, newHeight;
+    
+    if (heightPercent > 70) {  // If element was very tall in horizontal layout
+      newHeight = targetHeight * 0.4;  // Make it less dominant in vertical
+    } else {
+      newHeight = targetHeight * (heightPercent / 200);  // Scale proportionally but reduce
+    }
+    
+    newWidth = newHeight * aspectRatio;
+    
+    // Ensure width is not too large
+    if (newWidth > targetWidth * 0.9) {
+      newWidth = targetWidth * 0.9;
+      newHeight = newWidth / aspectRatio;
+    }
+    
+    style.width = newWidth;
+    style.height = newHeight;
+    
+    // Special handling for text elements
     if (element.type === 'text' && style.fontSize) {
-      // Scale based on the smallest dimension ratio for legibility
-      const fontScale = Math.min(targetWidth / sourceWidth, targetHeight / sourceHeight);
-      style.fontSize = Math.max(style.fontSize * fontScale * 0.8, 10); // Reduce by 20% for vertical layout
-    }
-    
-    // For images, adjust dimensions while maintaining aspect ratio
-    if (element.type === 'image' || element.type === 'logo') {
-      // Maintain aspect ratio but scale proportionally
-      const aspectRatio = style.width / style.height;
-      
-      // Scale down width for vertical layout
-      style.width = Math.min(style.width, targetWidth * 0.8);
-      style.height = style.width / aspectRatio;
+      // Scale font size for better legibility in vertical layout
+      // Text in horizontal layouts is typically smaller, so increase it for vertical
+      const baseSize = style.fontSize;
+      const heightRatio = targetHeight / sourceWidth;  // Note: intentional cross-axis comparison
+      style.fontSize = Math.min(baseSize * heightRatio * 1.3, 24);  // Increase by 30% but cap at 24px
     }
   }
   
-  // Ensure elements are not positioned outside the canvas
+  // Ensure elements are within canvas boundaries
   style.x = Math.max(0, Math.min(style.x, targetWidth - style.width));
   style.y = Math.max(0, Math.min(style.y, targetHeight - style.height));
   
@@ -285,21 +333,16 @@ const applyOrientationChangeTransformation = (
 export const setElementConstraints = (
   element: EditorElement, 
   constraints: { 
-    horizontal?: "left" | "right" | "center" | "scale", 
-    vertical?: "top" | "bottom" | "center" | "scale" 
+    horizontal: "left" | "right" | "center" | "scale", 
+    vertical: "top" | "bottom" | "center" | "scale" 
   }
 ): EditorElement => {
   // Clone the element to avoid mutating the original
   const updatedElement = { ...element, style: { ...element.style } };
   
-  // Only update if constraints are provided
-  if (constraints.horizontal) {
-    updatedElement.style.constraintHorizontal = constraints.horizontal;
-  }
-  
-  if (constraints.vertical) {
-    updatedElement.style.constraintVertical = constraints.vertical;
-  }
+  // Set the constraints
+  updatedElement.style.constraintHorizontal = constraints.horizontal;
+  updatedElement.style.constraintVertical = constraints.vertical;
   
   return updatedElement;
 };
