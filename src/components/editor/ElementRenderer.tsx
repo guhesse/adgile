@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { EditorElement } from "./types";
 import { isValidImageUrl } from "./context/elements/imageOperations";
@@ -43,6 +44,9 @@ const renderImageElement = (element: EditorElement) => {
     filterStyle += `saturate(${style.saturate}) `;
   }
   
+  // Verificar se temos informações de tamanho original
+  const hasOriginalSize = element._originalSize !== undefined;
+  
   return (
     <div className="relative w-full h-full overflow-hidden">
       <img
@@ -70,11 +74,24 @@ const renderImageElement = (element: EditorElement) => {
           }}
         />
       )}
+      
+      {/* Debug indicator for original size */}
+      {process.env.NODE_ENV === 'development' && hasOriginalSize && (
+        <div className="absolute bottom-0 right-0 bg-black bg-opacity-50 text-white text-xs px-1">
+          {element._originalSize?.width}x{element._originalSize?.height}
+        </div>
+      )}
     </div>
   );
 };
 
 export const ElementRenderer = ({ element }: ElementRendererProps) => {
+  // Verificar se a orientação original do elemento é diferente da atual
+  const isFromDifferentOrientation = element._originalSize && (
+    (element._originalSize.width > element._originalSize.height && element.style.height > element.style.width) ||
+    (element._originalSize.height > element._originalSize.width && element.style.width > element.style.height)
+  );
+  
   if (element.type === "text") {
     return (
       <p style={{
