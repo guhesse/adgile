@@ -1,106 +1,63 @@
 
-import { PSDFileData, PSDMetadata } from "./types";
+/**
+ * Utility functions for handling PSD storage in localStorage
+ */
 
-// Storage keys
-const PSD_DATA_KEY = 'psd_data';
-const PSD_METADATA_KEY = 'psd_metadata';
-const PSD_IMAGES_KEY_PREFIX = 'psd_image_';
-
-// Save PSD data to storage
-export const savePSDDataToStorage = async (psdData: PSDFileData): Promise<void> => {
+export const storePSDData = (key: string, data: any): boolean => {
   try {
-    // Store PSD data
-    localStorage.setItem(PSD_DATA_KEY, JSON.stringify(psdData));
-    
-    // Update metadata
-    const metadata = getPSDMetadata();
-    const newMetadata: PSDMetadata = {
-      storageKeys: metadata ? metadata.storageKeys : [],
-      lastUpdated: new Date().toISOString(),
-      length: psdData.layers.length
-    };
-    
-    // Add the main data key if it's not already there
-    if (!newMetadata.storageKeys.includes(PSD_DATA_KEY)) {
-      newMetadata.storageKeys.push(PSD_DATA_KEY);
-    }
-    
-    // Update metadata
-    localStorage.setItem(PSD_METADATA_KEY, JSON.stringify(newMetadata));
+    localStorage.setItem(key, JSON.stringify(data));
+    return true;
   } catch (error) {
-    console.error('Error saving PSD data to storage:', error);
-    throw new Error('Failed to save PSD data to storage');
+    console.error(`Failed to store PSD data with key ${key}:`, error);
+    return false;
   }
 };
 
-// Get PSD data from storage
-export const getPSDDataFromStorage = (): PSDFileData | null => {
+export const getPSDDataFromStorage = (key: string): any => {
   try {
-    const storedData = localStorage.getItem(PSD_DATA_KEY);
-    return storedData ? JSON.parse(storedData) : null;
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : null;
   } catch (error) {
-    console.error('Error retrieving PSD data from storage:', error);
+    console.error(`Failed to retrieve PSD data with key ${key}:`, error);
     return null;
   }
 };
 
-// Get PSD metadata
-export const getPSDMetadata = (): PSDMetadata | null => {
+export const removePSDDataFromStorage = (key: string): boolean => {
   try {
-    const storedMetadata = localStorage.getItem(PSD_METADATA_KEY);
-    return storedMetadata ? JSON.parse(storedMetadata) : null;
+    localStorage.removeItem(key);
+    return true;
   } catch (error) {
-    console.error('Error retrieving PSD metadata from storage:', error);
-    return null;
+    console.error(`Failed to remove PSD data with key ${key}:`, error);
+    return false;
   }
 };
 
-// Save image data to storage
-export const saveImageToStorage = async (imageId: string, imageData: string): Promise<string> => {
+// Helper to get all PSD storage keys
+export const getAllPSDStorageKeys = (): string[] => {
   try {
-    const storageKey = `${PSD_IMAGES_KEY_PREFIX}${imageId}`;
-    localStorage.setItem(storageKey, imageData);
-    
-    // Update metadata to include this key
-    const metadata = getPSDMetadata();
-    if (metadata) {
-      if (!metadata.storageKeys.includes(storageKey)) {
-        metadata.storageKeys.push(storageKey);
-        localStorage.setItem(PSD_METADATA_KEY, JSON.stringify(metadata));
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('psd-')) {
+        keys.push(key);
       }
     }
-    
-    return storageKey;
+    return keys;
   } catch (error) {
-    console.error('Error saving image to storage:', error);
-    throw new Error('Failed to save image to storage');
+    console.error('Failed to get all PSD storage keys:', error);
+    return [];
   }
 };
 
-// Get image data from storage
-export const getImageFromStorage = (storageKey: string): string | null => {
+// Clear all PSD data from storage
+export const clearAllPSDData = (): boolean => {
   try {
-    return localStorage.getItem(storageKey);
+    const keys = getAllPSDStorageKeys();
+    keys.forEach(key => localStorage.removeItem(key));
+    return true;
   } catch (error) {
-    console.error('Error retrieving image from storage:', error);
-    return null;
-  }
-};
-
-// Clear all PSD-related data from storage
-export const clearPSDStorage = (): void => {
-  try {
-    const metadata = getPSDMetadata();
-    if (metadata && metadata.storageKeys) {
-      // Remove all stored keys
-      metadata.storageKeys.forEach(key => {
-        localStorage.removeItem(key);
-      });
-    }
-    
-    // Clear metadata itself
-    localStorage.removeItem(PSD_METADATA_KEY);
-  } catch (error) {
-    console.error('Error clearing PSD storage:', error);
+    console.error('Failed to clear all PSD data:', error);
+    return false;
   }
 };

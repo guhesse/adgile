@@ -8,7 +8,7 @@ export interface PSDFileData {
     fileSize: number;
     importedAt: string;
   };
-  backgroundColor?: string; // Add the backgroundColor property
+  backgroundColor?: string;
 }
 
 export interface PSDMetadata {
@@ -20,7 +20,7 @@ export interface PSDMetadata {
 export interface LayerData {
   id: string;
   name: string;
-  type: "text" | "image" | "group" | "shape";
+  type: "text" | "image" | "group" | "shape" | string; // Added generic string to be compatible with existing code
   x: number;
   y: number;
   width: number;
@@ -42,7 +42,7 @@ export interface TextLayerStyle {
   textAlign?: "left" | "center" | "right";
   textDecoration?: string;
   textTransform?: string;
-  // Add missing properties used in PSD processing
+  // Additional properties
   text?: string;
   fontStyle?: string;
   alignment?: "left" | "center" | "right";

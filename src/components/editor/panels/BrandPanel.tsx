@@ -13,7 +13,7 @@ interface BrandPanelProps {
 }
 
 export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelProps) => {
-  // Estado simplificado para drag and drop
+  // State for drag and drop
   const [draggedItem, setDraggedItem] = useState<{
     item: BrandItem;
     sourceGroupId: number | null;
@@ -25,7 +25,7 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
     index: number | null;
   } | null>(null);
 
-  // Brand groups - agora contêm tipos mistos
+  // Brand groups - fixed to include value property
   const [brandGroups, setBrandGroups] = useState<BrandGroup[]>([
     {
       id: 1,
@@ -33,13 +33,20 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
       isOpen: true,
       icon: 'default',
       items: [
-        { id: 1, name: 'Primary', type: 'color', color: '#9b87f5' },
-        { id: 2, name: 'Secondary', type: 'color', color: '#7E69AB' },
+        { id: 1, name: 'Primary', value: 'primary', type: 'color', color: '#9b87f5' },
+        { id: 2, name: 'Secondary', value: 'secondary', type: 'color', color: '#7E69AB' },
         {
           id: 6,
           name: 'Heading 1',
+          value: 'heading1',
           type: 'textStyle',
           textStyle: {
+            fontFamily: 'Inter',
+            fontSize: 24,
+            fontWeight: 'bold',
+            lineHeight: 1.2,
+            letterSpacing: 0,
+            color: '#1A1F2C',
             id: 1,
             name: 'Heading 1',
             style: {
@@ -60,13 +67,20 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
       isOpen: true,
       icon: 'default',
       items: [
-        { id: 4, name: 'Dark', type: 'color', color: '#1A1F2C' },
-        { id: 5, name: 'Light', type: 'color', color: '#D6BCFA' },
+        { id: 4, name: 'Dark', value: 'dark', type: 'color', color: '#1A1F2C' },
+        { id: 5, name: 'Light', value: 'light', type: 'color', color: '#D6BCFA' },
         {
           id: 7,
           name: 'Body Text',
+          value: 'bodyText',
           type: 'textStyle',
           textStyle: {
+            fontFamily: 'Roboto',
+            fontSize: 16,
+            fontWeight: 'normal',
+            lineHeight: 1.5,
+            letterSpacing: 0,
+            color: '#222222',
             id: 2,
             name: 'Body Text',
             style: {
@@ -90,16 +104,23 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
     },
   ]);
 
-  // Elementos não agrupados
+  // Ungrouped items - fixed to include value property
   const [ungroupedItems, setUngroupedItems] = useState<BrandItem[]>([
-    { id: 101, name: 'Yellow', type: 'color', color: '#F8B64C' },
-    { id: 102, name: 'Red', type: 'color', color: '#EF4444' },
-    { id: 103, name: 'Green', type: 'color', color: '#10B981' },
+    { id: 101, name: 'Yellow', value: 'yellow', type: 'color', color: '#F8B64C' },
+    { id: 102, name: 'Red', value: 'red', type: 'color', color: '#EF4444' },
+    { id: 103, name: 'Green', value: 'green', type: 'color', color: '#10B981' },
     {
       id: 104,
       name: 'Caption',
+      value: 'caption',
       type: 'textStyle',
       textStyle: {
+        fontFamily: 'Inter',
+        fontSize: 12,
+        fontWeight: 'normal',
+        lineHeight: 1.4,
+        letterSpacing: 0,
+        color: '#666666',
         id: 3,
         name: 'Caption',
         style: {
@@ -254,7 +275,7 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
     textStyle?: TextStyle
   }) => {
     if (editingGroupId !== null) {
-      // Salvando em um grupo
+      // Saving to a group
       setBrandGroups(brandGroups.map(group => {
         if (group.id === editingGroupId) {
           if (editingItem) {
@@ -263,7 +284,7 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
               ...group,
               items: group.items.map(item =>
                 item.id === editingItem.id
-                  ? { ...itemData, id: item.id }
+                  ? createValidBrandItem(itemData, item.id)
                   : item
               )
             };
@@ -277,19 +298,19 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
             ) + 1;
             return {
               ...group,
-              items: [...group.items, { ...itemData, id: newId }]
+              items: [...group.items, createValidBrandItem(itemData, newId)]
             };
           }
         }
         return group;
       }));
     } else {
-      // Salvando em não agrupados
+      // Saving to ungrouped
       if (editingItem) {
         // Update existing ungrouped item
         setUngroupedItems(ungroupedItems.map(item =>
           item.id === editingItem.id
-            ? { ...itemData, id: item.id }
+            ? createValidBrandItem(itemData, item.id)
             : item
         ));
       } else {
@@ -300,11 +321,38 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
           ...ungroupedItems.map(item => item.id),
           0
         ) + 1;
-        setUngroupedItems([...ungroupedItems, { ...itemData, id: newId }]);
+        setUngroupedItems([...ungroupedItems, createValidBrandItem(itemData, newId)]);
       }
     }
 
     setIsItemDialogOpen(false);
+  };
+
+  const createValidBrandItem = (itemData: { 
+    type: 'color' | 'textStyle',
+    name: string, 
+    color?: string,
+    textStyle?: TextStyle
+  }, id: number): BrandItem => {
+    const value = itemData.name.toLowerCase().replace(/\s+/g, '-');
+    
+    if (itemData.type === 'color') {
+      return {
+        id,
+        name: itemData.name,
+        value,
+        type: 'color',
+        color: itemData.color || '#000000'
+      };
+    } else {
+      return {
+        id,
+        name: itemData.name,
+        value,
+        type: 'textStyle',
+        textStyle: itemData.textStyle
+      };
+    }
   };
 
   // Toggle group open/closed state
@@ -911,12 +959,12 @@ export const BrandPanel = ({ selectedElement, updateElementStyle }: BrandPanelPr
         setTargetGroupId={setTargetGroupId}
         groups={[
           // Opção para "Não agrupado"
-          { id: -1, name: "Itens não agrupados", items: [], isOpen: true },
+          { id: -1, name: "Itens não agrupados", items: [], isOpen: true, icon: "default" },
           // Todos os grupos normais
           ...brandGroups
         ]}
         onMove={executeMoveItem}
-        renderFolderIcon={renderFolderIcon}
+        renderFolderIcon={iconType => "folder"} // Return string instead of ReactNode
       />
     </div>
   );

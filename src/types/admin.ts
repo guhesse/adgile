@@ -1,6 +1,7 @@
 
 import { BannerSize } from '@/components/editor/types';
 import { AdminStats, LayoutTemplate } from '@/components/editor/types/admin';
+import { LayersModel } from '@tensorflow/tfjs';
 
 export interface AdminFormatSelectorProps {
   formats: BannerSize[];
@@ -23,6 +24,7 @@ export interface AIModelManagerProps {
     loss: number;
   };
   onTrainModel: () => Promise<void>;
+  onModelReady?: (trainedModel: LayersModel) => void; // Added this prop
 }
 
 export interface AdminLayoutStatsProps {
