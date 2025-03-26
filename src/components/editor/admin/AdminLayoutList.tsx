@@ -29,6 +29,7 @@ export const AdminLayoutList: React.FC<AdminLayoutListProps> = ({ templates, onD
   const [viewingTemplate, setViewingTemplate] = useState<LayoutTemplate | null>(null);
   
   const handleViewTemplate = (template: LayoutTemplate) => {
+    console.log("Viewing template:", template);
     setViewingTemplate(template);
   };
   
@@ -162,6 +163,11 @@ export const AdminLayoutList: React.FC<AdminLayoutListProps> = ({ templates, onD
                   maxHeight: '70vh'
                 }}
               >
+                {/* Debug info */}
+                <div className="mb-2 text-xs text-gray-500">
+                  Elements: {viewingTemplate.elements && viewingTemplate.elements.length ? viewingTemplate.elements.length : 'None'}
+                </div>
+                
                 {/* Render all elements from the template */}
                 {viewingTemplate.elements && viewingTemplate.elements.map((element, idx) => (
                   <div
@@ -171,7 +177,8 @@ export const AdminLayoutList: React.FC<AdminLayoutListProps> = ({ templates, onD
                       left: element.style.x,
                       top: element.style.y,
                       width: element.style.width,
-                      height: element.style.height
+                      height: element.style.height,
+                      zIndex: 10 + idx
                     }}
                   >
                     <ElementRenderer element={element} />

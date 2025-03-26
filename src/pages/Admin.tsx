@@ -14,14 +14,13 @@ import { AdminTrainingPanel } from "@/components/editor/panels/AdminTrainingPane
 import { saveToIndexedDB, getFromIndexedDB } from "@/utils/indexedDBUtils";
 import { getOptimizedFormats } from "@/utils/formatGenerator";
 import * as tf from '@tensorflow/tfjs';
-import { useCanvas } from "@/components/editor/CanvasContext";
 
-// Chaves de armazenamento
+// Storage keys
 const STORAGE_KEY = 'admin-layout-templates';
 const FORMATS_KEY = 'admin-formats';
 const MODEL_KEY = 'ai-layout-model';
 
-// Função para determinar a orientação com base nas dimensões
+// Function to determine orientation based on dimensions
 const determineOrientation = (width: number, height: number): 'vertical' | 'horizontal' | 'square' => {
   const ratio = width / height;
   if (ratio >= 0.95 && ratio <= 1.05) return 'square';
@@ -49,73 +48,73 @@ const Admin: React.FC = () => {
   });
   const [aiModel, setAiModel] = useState<tf.LayersModel | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const [canvasElements, setCanvasElements] = useState<EditorElement[]>([]);
+  const canvasContextRef = useRef<any>(null);
 
-  // Inicializar ou carregar formatos
+  // Initialize or load formats
   useEffect(() => {
     const loadFormats = async () => {
       try {
-        // Tentar carregar formatos do IndexedDB
         const storedFormats = await getFromIndexedDB(FORMATS_KEY);
 
         if (storedFormats && Array.isArray(storedFormats) && storedFormats.length > 0) {
-          console.log("Formatos carregados com sucesso:", storedFormats);
+          console.log("Formats loaded successfully:", storedFormats);
           setFormats(storedFormats);
         } else {
-          console.log("Nenhum formato encontrado, criando formatos otimizados");
+          console.log("No formats found, creating optimized formats");
           const optimizedFormats = getOptimizedFormats();
           setFormats(optimizedFormats);
 
-          // Salvar no IndexedDB com tratamento de erro
           try {
             const saved = await saveToIndexedDB(FORMATS_KEY, optimizedFormats);
-            console.log("Formatos salvos com sucesso no IndexedDB:", saved);
+            console.log("Formats saved successfully to IndexedDB:", saved);
           } catch (storageError) {
-            console.error("Falha ao salvar formatos:", storageError);
-            // Continuar usando os formatos em memória
+            console.error("Failed to save formats:", storageError);
+            setFormats(optimizedFormats);
+            toast.error("Failed to access storage. Using temporary formats.");
           }
         }
       } catch (error) {
-        console.error("Falha ao inicializar formatos:", error);
+        console.error("Failed to initialize formats:", error);
 
-        // Recorrer a formatos em memória sem tentar salvar
         const optimizedFormats = getOptimizedFormats();
         setFormats(optimizedFormats);
-        toast.error("Falha ao acessar o armazenamento. Usando formatos temporários.");
+        toast.error("Failed to access storage. Using temporary formats.");
       }
     };
 
     loadFormats();
   }, []);
 
-  // Carregar templates salvos
+  // Load saved templates
   useEffect(() => {
     const loadTemplates = async () => {
       try {
-        console.log("Tentando carregar templates do IndexedDB...");
+        console.log("Trying to load templates from IndexedDB...");
         const parsedTemplates = await getFromIndexedDB(STORAGE_KEY, []);
-        console.log("Templates carregados:", parsedTemplates);
+        console.log("Templates loaded:", parsedTemplates);
 
         if (parsedTemplates && Array.isArray(parsedTemplates)) {
           setSavedTemplates(parsedTemplates);
           updateStats(parsedTemplates);
 
           if (parsedTemplates.length > 0) {
-            toast.success(`${parsedTemplates.length} templates carregados com sucesso`);
+            toast.success(`${parsedTemplates.length} templates loaded successfully`);
           }
         } else {
-          console.log("Nenhum template encontrado ou formato inválido");
+          console.log("No templates found or invalid format");
           setSavedTemplates([]);
         }
       } catch (error) {
-        console.error("Falha ao analisar templates salvos:", error);
-        toast.error("Falha ao carregar templates salvos");
+        console.error("Failed to parse saved templates:", error);
+        toast.error("Failed to load saved templates");
       }
     };
 
     loadTemplates();
   }, []);
 
-  // Atualizar estatísticas
+  // Update statistics
   const updateStats = useCallback((templatesData: LayoutTemplate[]) => {
     const newStats: AdminStats = {
       totalTemplates: templatesData.length,
@@ -132,44 +131,36 @@ const Admin: React.FC = () => {
     setStats(newStats);
   }, [isModelTrained, modelMetadata]);
 
-  // Lidar com a seleção de formato
+  // Handle format selection
   const handleFormatSelect = (format: BannerSize) => {
     setSelectedFormat(format);
   };
 
-  // Lidar com a mudança de tab
+  // Handle tab change
   const handleTabChange = (value: string) => {
     setActiveTab(value);
   };
 
-  // Extract elements from the canvas context
-  const getElementsFromCanvas = (): EditorElement[] => {
-    // Get elements directly from the canvas context
-    const canvasContext = useCanvas();
-    
-    if (canvasContext && Array.isArray(canvasContext.elements)) {
-      return canvasContext.elements;
+  // Function to access canvas elements through context
+  const updateCanvasElements = (context: any) => {
+    if (context && Array.isArray(context.elements)) {
+      console.log("Updating canvas elements:", context.elements);
+      setCanvasElements(context.elements);
+      return context.elements;
     }
-    
-    console.warn("Could not extract elements from canvas context, using empty array");
+    console.warn("Could not get elements from canvas context");
     return [];
   };
 
-  // Salvar um template
+  // Save a template
   const handleSaveTemplate = async () => {
     if (!selectedFormat) {
-      toast.error("Selecione um formato primeiro");
+      toast.error("Select a format first");
       return;
     }
 
-    // Get the canvas context
-    const canvasContext = useCanvas();
-    
-    // Get elements from the canvas context
-    const elements = canvasContext ? canvasContext.elements : [];
-
-    if (!elements || elements.length === 0) {
-      toast.warning("O canvas está vazio. Adicione elementos antes de salvar o template.");
+    if (!canvasElements || canvasElements.length === 0) {
+      toast.warning("The canvas is empty. Add elements before saving the template.");
       return;
     }
 
@@ -182,12 +173,12 @@ const Admin: React.FC = () => {
       width: selectedFormat.width,
       height: selectedFormat.height,
       orientation: determineOrientation(selectedFormat.width, selectedFormat.height),
-      elements: elements,
+      elements: canvasElements,
       createdAt: now,
       updatedAt: now
     };
 
-    console.log("Saving template with elements:", elements);
+    console.log("Saving template with elements:", canvasElements);
 
     const updatedTemplates = [...savedTemplates, newTemplate];
     setSavedTemplates(updatedTemplates);
@@ -197,17 +188,17 @@ const Admin: React.FC = () => {
       const success = await saveToIndexedDB(STORAGE_KEY, updatedTemplates);
 
       if (success) {
-        toast.success("Template salvo com sucesso");
+        toast.success("Template saved successfully");
       } else {
-        toast.error("Falha ao salvar o template");
+        toast.error("Failed to save template");
       }
     } catch (error) {
-      console.error("Erro ao salvar template:", error);
-      toast.error("Erro ao salvar template");
+      console.error("Error saving template:", error);
+      toast.error("Error saving template");
     }
   };
 
-  // Excluir um template
+  // Delete a template
   const handleDeleteTemplate = async (templateId: string) => {
     const updatedTemplates = savedTemplates.filter(template => template.id !== templateId);
     setSavedTemplates(updatedTemplates);
@@ -217,25 +208,25 @@ const Admin: React.FC = () => {
       const success = await saveToIndexedDB(STORAGE_KEY, updatedTemplates);
 
       if (success) {
-        toast.success("Template excluído com sucesso");
-        console.log("Template excluído e mudanças salvas no IndexedDB");
+        toast.success("Template deleted successfully");
+        console.log("Template deleted and changes saved to IndexedDB");
       } else {
-        toast.error("Template excluído mas falha ao atualizar o armazenamento");
+        toast.error("Template deleted but failed to update storage");
       }
     } catch (error) {
-      console.error("Erro ao excluir template:", error);
-      toast.error("Erro ao atualizar o armazenamento após exclusão");
+      console.error("Error deleting template:", error);
+      toast.error("Error updating storage after deletion");
     }
   };
 
-  // Treinar o modelo de IA
+  // Train AI model
   const handleTrainModel = async () => {
     if (savedTemplates.length < 5) {
-      toast.error("Você precisa de pelo menos 5 templates para treinar o modelo");
+      toast.error("You need at least 5 templates to train the model");
       return;
     }
 
-    toast.info("Iniciando treinamento do modelo...");
+    toast.info("Starting model training...");
 
     const startTime = Date.now();
 
@@ -255,19 +246,27 @@ const Admin: React.FC = () => {
       updateStats(savedTemplates);
 
       const trainingTime = ((Date.now() - startTime) / 1000).toFixed(1);
-      toast.success(`Modelo treinado com sucesso em ${trainingTime}s`);
+      toast.success(`Model trained successfully in ${trainingTime}s`);
     } catch (error) {
-      console.error("Erro de treinamento:", error);
-      toast.error("Falha ao treinar o modelo");
+      console.error("Training error:", error);
+      toast.error("Failed to train model");
     }
   };
 
-  // Capture and save the template
+  // Capture canvas elements when they change
+  const handleCanvasUpdate = (context: any) => {
+    canvasContextRef.current = context;
+    if (context && Array.isArray(context.elements)) {
+      updateCanvasElements(context);
+    }
+  };
+
+  // Callback to save the canvas state
   const captureAndSaveTemplate = () => {
     handleSaveTemplate();
   };
 
-  // Callback para quando o modelo estiver pronto
+  // Callback for when the model is ready
   const handleModelReady = (model: tf.LayersModel) => {
     setAiModel(model);
     setIsModelTrained(true);
@@ -278,7 +277,7 @@ const Admin: React.FC = () => {
       loss: 0.15
     });
 
-    toast.success("Modelo de IA está pronto para uso");
+    toast.success("AI model is ready for use");
   };
 
   return (
@@ -288,10 +287,10 @@ const Admin: React.FC = () => {
           <h1 className="text-2xl font-bold">Admin Dashboard</h1>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => window.location.href = "/"}>
-              Voltar ao Editor
+              Back to Editor
             </Button>
             <Button onClick={captureAndSaveTemplate} disabled={!selectedFormat}>
-              Salvar Layout Atual
+              Save Current Layout
             </Button>
           </div>
         </div>
@@ -302,15 +301,15 @@ const Admin: React.FC = () => {
           <div className="border-b pb-2 mb-4">
             <TabsList>
               <TabsTrigger value="layouts">Layouts</TabsTrigger>
-              <TabsTrigger value="training">Treinamento de IA</TabsTrigger>
-              <TabsTrigger value="stats">Estatísticas</TabsTrigger>
+              <TabsTrigger value="training">AI Training</TabsTrigger>
+              <TabsTrigger value="stats">Statistics</TabsTrigger>
             </TabsList>
           </div>
 
           {activeTab === "layouts" && (
             <TabsContent value="layouts" className="h-full flex">
               <div className="w-72 border-r overflow-y-auto bg-white p-4">
-                <h3 className="text-sm font-medium mb-4">Selecionar Formato</h3>
+                <h3 className="text-sm font-medium mb-4">Select Format</h3>
                 <AdminFormatSelector
                   formats={formats}
                   onSelectFormat={handleFormatSelect}
@@ -322,19 +321,23 @@ const Admin: React.FC = () => {
                 {selectedFormat ? (
                   <div className="flex-1 overflow-hidden">
                     <CanvasProvider fixedSize={selectedFormat}>
-                      <Canvas
-                        editorMode="banner"
-                        fixedSize={selectedFormat}
-                        canvasRef={canvasRef}
-                      />
+                      {(context: any) => {
+                        handleCanvasUpdate(context);
+                        return (
+                          <Canvas
+                            editorMode="banner"
+                            fixedSize={selectedFormat}
+                          />
+                        );
+                      }}
                     </CanvasProvider>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center max-w-md">
-                      <h3 className="text-lg font-medium mb-2">Nenhum Formato Selecionado</h3>
+                      <h3 className="text-lg font-medium mb-2">No Format Selected</h3>
                       <p className="text-gray-500 mb-4">
-                        Selecione um formato na barra lateral para começar a criar um template.
+                        Select a format from the sidebar to start creating a template.
                       </p>
                     </div>
                   </div>

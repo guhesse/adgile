@@ -13,7 +13,7 @@ import { updateLinkedElementsIntelligently } from "./utils/grid/responsivePositi
 import { toast } from "sonner";
 
 interface CanvasProviderProps {
-  children: React.ReactNode;
+  children: React.ReactNode | ((context: CanvasContextType) => React.ReactNode);
   fixedSize?: BannerSize;
 }
 
@@ -394,7 +394,11 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
     updateArtboardBackground
   };
 
-  return <CanvasContext.Provider value={value}>{children}</CanvasContext.Provider>;
+  return (
+    <CanvasContext.Provider value={value}>
+      {typeof children === 'function' ? children(value) : children}
+    </CanvasContext.Provider>
+  );
 };
 
 export const useCanvas = () => {

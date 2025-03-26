@@ -8,7 +8,11 @@ import { useCanvasZoomAndPan } from "./canvas/hooks/useCanvasZoomAndPan";
 import { useCanvasInitialization } from "./canvas/hooks/useCanvasInitialization";
 import { constrainAllElements } from "./utils/containerUtils";
 
-export const CanvasWorkspace = () => {
+interface CanvasWorkspaceProps {
+  canvasRef?: React.RefObject<HTMLDivElement>;
+}
+
+export const CanvasWorkspace = ({ canvasRef }: CanvasWorkspaceProps) => {
   const {
     elements,
     selectedElement,
@@ -29,7 +33,8 @@ export const CanvasWorkspace = () => {
     undo
   } = useCanvas();
 
-  const canvasRef = useRef<HTMLDivElement>(null);
+  const defaultCanvasRef = useRef<HTMLDivElement>(null);
+  const workspaceCanvasRef = canvasRef || defaultCanvasRef;
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Initialize canvas elements
@@ -112,7 +117,7 @@ export const CanvasWorkspace = () => {
   return (
     <CanvasWorkspaceContent
       containerRef={containerRef}
-      canvasRef={canvasRef}
+      canvasRef={workspaceCanvasRef}
       canvasNavMode={canvasNavMode}
       isPanning={isPanning}
       panPosition={panPosition}
