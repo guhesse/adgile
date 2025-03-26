@@ -54,6 +54,10 @@ export const applyResponsiveTransformation = (
   let width = element.style.width;
   let height = element.style.height;
   
+  // Calculate distances from edges (for bottom/right positioning)
+  const rightDistance = sourceSize.width - (element.style.x + element.style.width);
+  const bottomDistance = sourceSize.height - (element.style.y + element.style.height);
+  
   // Apply horizontal constraint
   switch (horizontalConstraint) {
     case "left":
@@ -61,7 +65,6 @@ export const applyResponsiveTransformation = (
       width = element.style.width * scaleX;
       break;
     case "right":
-      const rightDistance = sourceSize.width - (element.style.x + element.style.width);
       x = targetSize.width - rightDistance * scaleX - element.style.width * scaleX;
       width = element.style.width * scaleX;
       break;
@@ -83,7 +86,6 @@ export const applyResponsiveTransformation = (
       height = element.style.height * scaleY;
       break;
     case "bottom":
-      const bottomDistance = sourceSize.height - (element.style.y + element.style.height);
       y = targetSize.height - bottomDistance * scaleY - element.style.height * scaleY;
       height = element.style.height * scaleY;
       break;
