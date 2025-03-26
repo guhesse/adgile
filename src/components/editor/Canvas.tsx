@@ -13,9 +13,10 @@ interface CanvasProps {
   fixedSize?: BannerSize;
   canvasRef?: React.RefObject<HTMLDivElement>;
   hideImportPSD?: boolean; // Added to hide PSD import button in admin mode
+  onPSDImport?: (elements: any[], psdSize: BannerSize) => void; // Added callback for admin mode
 }
 
-const CanvasContent = ({ editorMode, canvasRef, hideImportPSD }: CanvasProps) => {
+const CanvasContent = ({ editorMode, canvasRef, hideImportPSD, onPSDImport }: CanvasProps) => {
   const { 
     elements, 
     selectedElement, 
@@ -41,7 +42,11 @@ const CanvasContent = ({ editorMode, canvasRef, hideImportPSD }: CanvasProps) =>
       <div className="flex-1 bg-gray-100 overflow-hidden flex flex-col h-full">
         <div className="flex justify-between items-center px-4 py-2 border-b">
           <CanvasControls />
-          {!hideImportPSD && <PSDImport />}
+          {!hideImportPSD && (
+            onPSDImport ? 
+              <PSDImport /> : 
+              <PSDImport />
+          )}
         </div>
         <CanvasWorkspace />
       </div>
@@ -80,8 +85,13 @@ const CanvasContent = ({ editorMode, canvasRef, hideImportPSD }: CanvasProps) =>
   );
 };
 
-export const Canvas = ({ editorMode, fixedSize, canvasRef, hideImportPSD }: CanvasProps) => {
+export const Canvas = ({ editorMode, fixedSize, canvasRef, hideImportPSD, onPSDImport }: CanvasProps) => {
   return (
-    <CanvasContent editorMode={editorMode} canvasRef={canvasRef} hideImportPSD={hideImportPSD} />
+    <CanvasContent 
+      editorMode={editorMode} 
+      canvasRef={canvasRef} 
+      hideImportPSD={hideImportPSD} 
+      onPSDImport={onPSDImport}
+    />
   );
 };
