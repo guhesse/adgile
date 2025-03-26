@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import { useCanvas } from "../CanvasContext";
 import { AdminDraggableElement } from "./AdminDraggableElement";
@@ -65,6 +66,20 @@ export const AdminCanvasWorkspace = forwardRef(({ fixedSize }: AdminCanvasWorksp
       setSelectedElement(null);
     }
   };
+
+  const handlePositionChange = (elementId: string, position: { left: number; top: number }) => {
+    updateElementStyle(elementId, { 
+      x: position.left,
+      y: position.top
+    });
+  };
+
+  const handleResize = (elementId: string, size: { width: number; height: number }) => {
+    updateElementStyle(elementId, {
+      width: size.width,
+      height: size.height
+    });
+  };
   
   const workspaceStyle = {
     position: 'relative' as const,
@@ -120,16 +135,10 @@ export const AdminCanvasWorkspace = forwardRef(({ fixedSize }: AdminCanvasWorksp
             isSelected={selectedElement?.id === element.id}
             onClick={() => setSelectedElement(element)}
             onPositionChange={(position) => 
-              updateElementStyle(element.id, { 
-                left: position.left, 
-                top: position.top 
-              })
+              handlePositionChange(element.id, position)
             }
             onResize={(size) => 
-              updateElementStyle(element.id, { 
-                width: size.width, 
-                height: size.height 
-              })
+              handleResize(element.id, size)
             }
             scale={canvasSize.scale * zoomLevel}
           />

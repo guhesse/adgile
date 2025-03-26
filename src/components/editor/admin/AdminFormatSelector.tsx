@@ -4,7 +4,6 @@ import { BannerSize } from "@/components/editor/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Search, TrendingUp, Square } from "lucide-react";
 
 interface AdminFormatSelectorProps {
@@ -21,7 +20,7 @@ export const AdminFormatSelector: React.FC<AdminFormatSelectorProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "vertical" | "horizontal" | "square">("all");
 
-  // Filtrar formatos por orientação e pesquisa
+  // Filter formats by orientation and search term
   const filteredFormats = formats
     .filter((format) => {
       if (searchTerm) {
@@ -47,39 +46,39 @@ export const AdminFormatSelector: React.FC<AdminFormatSelectorProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="relative mb-4">
+      <div className="relative mb-2">
         <Input
           placeholder="Pesquisar formatos..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-9"
+          className="pl-9 h-8 text-xs"
         />
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
       </div>
 
-      <Tabs defaultValue="all" value={activeTab} onValueChange={(val) => setActiveTab(val as any)}>
-        <TabsList className="w-full">
-          <TabsTrigger value="all" className="flex-1">
+      <Tabs defaultValue="all" value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="w-full">
+        <TabsList className="w-full h-8">
+          <TabsTrigger value="all" className="flex-1 text-xs py-1">
             Todos
           </TabsTrigger>
-          <TabsTrigger value="vertical" className="flex-1">
-            <TrendingUp className="h-4 w-4 rotate-90 mr-1" />
+          <TabsTrigger value="vertical" className="flex-1 text-xs py-1">
+            <TrendingUp className="h-3 w-3 rotate-90 mr-1" />
             V
           </TabsTrigger>
-          <TabsTrigger value="horizontal" className="flex-1">
-            <TrendingUp className="h-4 w-4 mr-1" />
+          <TabsTrigger value="horizontal" className="flex-1 text-xs py-1">
+            <TrendingUp className="h-3 w-3 mr-1" />
             H
           </TabsTrigger>
-          <TabsTrigger value="square" className="flex-1">
-            <Square className="h-4 w-4 mr-1" />
+          <TabsTrigger value="square" className="flex-1 text-xs py-1">
+            <Square className="h-3 w-3 mr-1" />
             Q
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="all" className="flex-1 border rounded-md p-0">
-          <ScrollArea className="h-[calc(100vh-320px)]">
-            <div className="p-2 grid grid-cols-2 gap-2">
-              {filteredFormats.map((format, index) => (
+        <TabsContent value="all" className="flex-1 border rounded-md p-0 mt-2">
+          <ScrollArea className="h-[calc(100vh-280px)]">
+            <div className="p-1 grid grid-cols-3 gap-1">
+              {filteredFormats.map((format) => (
                 <div
                   key={`${format.name}-${format.width}-${format.height}`}
                   className={`relative border rounded-md overflow-hidden cursor-pointer transition-all ${
@@ -109,11 +108,11 @@ export const AdminFormatSelector: React.FC<AdminFormatSelectorProps> = ({
                         />
                       </div>
                     )}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center p-1">
-                      <div className="text-xs font-medium text-center line-clamp-1 bg-white/80 px-1 rounded">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-0.5">
+                      <div className="text-[8px] font-medium text-center line-clamp-1 bg-white/80 px-0.5 rounded">
                         {format.name}
                       </div>
-                      <div className="text-[10px] text-gray-500 bg-white/80 px-1 rounded mt-1">
+                      <div className="text-[6px] text-gray-500 bg-white/80 px-0.5 rounded mt-0.5">
                         {format.width}×{format.height}
                       </div>
                     </div>
@@ -124,10 +123,11 @@ export const AdminFormatSelector: React.FC<AdminFormatSelectorProps> = ({
           </ScrollArea>
         </TabsContent>
 
-        <TabsContent value="vertical" className="flex-1 border rounded-md p-0">
-          <ScrollArea className="h-[calc(100vh-320px)]">
-            <div className="p-2 grid grid-cols-2 gap-2">
-              {filteredFormats.map((format, index) => (
+        {/* Repeat the same pattern for other tabs with smaller sizes */}
+        <TabsContent value="vertical" className="flex-1 border rounded-md p-0 mt-2">
+          <ScrollArea className="h-[calc(100vh-280px)]">
+            <div className="p-1 grid grid-cols-3 gap-1">
+              {filteredFormats.map((format) => (
                 <div
                   key={`${format.name}-${format.width}-${format.height}`}
                   className={`relative border rounded-md overflow-hidden cursor-pointer transition-all ${
@@ -157,11 +157,11 @@ export const AdminFormatSelector: React.FC<AdminFormatSelectorProps> = ({
                         />
                       </div>
                     )}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center p-1">
-                      <div className="text-xs font-medium text-center line-clamp-1 bg-white/80 px-1 rounded">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-0.5">
+                      <div className="text-[8px] font-medium text-center line-clamp-1 bg-white/80 px-0.5 rounded">
                         {format.name}
                       </div>
-                      <div className="text-[10px] text-gray-500 bg-white/80 px-1 rounded mt-1">
+                      <div className="text-[6px] text-gray-500 bg-white/80 px-0.5 rounded mt-0.5">
                         {format.width}×{format.height}
                       </div>
                     </div>
@@ -172,10 +172,10 @@ export const AdminFormatSelector: React.FC<AdminFormatSelectorProps> = ({
           </ScrollArea>
         </TabsContent>
 
-        <TabsContent value="horizontal" className="flex-1 border rounded-md p-0">
-          <ScrollArea className="h-[calc(100vh-320px)]">
-            <div className="p-2 grid grid-cols-2 gap-2">
-              {filteredFormats.map((format, index) => (
+        <TabsContent value="horizontal" className="flex-1 border rounded-md p-0 mt-2">
+          <ScrollArea className="h-[calc(100vh-280px)]">
+            <div className="p-1 grid grid-cols-3 gap-1">
+              {filteredFormats.map((format) => (
                 <div
                   key={`${format.name}-${format.width}-${format.height}`}
                   className={`relative border rounded-md overflow-hidden cursor-pointer transition-all ${
@@ -205,11 +205,11 @@ export const AdminFormatSelector: React.FC<AdminFormatSelectorProps> = ({
                         />
                       </div>
                     )}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center p-1">
-                      <div className="text-xs font-medium text-center line-clamp-1 bg-white/80 px-1 rounded">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-0.5">
+                      <div className="text-[8px] font-medium text-center line-clamp-1 bg-white/80 px-0.5 rounded">
                         {format.name}
                       </div>
-                      <div className="text-[10px] text-gray-500 bg-white/80 px-1 rounded mt-1">
+                      <div className="text-[6px] text-gray-500 bg-white/80 px-0.5 rounded mt-0.5">
                         {format.width}×{format.height}
                       </div>
                     </div>
@@ -220,10 +220,10 @@ export const AdminFormatSelector: React.FC<AdminFormatSelectorProps> = ({
           </ScrollArea>
         </TabsContent>
 
-        <TabsContent value="square" className="flex-1 border rounded-md p-0">
-          <ScrollArea className="h-[calc(100vh-320px)]">
-            <div className="p-2 grid grid-cols-2 gap-2">
-              {filteredFormats.map((format, index) => (
+        <TabsContent value="square" className="flex-1 border rounded-md p-0 mt-2">
+          <ScrollArea className="h-[calc(100vh-280px)]">
+            <div className="p-1 grid grid-cols-3 gap-1">
+              {filteredFormats.map((format) => (
                 <div
                   key={`${format.name}-${format.width}-${format.height}`}
                   className={`relative border rounded-md overflow-hidden cursor-pointer transition-all ${
@@ -253,11 +253,11 @@ export const AdminFormatSelector: React.FC<AdminFormatSelectorProps> = ({
                         />
                       </div>
                     )}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center p-1">
-                      <div className="text-xs font-medium text-center line-clamp-1 bg-white/80 px-1 rounded">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-0.5">
+                      <div className="text-[8px] font-medium text-center line-clamp-1 bg-white/80 px-0.5 rounded">
                         {format.name}
                       </div>
-                      <div className="text-[10px] text-gray-500 bg-white/80 px-1 rounded mt-1">
+                      <div className="text-[6px] text-gray-500 bg-white/80 px-0.5 rounded mt-0.5">
                         {format.width}×{format.height}
                       </div>
                     </div>

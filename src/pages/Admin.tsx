@@ -45,7 +45,7 @@ const Admin: React.FC = () => {
     loss: 0
   });
   const [aiModel, setAiModel] = useState<tf.LayersModel | null>(null);
-  const canvasProviderRef = useRef<any>(null);
+  const canvasRef = useRef<any>(null);
 
   useEffect(() => {
     const loadFormats = async () => {
@@ -131,8 +131,8 @@ const Admin: React.FC = () => {
   };
 
   const getCanvasElements = (): EditorElement[] => {
-    if (canvasProviderRef.current && canvasProviderRef.current.elements) {
-      return [...canvasProviderRef.current.elements];
+    if (canvasRef.current && canvasRef.current.elements) {
+      return [...canvasRef.current.elements];
     }
     return [];
   };
@@ -254,10 +254,6 @@ const Admin: React.FC = () => {
     toast.success("Modelo de IA está pronto para uso");
   };
 
-  const setCanvasProviderRef = (ref: any) => {
-    canvasProviderRef.current = ref;
-  };
-
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       <header className="bg-white border-b px-6 py-4">
@@ -300,7 +296,7 @@ const Admin: React.FC = () => {
                   <div className="flex-1 overflow-hidden">
                     <CanvasProvider fixedSize={selectedFormat}>
                       <Canvas
-                        ref={canvasProviderRef}
+                        ref={canvasRef}
                         editorMode="banner"
                         fixedSize={selectedFormat}
                       />

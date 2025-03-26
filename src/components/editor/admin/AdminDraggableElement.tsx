@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { EditorElement } from "../types";
 import { ElementRenderer } from "../ElementRenderer";
 
@@ -23,175 +23,184 @@ export const AdminDraggableElement: React.FC<AdminDraggableElementProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [resizeDirection, setResizeDirection] = useState("");
-  const [initialMousePos, setInitialMousePos] = useState({ x: 0, y: 0 });
-  const [initialElementState, setInitialElementState] = useState({
-    left: 0,
-    top: 0,
-    width: 0,
-    height: 0
-  });
+  const elementRef = useRef<HTMLDivElement>(null);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const elementStartPosRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
 
-  // Element style for positioning and dimensions
+  // Element style including position, size, and other properties
   const elementStyle: React.CSSProperties = {
     position: 'absolute',
     left: `${element.style.x}px`,
     top: `${element.style.y}px`,
     width: `${element.style.width}px`,
     height: `${element.style.height}px`,
-    border: isSelected ? '1px solid #3b82f6' : '1px solid transparent',
-    zIndex: isSelected ? 10 : 1,
+    cursor: isDragging ? 'grabbing' : 'grab',
+    zIndex: isSelected ? 100 : element.style.zIndex || 0,
     boxSizing: 'border-box',
-    cursor: isDragging ? 'grabbing' : 'grab'
+    userSelect: 'none'
   };
 
-  // Start dragging
+  // Handle mouse down for dragging
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
     
-    // Only primary mouse button (left click)
-    if (e.button !== 0) return;
+    if (!elementRef.current) return;
     
     onClick();
     setIsDragging(true);
-    setInitialMousePos({
-      x: e.clientX,
-      y: e.clientY
-    });
-    setInitialElementState({
-      left: element.style.x,
-      top: element.style.y,
+    
+    const rect = elementRef.current.getBoundingClientRect();
+    dragStartRef.current = { 
+      x: e.clientX, 
+      y: e.clientY 
+    };
+    
+    elementStartPosRef.current = {
+      x: element.style.x,
+      y: element.style.y,
       width: element.style.width,
       height: element.style.height
-    });
-    
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    };
   };
 
-  // Start resizing
-  const handleResizeMouseDown = (e: React.MouseEvent, direction: string) => {
+  // Handle resize start
+  const handleResizeStart = (e: React.MouseEvent, direction: string) => {
     e.stopPropagation();
+    e.preventDefault();
     
-    // Only primary mouse button (left click)
-    if (e.button !== 0) return;
-    
-    onClick();
     setIsResizing(true);
     setResizeDirection(direction);
-    setInitialMousePos({
-      x: e.clientX,
-      y: e.clientY
-    });
-    setInitialElementState({
-      left: element.style.x,
-      top: element.style.y,
+    
+    dragStartRef.current = { 
+      x: e.clientX, 
+      y: e.clientY 
+    };
+    
+    elementStartPosRef.current = {
+      x: element.style.x,
+      y: element.style.y,
       width: element.style.width,
       height: element.style.height
-    });
-    
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    };
   };
 
-  // Handle both dragging and resizing
-  const handleMouseMove = (e: MouseEvent) => {
-    if (isDragging) {
-      // Calculate the delta between current mouse position and initial position
-      const deltaX = (e.clientX - initialMousePos.x) / scale;
-      const deltaY = (e.clientY - initialMousePos.y) / scale;
-      
-      // Apply the delta to the element's position
-      onPositionChange({
-        left: initialElementState.left + deltaX,
-        top: initialElementState.top + deltaY
-      });
-    }
-    
-    if (isResizing) {
-      // Calculate the delta between current mouse position and initial position
-      const deltaX = (e.clientX - initialMousePos.x) / scale;
-      const deltaY = (e.clientY - initialMousePos.y) / scale;
-      
-      // Apply the delta based on the resize direction
-      let newWidth = initialElementState.width;
-      let newHeight = initialElementState.height;
-      
-      if (resizeDirection.includes('e')) {
-        newWidth = initialElementState.width + deltaX;
-      }
-      if (resizeDirection.includes('w')) {
-        newWidth = initialElementState.width - deltaX;
+  // Effect for global mouse move and up events
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDragging) {
+        const dx = (e.clientX - dragStartRef.current.x) / scale;
+        const dy = (e.clientY - dragStartRef.current.y) / scale;
+        
         onPositionChange({
-          left: initialElementState.left + deltaX,
-          top: initialElementState.top
+          left: elementStartPosRef.current.x + dx,
+          top: elementStartPosRef.current.y + dy
+        });
+      } else if (isResizing) {
+        const dx = (e.clientX - dragStartRef.current.x) / scale;
+        const dy = (e.clientY - dragStartRef.current.y) / scale;
+        
+        let newWidth = elementStartPosRef.current.width;
+        let newHeight = elementStartPosRef.current.height;
+        
+        if (resizeDirection.includes('e')) {
+          newWidth = Math.max(20, elementStartPosRef.current.width + dx);
+        } else if (resizeDirection.includes('w')) {
+          const widthDiff = elementStartPosRef.current.width - Math.max(20, elementStartPosRef.current.width - dx);
+          if (widthDiff !== 0) {
+            onPositionChange({
+              left: elementStartPosRef.current.x + widthDiff,
+              top: elementStartPosRef.current.y
+            });
+            newWidth = elementStartPosRef.current.width - widthDiff;
+          }
+        }
+        
+        if (resizeDirection.includes('s')) {
+          newHeight = Math.max(20, elementStartPosRef.current.height + dy);
+        } else if (resizeDirection.includes('n')) {
+          const heightDiff = elementStartPosRef.current.height - Math.max(20, elementStartPosRef.current.height - dy);
+          if (heightDiff !== 0) {
+            onPositionChange({
+              left: elementStartPosRef.current.x,
+              top: elementStartPosRef.current.y + heightDiff
+            });
+            newHeight = elementStartPosRef.current.height - heightDiff;
+          }
+        }
+        
+        onResize({
+          width: newWidth,
+          height: newHeight
         });
       }
-      if (resizeDirection.includes('s')) {
-        newHeight = initialElementState.height + deltaY;
-      }
-      if (resizeDirection.includes('n')) {
-        newHeight = initialElementState.height - deltaY;
-        onPositionChange({
-          left: initialElementState.left,
-          top: initialElementState.top + deltaY
-        });
-      }
-      
-      // Ensure minimum dimensions (10x10 pixels)
-      newWidth = Math.max(10, newWidth);
-      newHeight = Math.max(10, newHeight);
-      
-      onResize({
-        width: newWidth,
-        height: newHeight
-      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      setIsResizing(false);
+    };
+
+    if (isDragging || isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
     }
-  };
 
-  // Stop dragging/resizing
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    setIsResizing(false);
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-  };
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, isResizing, onPositionChange, onResize, resizeDirection, scale]);
 
-  // Resize handles for the corners and edges
+  // Resize handles for selected elements
   const renderResizeHandles = () => {
     if (!isSelected) return null;
     
     const handles = [
-      { position: 'nw', style: { top: '-4px', left: '-4px', cursor: 'nwse-resize' } },
-      { position: 'n', style: { top: '-4px', left: 'calc(50% - 4px)', cursor: 'ns-resize' } },
-      { position: 'ne', style: { top: '-4px', right: '-4px', cursor: 'nesw-resize' } },
-      { position: 'e', style: { top: 'calc(50% - 4px)', right: '-4px', cursor: 'ew-resize' } },
-      { position: 'se', style: { bottom: '-4px', right: '-4px', cursor: 'nwse-resize' } },
-      { position: 's', style: { bottom: '-4px', left: 'calc(50% - 4px)', cursor: 'ns-resize' } },
-      { position: 'sw', style: { bottom: '-4px', left: '-4px', cursor: 'nesw-resize' } },
-      { position: 'w', style: { top: 'calc(50% - 4px)', left: '-4px', cursor: 'ew-resize' } }
+      { position: 'nw', cursor: 'nwse-resize', top: '-5px', left: '-5px' },
+      { position: 'n', cursor: 'ns-resize', top: '-5px', left: 'calc(50% - 5px)' },
+      { position: 'ne', cursor: 'nesw-resize', top: '-5px', right: '-5px' },
+      { position: 'e', cursor: 'ew-resize', top: 'calc(50% - 5px)', right: '-5px' },
+      { position: 'se', cursor: 'nwse-resize', bottom: '-5px', right: '-5px' },
+      { position: 's', cursor: 'ns-resize', bottom: '-5px', left: 'calc(50% - 5px)' },
+      { position: 'sw', cursor: 'nesw-resize', bottom: '-5px', left: '-5px' },
+      { position: 'w', cursor: 'ew-resize', top: 'calc(50% - 5px)', left: '-5px' }
     ];
     
-    return handles.map(handle => (
+    return handles.map((handle) => (
       <div
         key={handle.position}
-        className="absolute w-2 h-2 bg-blue-500 z-20"
-        style={handle.style as React.CSSProperties}
-        onMouseDown={(e) => handleResizeMouseDown(e, handle.position)}
+        onMouseDown={(e) => handleResizeStart(e, handle.position)}
+        style={{
+          position: 'absolute',
+          width: '10px',
+          height: '10px',
+          backgroundColor: 'white',
+          border: '1px solid #3b82f6',
+          cursor: handle.cursor,
+          ...handle
+        }}
       />
     ));
   };
 
   return (
     <div
+      ref={elementRef}
       style={elementStyle}
       onMouseDown={handleMouseDown}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
+      onClick={onClick}
+      className={`admin-draggable-element ${isSelected ? 'selected-element' : ''}`}
     >
-      <ElementRenderer element={element} />
+      <ElementRenderer element={element} preview={false} isSelected={isSelected} />
       {renderResizeHandles()}
+      {isSelected && (
+        <div 
+          className="absolute -top-5 left-0 right-0 text-xs text-center bg-blue-100 text-blue-800 px-1 rounded"
+          style={{ zIndex: 101 }}
+        >
+          {element.type}
+        </div>
+      )}
     </div>
   );
 };

@@ -38,7 +38,7 @@ const CanvasContent = forwardRef(({ editorMode, fixedSize, className }: CanvasPr
   }));
 
   // Admin workspace ref
-  const adminWorkspaceRef = useRef(null);
+  const adminWorkspaceRef = useRef<any>(null);
 
   return (
     <div className={`flex flex-1 h-full ${className || ''}`}>
@@ -95,7 +95,7 @@ const CanvasContent = forwardRef(({ editorMode, fixedSize, className }: CanvasPr
 
 CanvasContent.displayName = "CanvasContent";
 
-export const Canvas = forwardRef(({ editorMode, fixedSize, className }: CanvasProps, ref) => {
+export const Canvas = forwardRef<{ elements: any[] }, CanvasProps>(({ editorMode, fixedSize, className }, ref) => {
   return (
     <CanvasContent editorMode={editorMode} fixedSize={fixedSize} className={className} ref={ref} />
   );
