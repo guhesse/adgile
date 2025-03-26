@@ -1,3 +1,4 @@
+
 import { EditorElement, BannerSize } from '../../types';
 
 // Type for constraint detection results
@@ -190,129 +191,187 @@ const applyOrientationChangeTransformation = (
   const widthPercent = (style.width / sourceWidth) * 100;
   const heightPercent = (style.height / sourceHeight) * 100;
   
+  // Analisar o tipo de elemento para determinar o melhor tratamento
+  const isImageType = element.type === 'image' || element.type === 'logo';
+  const isTextType = element.type === 'text' || element.type === 'paragraph';
+  const isButtonType = element.type === 'button';
+  const isBackgroundElement = (widthPercent > 90 && heightPercent > 90) || 
+                             element.style.backgroundColor === sourceSize.backgroundColor;
+  
+  // Get element's aspect ratio
+  const aspectRatio = style.width / style.height;
+  
   if (sourceIsVertical) {
-    // Vertical to horizontal transformation
+    // VERTICAL TO HORIZONTAL TRANSFORMATION
     
-    // Determine quadrant in source (top-left, top-right, bottom-left, bottom-right)
-    const isTopHalf = yPercent < 50;
-    const isLeftHalf = xPercent < 50;
-    
-    // Positioning strategy based on quadrant
-    if (isTopHalf) {
-      // Elements in top half go to left side
-      if (isLeftHalf) {
-        // Top-left quadrant to left-top area
-        style.x = targetWidth * 0.25 * (xPercent / 50);
-        style.y = targetHeight * 0.25 * (yPercent / 50);
-      } else {
-        // Top-right quadrant to left-bottom area
-        style.x = targetWidth * 0.25 * ((100 - xPercent) / 50);
-        style.y = targetHeight * 0.25 + (targetHeight * 0.25 * ((yPercent) / 50));
-      }
-    } else {
-      // Elements in bottom half go to right side
-      if (isLeftHalf) {
-        // Bottom-left quadrant to right-top area
-        style.x = targetWidth * 0.5 + (targetWidth * 0.25 * (xPercent / 50));
-        style.y = targetHeight * 0.25 * ((yPercent - 50) / 50);
-      } else {
-        // Bottom-right quadrant to right-bottom area
-        style.x = targetWidth * 0.5 + (targetWidth * 0.25 * ((100 - xPercent) / 50));
-        style.y = targetHeight * 0.25 + (targetHeight * 0.25 * ((yPercent - 50) / 50));
-      }
+    if (isBackgroundElement) {
+      // Elementos de fundo devem ocupar todo o espaço disponível
+      style.x = 0;
+      style.y = 0;
+      style.width = targetWidth;
+      style.height = targetHeight;
+    } 
+    else if (widthPercent > 90) {
+      // Elementos que ocupam toda a largura vão para o topo com largura completa
+      style.x = 0;
+      style.y = 0;
+      style.width = targetWidth;
+      style.height = Math.min(targetHeight * 0.25, style.height * (targetWidth / sourceWidth));
     }
-    
-    // Scale dimensions to maintain relative proportions
-    // Vertical elements generally need to be wider and shorter in horizontal layout
-    const aspectRatio = style.width / style.height;
-    let newWidth, newHeight;
-    
-    if (widthPercent > 70) {  // If element was very wide in vertical layout
-      newWidth = targetWidth * 0.4;  // Make it less dominant in horizontal
-    } else {
-      newWidth = targetWidth * (widthPercent / 200);  // Scale proportionally but reduce
+    else if (heightPercent > 90) {
+      // Elementos que ocupam toda a altura vão para a esquerda com altura completa
+      style.x = 0;
+      style.y = 0;
+      style.width = Math.min(targetWidth * 0.3, style.width * (targetHeight / sourceHeight));
+      style.height = targetHeight;
     }
-    
-    newHeight = newWidth / aspectRatio;
-    
-    // Ensure height is not too large
-    if (newHeight > targetHeight * 0.7) {
-      newHeight = targetHeight * 0.7;
-      newWidth = newHeight * aspectRatio;
-    }
-    
-    style.width = newWidth;
-    style.height = newHeight;
-    
-    // Special handling for text elements
-    if (element.type === 'text' && style.fontSize) {
-      // Scale font size for better legibility in horizontal layout
-      // Text in vertical layouts is typically larger, so reduce it for horizontal
-      const baseSize = style.fontSize;
-      const widthRatio = targetWidth / sourceHeight;  // Note: intentional cross-axis comparison
-      style.fontSize = Math.max(baseSize * widthRatio * 0.7, 12);  // Reduce by 30% but ensure minimum 12px
-    }
-  } else {
-    // Horizontal to vertical transformation
-    
-    // Determine quadrant in source
-    const isTopHalf = yPercent < 50;
-    const isLeftHalf = xPercent < 50;
-    
-    // Positioning strategy based on quadrant
-    if (isLeftHalf) {
-      // Elements in left half go to top portion
+    else {
+      // Determinar em qual metade vertical o elemento está
+      const isTopHalf = yPercent < 50;
+      
       if (isTopHalf) {
-        // Left-top quadrant to top-left area
-        style.x = targetWidth * 0.25 * (xPercent / 50);
-        style.y = targetHeight * 0.25 * (yPercent / 50);
-      } else {
-        // Left-bottom quadrant to top-right area
-        style.x = targetWidth * 0.25 + (targetWidth * 0.25 * (xPercent / 50));
-        style.y = targetHeight * 0.25 * ((100 - yPercent) / 50);
+        // Elementos na metade superior vão para a esquerda
+        style.x = Math.min(targetWidth * 0.05, style.width * 0.1);
+        style.y = targetHeight * (yPercent / 100);
+        
+        if (isImageType) {
+          // Imagens na metade superior são posicionadas à esquerda e mantêm proporção
+          style.width = Math.min(targetWidth * 0.45, style.width);
+          style.height = style.width / aspectRatio;
+        } 
+        else if (isTextType) {
+          // Textos na metade superior são posicionados à esquerda e ocupam ~40% da largura
+          style.width = Math.min(targetWidth * 0.4, style.width);
+          style.height = Math.min(targetHeight * 0.4, style.height);
+          
+          // Ajustar tamanho da fonte para textos
+          if (style.fontSize) {
+            // Aumentar tamanho da fonte para o formato horizontal, mas não excessivamente
+            const baseSize = style.fontSize;
+            style.fontSize = Math.min(baseSize * 1.2, 24);
+          }
+        }
+        else if (isButtonType) {
+          // Botões devem manter um tamanho proporcional ao espaço disponível
+          style.y = style.y * (targetHeight / sourceHeight);
+          style.width = Math.min(targetWidth * 0.25, style.width * 1.2);
+        }
+      } 
+      else {
+        // Elementos na metade inferior vão para a direita
+        style.x = targetWidth * 0.6;
+        style.y = targetHeight * ((yPercent - 50) / 50);
+        
+        if (isImageType) {
+          // Imagens na metade inferior são posicionadas à direita e mantêm proporção
+          style.width = Math.min(targetWidth * 0.45, style.width);
+          style.height = style.width / aspectRatio;
+        } 
+        else if (isTextType) {
+          // Textos na metade inferior são posicionados à direita
+          style.width = Math.min(targetWidth * 0.35, style.width);
+          style.height = Math.min(targetHeight * 0.4, style.height);
+          
+          // Ajustar tamanho da fonte para textos
+          if (style.fontSize) {
+            const baseSize = style.fontSize;
+            style.fontSize = Math.min(baseSize * 1.2, 20);
+          }
+        }
+        else if (isButtonType) {
+          // Botões na parte inferior vão para baixo à direita
+          style.x = targetWidth - style.width - 20;
+          style.y = targetHeight - style.height - 20;
+        }
       }
-    } else {
-      // Elements in right half go to bottom portion
-      if (isTopHalf) {
-        // Right-top quadrant to bottom-left area
-        style.x = targetWidth * 0.25 * ((100 - xPercent) / 50);
-        style.y = targetHeight * 0.5 + (targetHeight * 0.25 * (yPercent / 50));
-      } else {
-        // Right-bottom quadrant to bottom-right area
-        style.x = targetWidth * 0.25 + (targetWidth * 0.25 * ((100 - xPercent) / 50));
-        style.y = targetHeight * 0.5 + (targetHeight * 0.25 * ((100 - yPercent) / 50));
+    }
+  } 
+  else {
+    // HORIZONTAL TO VERTICAL TRANSFORMATION
+    
+    if (isBackgroundElement) {
+      // Elementos de fundo devem ocupar todo o espaço disponível
+      style.x = 0;
+      style.y = 0;
+      style.width = targetWidth;
+      style.height = targetHeight;
+    } 
+    else if (widthPercent > 90) {
+      // Elementos que ocupam toda a largura vão para o topo com largura completa
+      style.x = 0;
+      style.y = 0;
+      style.width = targetWidth;
+      style.height = Math.min(targetHeight * 0.15, style.height * (targetWidth / sourceWidth));
+    }
+    else if (heightPercent > 90) {
+      // Elementos que ocupam toda a altura vão para o topo e ocupam toda a largura
+      style.x = 0;
+      style.y = 0;
+      style.width = targetWidth;
+      style.height = Math.min(targetHeight * 0.6, style.height * (targetWidth / sourceWidth));
+    }
+    else {
+      // Determinar em qual metade horizontal o elemento está
+      const isLeftHalf = xPercent < 50;
+      
+      if (isLeftHalf) {
+        // Elementos na metade esquerda vão para a parte superior
+        style.x = targetWidth * (xPercent / 100);
+        style.y = targetHeight * 0.05;
+        
+        if (isImageType) {
+          // Imagens na metade esquerda são posicionadas no topo e mantêm proporção
+          style.width = Math.min(targetWidth * 0.9, style.width * (targetWidth / sourceWidth));
+          style.height = style.width / aspectRatio;
+        } 
+        else if (isTextType) {
+          // Textos na metade esquerda vão para o topo
+          style.x = targetWidth * 0.05;
+          style.width = targetWidth * 0.9;
+          style.height = Math.min(targetHeight * 0.25, style.height);
+          
+          // Ajustar tamanho da fonte para textos
+          if (style.fontSize) {
+            // Reduzir tamanho da fonte para o formato vertical
+            const baseSize = style.fontSize;
+            style.fontSize = Math.max(baseSize * 0.9, 12);
+          }
+        }
+        else if (isButtonType) {
+          // Botões devem manter um tamanho proporcional
+          style.width = Math.min(targetWidth * 0.4, style.width);
+          style.y = targetHeight * 0.4;
+        }
+      } 
+      else {
+        // Elementos na metade direita vão para a parte inferior
+        style.x = targetWidth * ((xPercent - 50) / 50);
+        style.y = targetHeight * 0.6;
+        
+        if (isImageType) {
+          // Imagens na metade direita são posicionadas abaixo e mantêm proporção
+          style.width = Math.min(targetWidth * 0.9, style.width * (targetWidth / sourceWidth));
+          style.height = style.width / aspectRatio;
+          style.x = (targetWidth - style.width) / 2; // Centralizar horizontalmente
+        } 
+        else if (isTextType) {
+          // Textos na metade direita vão para baixo
+          style.x = targetWidth * 0.05;
+          style.width = targetWidth * 0.9;
+          style.height = Math.min(targetHeight * 0.2, style.height);
+          
+          // Ajustar tamanho da fonte para textos
+          if (style.fontSize) {
+            const baseSize = style.fontSize;
+            style.fontSize = Math.max(baseSize * 0.8, 10);
+          }
+        }
+        else if (isButtonType) {
+          // Botões na parte direita vão para o final
+          style.x = (targetWidth - style.width) / 2; // Centralizar horizontalmente
+          style.y = targetHeight - style.height - 20;
+        }
       }
-    }
-    
-    // Scale dimensions to maintain relative proportions
-    // Horizontal elements generally need to be narrower but taller in vertical layout
-    const aspectRatio = style.width / style.height;
-    let newWidth, newHeight;
-    
-    if (heightPercent > 70) {  // If element was very tall in horizontal layout
-      newHeight = targetHeight * 0.4;  // Make it less dominant in vertical
-    } else {
-      newHeight = targetHeight * (heightPercent / 200);  // Scale proportionally but reduce
-    }
-    
-    newWidth = newHeight * aspectRatio;
-    
-    // Ensure width is not too large
-    if (newWidth > targetWidth * 0.9) {
-      newWidth = targetWidth * 0.9;
-      newHeight = newWidth / aspectRatio;
-    }
-    
-    style.width = newWidth;
-    style.height = newHeight;
-    
-    // Special handling for text elements
-    if (element.type === 'text' && style.fontSize) {
-      // Scale font size for better legibility in vertical layout
-      // Text in horizontal layouts is typically smaller, so increase it for vertical
-      const baseSize = style.fontSize;
-      const heightRatio = targetHeight / sourceWidth;  // Note: intentional cross-axis comparison
-      style.fontSize = Math.min(baseSize * heightRatio * 1.3, 24);  // Increase by 30% but cap at 24px
     }
   }
   
