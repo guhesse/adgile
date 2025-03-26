@@ -196,7 +196,7 @@ const applyOrientationChangeTransformation = (
   const isTextType = element.type === 'text' || element.type === 'paragraph';
   const isButtonType = element.type === 'button';
   const isBackgroundElement = (widthPercent > 90 && heightPercent > 90) || 
-                             element.style.backgroundColor === sourceSize.backgroundColor;
+                             (element.type === 'artboard-background'); // Fixed: Remove reference to nonexistent property
   
   // Get element's aspect ratio
   const aspectRatio = style.width / style.height;
