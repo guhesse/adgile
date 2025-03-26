@@ -1,119 +1,203 @@
-
 import { EditorElement, BannerSize } from "../../types";
+import { analyzeElementPosition } from "../../utils/grid/responsivePosition";
 import { toast } from "sonner";
-import { analyzeElementPosition, calculateSmartPosition } from "../../utils/grid/responsivePosition";
 
 /**
- * Links an element across all active sizes
+ * Links elements across different sizes
  */
 export const linkElementsAcrossSizes = (
-  element: EditorElement,
   elements: EditorElement[],
-  selectedSize: BannerSize,
+  elementId: string,
   activeSizes: BannerSize[]
 ): EditorElement[] => {
-  if (!element || activeSizes.length <= 1) return elements;
-  
-  // Create a unique linked ID for this group of elements
-  const linkedId = `linked-${Date.now()}`;
-  
-  // Calculate percentage values for the source element
-  const xPercent = (element.style.x / selectedSize.width) * 100;
-  const yPercent = (element.style.y / selectedSize.height) * 100;
-  const widthPercent = (element.style.width / selectedSize.width) * 100;
-  const heightPercent = (element.style.height / selectedSize.height) * 100;
-  
-  // Analyze element's position to determine appropriate constraints
-  const { horizontalConstraint, verticalConstraint } = analyzeElementPosition(element, selectedSize);
-  
-  // Update the elements array with linked versions across all sizes
-  const updatedElements = [...elements];
-  
-  // Find the element in the array and update it with percentage values and constraints
-  const sourceIndex = updatedElements.findIndex(el => el.id === element.id);
-  if (sourceIndex !== -1) {
-    updatedElements[sourceIndex] = {
-      ...updatedElements[sourceIndex],
-      linkedElementId: linkedId,
-      style: {
-        ...updatedElements[sourceIndex].style,
-        xPercent,
-        yPercent,
-        widthPercent,
-        heightPercent,
-        constraintHorizontal: horizontalConstraint as any,
-        constraintVertical: verticalConstraint as any
-      }
-    };
+  // Find the source element
+  const sourceElement = elements.find(el => el.id === elementId);
+  if (!sourceElement) {
+    toast.error("Could not find source element");
+    return elements;
   }
   
-  // Create clones for each other active size
-  activeSizes.forEach(size => {
-    // Skip the current size (source element's size)
-    if (size.name === selectedSize.name) return;
-    
-    // Calculate position and size for this specific canvas size using constraints
-    const { x, y, width, height } = calculateSmartPosition({
-      ...element,
-      style: {
-        ...element.style,
-        constraintHorizontal: horizontalConstraint as any,
-        constraintVertical: verticalConstraint as any
-      }
-    }, selectedSize, size);
-    
-    // Create a clone for this size
-    const clone: EditorElement = {
-      ...element,
-      id: `${element.id}-${size.name.replace(/\s+/g, '-').toLowerCase()}`,
-      sizeId: size.name,
-      linkedElementId: linkedId,
-      style: {
-        ...element.style,
-        x,
-        y,
-        width,
-        height,
-        // Store percentage values
-        xPercent,
-        yPercent,
-        widthPercent,
-        heightPercent,
-        // Store constraints for responsive positioning
-        constraintHorizontal: horizontalConstraint as any,
-        constraintVertical: verticalConstraint as any
-      }
-    };
-    
-    // Add the clone to the elements array
-    updatedElements.push(clone);
-  });
+  // Generate a unique linked ID
+  const linkedId = `linked-${Date.now()}`;
   
-  toast.success('Elemento vinculado em todos os tamanhos');
-  return updatedElements;
-};
-
-/**
- * Unlinks an element from its linked elements
- */
-export const unlinkElement = (
-  element: EditorElement,
-  elements: EditorElement[]
-): EditorElement[] => {
-  if (!element || !element.linkedElementId) return elements;
+  // Find the source size
+  const sourceSize = activeSizes.find(size => size.name === sourceElement.sizeId);
+  if (!sourceSize) {
+    toast.error("Could not determine source size");
+    return elements;
+  }
   
-  // Make this element independently positionable
-  const updatedElements = elements.map(el => {
-    if (el.id === element.id) {
+  // Analyze element position to determine constraints
+  const { horizontalConstraint, verticalConstraint } = analyzeElementPosition(sourceElement, sourceSize);
+  
+  // Calculate percentage values for the source element
+  const xPercent = (sourceElement.style.x / sourceSize.width) * 100;
+  const yPercent = (sourceElement.style.y / sourceSize.height) * 100;
+  const widthPercent = (sourceElement.style.width / sourceSize.width) * 100;
+  const heightPercent = (sourceElement.style.height / sourceSize.height) * 100;
+  
+  // Create a new array of elements with the source element updated
+  let updatedElements = elements.map(el => {
+    if (el.id === sourceElement.id) {
       return {
         ...el,
-        linkedElementId: undefined,
-        isIndividuallyPositioned: true
+        linkedElementId: linkedId,
+        style: {
+          ...el.style,
+          xPercent,
+          yPercent,
+          widthPercent,
+          heightPercent,
+          constraintHorizontal: horizontalConstraint,
+          constraintVertical: verticalConstraint
+        }
       };
     }
     return el;
   });
   
-  toast.success('Elemento desvinculado');
+  // Create linked versions for each other size
+  activeSizes
+    .filter(size => size.name !== sourceElement.sizeId)
+    .forEach(targetSize => {
+      // Calculate dimensions for the new element based on constraints
+      const scaleX = targetSize.width / sourceSize.width;
+      const scaleY = targetSize.height / sourceSize.height;
+      
+      // Base calculations assuming left/top constraints
+      let x = sourceElement.style.x * scaleX;
+      let y = sourceElement.style.y * scaleY;
+      let width = sourceElement.style.width * scaleX;
+      let height = sourceElement.style.height * scaleY;
+      
+      // Apply horizontal constraint
+      if (horizontalConstraint === "right") {
+        const rightEdgeDistance = sourceSize.width - (sourceElement.style.x + sourceElement.style.width);
+        x = targetSize.width - rightEdgeDistance * scaleX - width;
+      } else if (horizontalConstraint === "center") {
+        const centerOffsetX = sourceElement.style.x + sourceElement.style.width / 2 - sourceSize.width / 2;
+        x = targetSize.width / 2 + centerOffsetX * scaleX - width / 2;
+      }
+      
+      // Apply vertical constraint
+      if (verticalConstraint === "bottom") {
+        const bottomEdgeDistance = sourceSize.height - (sourceElement.style.y + sourceElement.style.height);
+        y = targetSize.height - bottomEdgeDistance * scaleY - height;
+      } else if (verticalConstraint === "center") {
+        const centerOffsetY = sourceElement.style.y + sourceElement.style.height / 2 - sourceSize.height / 2;
+        y = targetSize.height / 2 + centerOffsetY * scaleY - height / 2;
+      }
+      
+      // Special handling for images to preserve aspect ratio
+      if ((sourceElement.type === "image" || sourceElement.type === "logo") && 
+          sourceElement.style.originalWidth && sourceElement.style.originalHeight) {
+        const aspectRatio = sourceElement.style.originalWidth / sourceElement.style.originalHeight;
+        
+        // Use the smaller scale factor for aspect-preserving scaling
+        const minScale = Math.min(scaleX, scaleY);
+        
+        if (verticalConstraint === "bottom" || verticalConstraint === "center") {
+          width = sourceElement.style.width * minScale;
+          height = width / aspectRatio;
+          
+          // Re-adjust position based on new dimensions
+          if (verticalConstraint === "bottom") {
+            const bottomEdgeDistance = sourceSize.height - (sourceElement.style.y + sourceElement.style.height);
+            y = targetSize.height - bottomEdgeDistance * scaleY - height;
+          } else if (verticalConstraint === "center") {
+            const centerOffsetY = sourceElement.style.y + sourceElement.style.height / 2 - sourceSize.height / 2;
+            y = targetSize.height / 2 + centerOffsetY * scaleY - height / 2;
+          }
+        } else {
+          // For top-aligned images
+          width = sourceElement.style.width * minScale;
+          height = width / aspectRatio;
+        }
+      }
+      
+      // For text elements, ensure font size is properly scaled but remains legible
+      let fontSize = sourceElement.style.fontSize;
+      if (sourceElement.type === "text" && fontSize) {
+        const minScale = Math.min(scaleX, scaleY);
+        fontSize = fontSize * minScale;
+        fontSize = Math.max(fontSize, 9); // Minimum legible size
+      }
+      
+      // Create the linked element with the proper ID for this size
+      const linkedElement: EditorElement = {
+        ...sourceElement,
+        id: `${sourceElement.id}-${targetSize.name.replace(/\s+/g, '-').toLowerCase()}`,
+        sizeId: targetSize.name,
+        linkedElementId: linkedId,
+        style: {
+          ...sourceElement.style,
+          x,
+          y,
+          width,
+          height,
+          fontSize,
+          xPercent: (x / targetSize.width) * 100,
+          yPercent: (y / targetSize.height) * 100,
+          widthPercent: (width / targetSize.width) * 100,
+          heightPercent: (height / targetSize.height) * 100,
+          constraintHorizontal: horizontalConstraint,
+          constraintVertical: verticalConstraint
+        }
+      };
+      
+      // For containers or layouts, also update child element IDs
+      if (sourceElement.type === "container" || sourceElement.type === "layout") {
+        linkedElement.childElements = sourceElement.childElements?.map(child => ({
+          ...child,
+          id: `${child.id}-${targetSize.name.replace(/\s+/g, '-').toLowerCase()}`,
+          parentId: linkedElement.id,
+          sizeId: targetSize.name
+        }));
+      }
+      
+      // Add the linked element to our updated elements
+      updatedElements.push(linkedElement);
+    });
+  
   return updatedElements;
+};
+
+/**
+ * Unlinks an element from its linked versions
+ */
+export const unlinkElement = (
+  elements: EditorElement[],
+  elementId: string
+): EditorElement[] => {
+  // Find the element to unlink
+  const element = elements.find(el => el.id === elementId);
+  if (!element || !element.linkedElementId) {
+    return elements;
+  }
+  
+  const linkedId = element.linkedElementId;
+  
+  // Update all elements, removing linked ID from the specified element
+  // and removing all other elements with this linked ID
+  return elements
+    .filter(el => el.id === elementId || el.linkedElementId !== linkedId) // Keep this element and non-linked elements
+    .map(el => {
+      if (el.id === elementId) {
+        // Remove linked ID and constraints from this element
+        const { linkedElementId, ...styleWithoutLinkedProps } = el.style;
+        return {
+          ...el,
+          linkedElementId: undefined,
+          style: {
+            ...styleWithoutLinkedProps,
+            // Keep percentage values for future use
+            xPercent: el.style.xPercent,
+            yPercent: el.style.yPercent,
+            widthPercent: el.style.widthPercent,
+            heightPercent: el.style.heightPercent,
+          }
+        };
+      }
+      return el;
+    });
 };

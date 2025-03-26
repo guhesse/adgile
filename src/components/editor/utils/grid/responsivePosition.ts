@@ -9,7 +9,7 @@ import { snapToGrid } from "./gridCore";
 export const analyzeElementPosition = (
   element: EditorElement,
   canvasSize: BannerSize
-): { horizontalConstraint: string, verticalConstraint: string } => {
+): { horizontalConstraint: "left" | "right" | "center" | "scale", verticalConstraint: "top" | "bottom" | "center" | "scale" } => {
   const threshold = 20; // Threshold in pixels for constraint detection
   
   // Calculate distances to edges
@@ -19,7 +19,7 @@ export const analyzeElementPosition = (
   const bottomDistance = canvasSize.height - (element.style.y + element.style.height);
   
   // Determine horizontal constraint
-  let horizontalConstraint = "left"; // Default
+  let horizontalConstraint: "left" | "right" | "center" | "scale" = "left"; // Default
   if (Math.abs(leftDistance - rightDistance) < threshold) {
     horizontalConstraint = "center";
   } else if (leftDistance > rightDistance) {
@@ -27,7 +27,7 @@ export const analyzeElementPosition = (
   }
   
   // Determine vertical constraint
-  let verticalConstraint = "top"; // Default
+  let verticalConstraint: "top" | "bottom" | "center" | "scale" = "top"; // Default
   if (Math.abs(topDistance - bottomDistance) < threshold) {
     verticalConstraint = "center";
   } else if (topDistance > bottomDistance) {
@@ -85,13 +85,26 @@ export const applyTransformationMatrix = (
        element.style.originalWidth && element.style.originalHeight) {
     const aspectRatio = element.style.originalWidth / element.style.originalHeight;
     
-    // Determine the constraining dimension (width or height)
-    if (width / height > aspectRatio) {
-      // Width is more constrained, adjust height
+    // For bottom-aligned or centered images, maintain their position but adjust size
+    if (element.style.constraintVertical === "bottom" || element.style.constraintVertical === "center") {
+      // Use the smaller scale factor to preserve aspect ratio
+      const minScale = Math.min(scaleX, scaleY);
+      width = element.style.width * minScale;
       height = width / aspectRatio;
+      
+      // Re-adjust position based on new dimensions
+      if (element.style.constraintVertical === "bottom") {
+        const bottomEdgeDistance = sourceSize.height - (element.style.y + element.style.height);
+        y = targetSize.height - bottomEdgeDistance * scaleY - height;
+      } else if (element.style.constraintVertical === "center") {
+        const centerOffset = element.style.y + element.style.height / 2 - sourceSize.height / 2;
+        y = targetSize.height / 2 + centerOffset * scaleY - height / 2;
+      }
     } else {
-      // Height is more constrained, adjust width
-      width = height * aspectRatio;
+      // For top-aligned images, maintain their top position and adjust size
+      const minScale = Math.min(scaleX, scaleY);
+      width = element.style.width * minScale;
+      height = width / aspectRatio;
     }
   }
   

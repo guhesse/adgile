@@ -98,6 +98,57 @@ export const applyResponsiveTransformation = (
       break;
   }
   
+  // Special handling for images to maintain aspect ratio
+  if (element.type === 'image' || element.type === 'logo') {
+    // Use the smaller scale factor for both dimensions to avoid distortion
+    const minScale = Math.min(scaleX, scaleY);
+    
+    // For bottom-aligned elements, especially images, ensure they stay aligned
+    if (verticalConstraint === 'bottom') {
+      const newHeight = element.style.height * minScale;
+      y = targetSize.height - bottomDistance * scaleY - newHeight;
+      height = newHeight;
+    }
+    
+    // For images with original dimensions, preserve the aspect ratio
+    if (element.style.originalWidth && element.style.originalHeight) {
+      const aspectRatio = element.style.originalWidth / element.style.originalHeight;
+      // Adjust height based on the new width and aspect ratio
+      height = width / aspectRatio;
+    }
+  }
+  
+  // Special handling for text to ensure it stays legible
+  if (element.type === 'text' && element.style.fontSize) {
+    // Scale font size based on the smaller of width/height ratio
+    const minScale = Math.min(scaleX, scaleY);
+    const newFontSize = element.style.fontSize * minScale;
+    
+    // Set minimum font size to ensure legibility
+    const minLegibleSize = 8; // pixels
+    const fontSize = Math.max(newFontSize, minLegibleSize);
+    
+    // Create transformed element with updated font size
+    return {
+      ...element,
+      style: {
+        ...element.style,
+        x,
+        y,
+        width,
+        height,
+        fontSize,
+        constraintHorizontal: horizontalConstraint,
+        constraintVertical: verticalConstraint,
+        // Calculate percentage values
+        xPercent: (x / targetSize.width) * 100,
+        yPercent: (y / targetSize.height) * 100,
+        widthPercent: (width / targetSize.width) * 100,
+        heightPercent: (height / targetSize.height) * 100
+      }
+    };
+  }
+  
   // Create transformed element
   const transformedElement: EditorElement = {
     ...element,

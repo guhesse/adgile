@@ -1,6 +1,5 @@
-
 import { EditorElement, BannerSize } from "../../types";
-import { applyConstraintBasedPositioning } from "../../utils/grid/positionUtils";
+import { applyResponsiveTransformation } from "./constraintOperations";
 
 /**
  * Updates all linked elements when one is modified
@@ -44,8 +43,8 @@ export const updateAllLinkedElements = (
   if (!horizontalConstraint || !verticalConstraint) {
     const { analyzeElementPosition } = require('../../utils/grid/responsivePosition');
     const constraints = analyzeElementPosition(sourceElement, sourceSize);
-    horizontalConstraint = horizontalConstraint || constraints.horizontalConstraint as any;
-    verticalConstraint = verticalConstraint || constraints.verticalConstraint as any;
+    horizontalConstraint = horizontalConstraint || constraints.horizontalConstraint;
+    verticalConstraint = verticalConstraint || constraints.verticalConstraint;
   }
   
   return elements.map(el => {
@@ -68,8 +67,8 @@ export const updateAllLinkedElements = (
       const targetSize = activeSizes.find(size => size.name === el.sizeId);
       
       if (targetSize) {
-        // Apply transformation using constraints
-        const { x, y, width, height } = applyConstraintBasedPositioning({
+        // Create a source element with the changes applied
+        const updatedSourceElement = {
           ...sourceElement,
           style: {
             ...sourceElement.style,
@@ -77,28 +76,21 @@ export const updateAllLinkedElements = (
             constraintHorizontal: horizontalConstraint,
             constraintVertical: verticalConstraint
           }
-        }, targetSize.width, targetSize.height);
+        };
         
-        // Calculate new percentage values
-        const xPercent = (x / targetSize.width) * 100;
-        const yPercent = (y / targetSize.height) * 100;
-        const widthPercent = (width / targetSize.width) * 100;
-        const heightPercent = (height / targetSize.height) * 100;
+        // Apply transformation using responsive algorithm
+        const transformedElement = applyResponsiveTransformation(
+          updatedSourceElement, 
+          sourceSize, 
+          targetSize
+        );
         
+        // Return the transformed element, keeping all other properties from the original element
         return {
           ...el,
           style: {
             ...el.style,
-            x,
-            y,
-            width,
-            height,
-            xPercent,
-            yPercent,
-            widthPercent,
-            heightPercent,
-            constraintHorizontal: horizontalConstraint,
-            constraintVertical: verticalConstraint
+            ...transformedElement.style
           }
         };
       }

@@ -32,8 +32,8 @@ export const createLinkedVersions = (
       yPercent,
       widthPercent,
       heightPercent,
-      constraintHorizontal: horizontalConstraint as any,
-      constraintVertical: verticalConstraint as any
+      constraintHorizontal: horizontalConstraint,
+      constraintVertical: verticalConstraint
     }
   };
   
@@ -54,8 +54,8 @@ export const createLinkedVersions = (
           yPercent,
           widthPercent,
           heightPercent,
-          constraintHorizontal: horizontalConstraint as any,
-          constraintVertical: verticalConstraint as any
+          constraintHorizontal: horizontalConstraint,
+          constraintVertical: verticalConstraint
         }
       },
       selectedSize,
@@ -80,8 +80,8 @@ export const createLinkedVersions = (
           yPercent,
           widthPercent,
           heightPercent,
-          constraintHorizontal: horizontalConstraint as any,
-          constraintVertical: verticalConstraint as any
+          constraintHorizontal: horizontalConstraint,
+          constraintVertical: verticalConstraint
         },
         childElements: element.childElements?.map(child => ({
           ...child,
@@ -106,8 +106,8 @@ export const createLinkedVersions = (
           yPercent,
           widthPercent,
           heightPercent,
-          constraintHorizontal: horizontalConstraint as any,
-          constraintVertical: verticalConstraint as any
+          constraintHorizontal: horizontalConstraint,
+          constraintVertical: verticalConstraint
         }
       };
     }
