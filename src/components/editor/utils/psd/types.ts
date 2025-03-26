@@ -1,3 +1,4 @@
+
 /**
  * Interface for storing information about a PSD file
  */
@@ -126,7 +127,7 @@ export interface MaskData {
 export interface LayerData {
   id: string;
   name: string;
-  type: 'text' | 'image' | 'group';
+  type: 'text' | 'image' | 'group' | 'shape'; // Added 'shape' to support different layer types
   x: number;
   y: number;
   width: number;
@@ -135,4 +136,5 @@ export interface LayerData {
   textStyle?: TextLayerStyle;
   src?: string;
   mask?: MaskData | null;
+  imageData?: string; // Added to support image data
 }

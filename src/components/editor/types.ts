@@ -53,6 +53,11 @@ export type EditorElement = {
     yPercent?: number;
     widthPercent?: number;
     heightPercent?: number;
+    // Additional properties for mask support
+    hasMask?: boolean;
+    maskInfo?: any;
+    // Support for rotation
+    rotation?: number;
   };
   columns?: number;
   childElements?: EditorElement[];

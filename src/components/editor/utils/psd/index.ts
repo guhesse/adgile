@@ -1,13 +1,28 @@
 
-// Re-export all PSD utility functions for easier imports
-export { importPSDFile } from './importPSD';
-export { parsePSDFile } from './psdParser';
+// Re-export all PSD utility functions from a central location
+export { 
+  processPSDFile, 
+  extractLayersFromPSD 
+} from './psdProcessor';
+
+export { 
+  importPSDFile 
+} from './importPSD';
+
 export {
-  savePSDDataToStorage,
-  getPSDDataFromStorage,
+  savePSDData,
+  getPSDData,
   getPSDMetadata,
   savePSDMetadata,
-  removePSDData
+  removePSDData,
+  clearAllPSDData
 } from './storage';
-export type { PSDFileData, PSDLayerInfo } from './types';
 
+export type {
+  PSDFileData,
+  PSDMetadata,
+  PSDLayerInfo,
+  TextLayerStyle,
+  PSDLayer,
+  LayerData
+} from './types';
