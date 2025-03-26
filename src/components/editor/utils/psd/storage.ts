@@ -1,3 +1,4 @@
+
 /**
  * Utility functions for handling PSD storage in localStorage
  */
@@ -100,10 +101,6 @@ export const getPSDMetadata = (): Array<{key: string, fileName: string, createdA
   }
 };
 
-/**
- * Utility functions for handling PSD storage in localStorage
- */
-
 export const storePSDData = (key: string, data: any): boolean => {
   try {
     localStorage.setItem(key, JSON.stringify(data));
@@ -140,7 +137,7 @@ export const getAllPSDStorageKeys = (): string[] => {
     const keys: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && key.startsWith('psd-')) {
+      if (key && key.startsWith(PSD_STORAGE_PREFIX)) {
         keys.push(key);
       }
     }
@@ -162,3 +159,7 @@ export const clearAllPSDData = (): boolean => {
     return false;
   }
 };
+
+// Alias para compatibilidade
+export const removePSDData = removePSDDataFromStorage;
+export const loadPSDDataFromStorage = getPSDDataFromStorage;

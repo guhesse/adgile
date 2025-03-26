@@ -1,165 +1,192 @@
 
-import React, { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
-import { AdminFormatSelectorProps } from "@/types/admin";
-import { BannerSize } from "@/components/editor/types";
+import React from 'react';
+import { BannerSize } from '@/components/editor/types';
+import { Card, CardContent } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { 
+  LayoutGrid, 
+  LayoutList, 
+  Square, 
+  ImageIcon,
+} from 'lucide-react';
 
-export const AdminFormatSelector: React.FC<AdminFormatSelectorProps> = ({
-  formats,
-  onSelectFormat,
-  selectedFormat,
-}) => {
-  const [activeTab, setActiveTab] = useState<"horizontal" | "vertical" | "square">("horizontal");
-
-  // Group formats by orientation with default empty arrays to prevent undefined access
-  const formatsByOrientation = formats?.reduce((acc, format) => {
-    const ratio = format.width / format.height;
-    
-    // Determine orientation based on aspect ratio
-    let orientation: "horizontal" | "vertical" | "square" = "horizontal";
-    if (ratio >= 0.95 && ratio <= 1.05) {
-      orientation = "square";
-    } else if (ratio < 0.95) {
-      orientation = "vertical";
-    }
-    
-    if (!acc[orientation]) {
-      acc[orientation] = [];
-    }
-    
-    acc[orientation].push(format);
-    return acc;
-  }, {
-    horizontal: [] as BannerSize[],
-    vertical: [] as BannerSize[],
-    square: [] as BannerSize[]
-  }) || { horizontal: [], vertical: [], square: [] };
-
-  return (
-    <Tabs
-      defaultValue="horizontal"
-      value={activeTab}
-      onValueChange={(value) => setActiveTab(value as any)}
-      className="w-full"
-    >
-      <div className="px-4 py-2">
-        <TabsList className="w-full">
-          <TabsTrigger value="horizontal" className="flex-1">
-            Horizontal
-          </TabsTrigger>
-          <TabsTrigger value="vertical" className="flex-1">
-            Vertical
-          </TabsTrigger>
-          <TabsTrigger value="square" className="flex-1">
-            Square
-          </TabsTrigger>
-        </TabsList>
-      </div>
-
-      <TabsContent value="horizontal" className="m-0">
-        <ScrollArea className="h-[calc(100vh-230px)]">
-          <div className="p-4 grid grid-cols-1 gap-3">
-            {formatsByOrientation.horizontal.map((format, index) => (
-              <FormatCard
-                key={`h-${index}`}
-                width={format.width}
-                height={format.height}
-                name={format.name}
-                isActive={
-                  selectedFormat?.width === format.width &&
-                  selectedFormat?.height === format.height
-                }
-                onClick={() => onSelectFormat(format)}
-              />
-            ))}
-          </div>
-        </ScrollArea>
-      </TabsContent>
-
-      <TabsContent value="vertical" className="m-0">
-        <ScrollArea className="h-[calc(100vh-230px)]">
-          <div className="p-4 grid grid-cols-1 gap-3">
-            {formatsByOrientation.vertical.map((format, index) => (
-              <FormatCard
-                key={`v-${index}`}
-                width={format.width}
-                height={format.height}
-                name={format.name}
-                isActive={
-                  selectedFormat?.width === format.width &&
-                  selectedFormat?.height === format.height
-                }
-                onClick={() => onSelectFormat(format)}
-              />
-            ))}
-          </div>
-        </ScrollArea>
-      </TabsContent>
-
-      <TabsContent value="square" className="m-0">
-        <ScrollArea className="h-[calc(100vh-230px)]">
-          <div className="p-4 grid grid-cols-1 gap-3">
-            {formatsByOrientation.square.map((format, index) => (
-              <FormatCard
-                key={`s-${index}`}
-                width={format.width}
-                height={format.height}
-                name={format.name}
-                isActive={
-                  selectedFormat?.width === format.width &&
-                  selectedFormat?.height === format.height
-                }
-                onClick={() => onSelectFormat(format)}
-              />
-            ))}
-          </div>
-        </ScrollArea>
-      </TabsContent>
-    </Tabs>
-  );
-};
-
-interface FormatCardProps {
-  width: number;
-  height: number;
-  name: string;
-  isActive: boolean;
-  onClick: () => void;
+interface AdminFormatSelectorProps {
+  formats: BannerSize[];
+  selectedFormat: BannerSize | null;
+  onSelectFormat: (format: BannerSize) => void;
 }
 
-const FormatCard: React.FC<FormatCardProps> = ({ width, height, name, isActive, onClick }) => {
-  // Calculate aspect ratio for preview
-  const aspectRatio = width / height;
-  let previewWidth = 100;
-  let previewHeight = previewWidth / aspectRatio;
-  
-  if (previewHeight > 100) {
-    previewHeight = 100;
-    previewWidth = previewHeight * aspectRatio;
-  }
+export const AdminFormatSelector = ({ 
+  formats, 
+  selectedFormat, 
+  onSelectFormat 
+}: AdminFormatSelectorProps) => {
+  // Organizar formatos por orientação
+  const verticalFormats = formats.filter(f => f.height > f.width);
+  const horizontalFormats = formats.filter(f => f.width > f.height);
+  const squareFormats = formats.filter(f => {
+    const ratio = f.width / f.height;
+    return ratio >= 0.95 && ratio <= 1.05;
+  });
+
+  // Função para gerar um thumbnail placeholder baseado na orientação do formato
+  const getFormatPlaceholder = (format: BannerSize) => {
+    const ratio = format.width / format.height;
+    
+    if (ratio >= 0.95 && ratio <= 1.05) {
+      return <Square className="h-6 w-6 text-purple-400" />;
+    } else if (ratio > 1) {
+      return <LayoutList className="h-6 w-6 text-blue-400" />;
+    } else {
+      return <LayoutGrid className="h-6 w-6 text-green-400" />;
+    }
+  };
 
   return (
-    <Button
-      variant={isActive ? "secondary" : "outline"}
-      className={`flex flex-col items-center justify-center p-3 h-auto ${
-        isActive ? "ring-2 ring-purple-500 ring-offset-1" : ""
-      }`}
-      onClick={onClick}
-    >
-      <div className="flex items-center justify-center mb-2">
-        <div
-          style={{
-            width: `${previewWidth}px`,
-            height: `${previewHeight}px`,
-            backgroundColor: isActive ? "#e9d5ff" : "#f1f5f9",
-            border: "1px solid #cbd5e1",
-          }}
-        ></div>
+    <ScrollArea className="h-[calc(100vh-220px)]">
+      <div className="space-y-6 pr-3">
+        {/* Formatos Verticais */}
+        <div>
+          <h4 className="text-sm font-medium text-gray-500 mb-3 flex items-center">
+            <LayoutGrid className="h-4 w-4 mr-2 text-green-500" />
+            Formatos Verticais
+          </h4>
+          
+          <div className="grid grid-cols-2 gap-2">
+            {verticalFormats.map((format) => (
+              <Card 
+                key={format.name}
+                className={`cursor-pointer overflow-hidden transition-all hover:ring-2 hover:ring-offset-1 ${
+                  selectedFormat?.name === format.name
+                    ? 'ring-2 ring-blue-600 ring-offset-1'
+                    : 'ring-0'
+                }`}
+                onClick={() => onSelectFormat(format)}
+              >
+                <div className="relative pb-[177%]">
+                  {format.thumbnail ? (
+                    <img
+                      src={`/thumbnails/${format.thumbnail}`}
+                      alt={format.name}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => {
+                        // Se a imagem falhar, exibir o ícone de fallback
+                        e.currentTarget.style.display = 'none';
+                        const parent = e.currentTarget.parentElement;
+                        if (parent) {
+                          parent.classList.add('bg-green-50', 'flex', 'items-center', 'justify-center');
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 w-full h-full bg-green-50 flex items-center justify-center">
+                      <LayoutGrid className="h-8 w-8 text-green-300" />
+                    </div>
+                  )}
+                </div>
+                <CardContent className="p-2">
+                  <div className="text-xs font-medium truncate">{format.name}</div>
+                  <div className="text-xs text-gray-500">{format.width}×{format.height}</div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+        
+        {/* Formatos Horizontais */}
+        <div>
+          <h4 className="text-sm font-medium text-gray-500 mb-3 flex items-center">
+            <LayoutList className="h-4 w-4 mr-2 text-blue-500" />
+            Formatos Horizontais
+          </h4>
+          
+          <div className="grid grid-cols-2 gap-2">
+            {horizontalFormats.map((format) => (
+              <Card 
+                key={format.name}
+                className={`cursor-pointer overflow-hidden transition-all hover:ring-2 hover:ring-offset-1 ${
+                  selectedFormat?.name === format.name
+                    ? 'ring-2 ring-blue-600 ring-offset-1'
+                    : 'ring-0'
+                }`}
+                onClick={() => onSelectFormat(format)}
+              >
+                <div className="relative pb-[56.25%]">
+                  {format.thumbnail ? (
+                    <img
+                      src={`/thumbnails/${format.thumbnail}`}
+                      alt={format.name}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const parent = e.currentTarget.parentElement;
+                        if (parent) {
+                          parent.classList.add('bg-blue-50', 'flex', 'items-center', 'justify-center');
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 w-full h-full bg-blue-50 flex items-center justify-center">
+                      <LayoutList className="h-8 w-8 text-blue-300" />
+                    </div>
+                  )}
+                </div>
+                <CardContent className="p-2">
+                  <div className="text-xs font-medium truncate">{format.name}</div>
+                  <div className="text-xs text-gray-500">{format.width}×{format.height}</div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+        
+        {/* Formatos Quadrados */}
+        <div>
+          <h4 className="text-sm font-medium text-gray-500 mb-3 flex items-center">
+            <Square className="h-4 w-4 mr-2 text-purple-500" />
+            Formatos Quadrados
+          </h4>
+          
+          <div className="grid grid-cols-2 gap-2">
+            {squareFormats.map((format) => (
+              <Card 
+                key={format.name}
+                className={`cursor-pointer overflow-hidden transition-all hover:ring-2 hover:ring-offset-1 ${
+                  selectedFormat?.name === format.name
+                    ? 'ring-2 ring-blue-600 ring-offset-1'
+                    : 'ring-0'
+                }`}
+                onClick={() => onSelectFormat(format)}
+              >
+                <div className="relative pb-[100%]">
+                  {format.thumbnail ? (
+                    <img
+                      src={`/thumbnails/${format.thumbnail}`}
+                      alt={format.name}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const parent = e.currentTarget.parentElement;
+                        if (parent) {
+                          parent.classList.add('bg-purple-50', 'flex', 'items-center', 'justify-center');
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 w-full h-full bg-purple-50 flex items-center justify-center">
+                      <Square className="h-8 w-8 text-purple-300" />
+                    </div>
+                  )}
+                </div>
+                <CardContent className="p-2">
+                  <div className="text-xs font-medium truncate">{format.name}</div>
+                  <div className="text-xs text-gray-500">{format.width}×{format.height}</div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
       </div>
-      <div className="text-xs font-medium">{width} × {height}px</div>
-      <div className="text-xs text-gray-500 truncate max-w-full">{name}</div>
-    </Button>
+    </ScrollArea>
   );
 };

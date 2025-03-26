@@ -187,11 +187,11 @@ export const extractTextLayerStyle = (textData: any, node: any): TextLayerStyle 
 
         if (alignmentValue !== undefined) {
           // Mapear valores de alinhamento
-          const alignmentMap: Record<string, string> = {
+          const alignmentMap: Record<string, 'left' | 'center' | 'right'> = {
             '0': 'left',
             '1': 'right',
             '2': 'center',
-            '3': 'justify'
+            '3': 'left'
           };
 
           const alignment = alignmentMap[alignmentValue.toString()] || 'left';

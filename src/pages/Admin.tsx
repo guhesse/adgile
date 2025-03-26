@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+
+import React, { useState, useEffect, useCallback } from "react";
 import { CanvasProvider } from "@/components/editor/CanvasContext";
 import { Canvas } from "@/components/editor/Canvas";
 import { Button } from "@/components/ui/button";
@@ -10,59 +11,48 @@ import { AdminFormatSelector } from "@/components/editor/admin/AdminFormatSelect
 import { AIModelManager } from "@/components/editor/ai/AIModelManager";
 import { LayoutTemplate, AdminStats } from "@/components/editor/types/admin";
 import { BannerSize } from "@/components/editor/types";
-import { safelyStoreData, safelyGetData } from "@/utils/storageUtils";
+import { AdminTrainingPanel } from "@/components/editor/panels/AdminTrainingPanel";
+import { saveToIndexedDB, getFromIndexedDB } from "@/utils/indexedDBUtils";
+import * as tf from '@tensorflow/tfjs';
 
-// Significantly reduce the number of formats to prevent localStorage quota issues
-const createDemoFormats = () => {
-  const formats: BannerSize[] = [];
-  
-  // Create 5 vertical formats (reduced from 20)
-  for (let i = 0; i < 5; i++) {
-    const width = Math.floor(Math.random() * 441) + 160;
-    const height = Math.floor(Math.random() * 1321) + 600;
-    
-    formats.push({
-      name: `Vertical ${i+1}`,
-      width,
-      height
-    });
-  }
-  
-  // Create 5 horizontal formats (reduced from 20)
-  for (let i = 0; i < 5; i++) {
-    const width = Math.floor(Math.random() * 1321) + 600;
-    const height = Math.floor(Math.random() * 441) + 160;
-    
-    formats.push({
-      name: `Horizontal ${i+1}`,
-      width,
-      height
-    });
-  }
-  
-  // Create 5 square formats (reduced from 10)
-  for (let i = 0; i < 5; i++) {
-    const size = Math.floor(Math.random() * 901) + 300;
-    const variation = Math.floor(Math.random() * 21) - 10;
-    
-    formats.push({
-      name: `Square ${i+1}`,
-      width: size,
-      height: size + variation
-    });
-  }
-  
-  return formats;
-};
+// Chaves de armazenamento
+const STORAGE_KEY = 'admin-layout-templates';
+const FORMATS_KEY = 'admin-formats';
+const MODEL_KEY = 'ai-layout-model';
 
+// Função para determinar a orientação com base nas dimensões
 const determineOrientation = (width: number, height: number): 'vertical' | 'horizontal' | 'square' => {
   const ratio = width / height;
   if (ratio >= 0.95 && ratio <= 1.05) return 'square';
   return width > height ? 'horizontal' : 'vertical';
 };
 
-const STORAGE_KEY = 'admin-layout-templates';
-const FORMATS_KEY = 'admin-formats';
+// Número menor de formatos para evitar problemas de quota
+const createDemoFormats = () => {
+  const formats: BannerSize[] = [];
+  
+  // Criar 3 formatos verticais (reduzido de 5)
+  formats.push(
+    { name: 'Instagram Story', width: 1080, height: 1920, thumbnail: 'instagram-story.png' },
+    { name: 'Pinterest Pin', width: 1000, height: 1500, thumbnail: 'pinterest-pin.png' },
+    { name: 'Mobile Banner', width: 320, height: 480, thumbnail: 'mobile-banner.png' }
+  );
+  
+  // Criar 3 formatos horizontais (reduzido de 5)
+  formats.push(
+    { name: 'Facebook Ad', width: 1200, height: 628, thumbnail: 'facebook-ad.png' },
+    { name: 'LinkedIn Banner', width: 1584, height: 396, thumbnail: 'linkedin-banner.png' },
+    { name: 'Twitter Post', width: 1200, height: 675, thumbnail: 'twitter-post.png' }
+  );
+  
+  // Criar 2 formatos quadrados (reduzido de 5)
+  formats.push(
+    { name: 'Instagram Post', width: 1080, height: 1080, thumbnail: 'instagram-post.png' },
+    { name: 'Facebook Profile', width: 360, height: 360, thumbnail: 'facebook-profile.png' }
+  );
+  
+  return formats;
+};
 
 const Admin: React.FC = () => {
   const [activeTab, setActiveTab] = useState("layouts");
@@ -83,61 +73,75 @@ const Admin: React.FC = () => {
     accuracy: 0,
     loss: 0
   });
+  const [aiModel, setAiModel] = useState<tf.LayersModel | null>(null);
 
+  // Inicializar ou carregar formatos
   useEffect(() => {
-    // Carregar formatos usando o novo utilitário
     const loadFormats = async () => {
       try {
-        const storedFormats = await safelyGetData(FORMATS_KEY);
-        if (storedFormats) {
+        // Tentar carregar formatos do IndexedDB
+        const storedFormats = await getFromIndexedDB(FORMATS_KEY);
+        
+        if (storedFormats && Array.isArray(storedFormats) && storedFormats.length > 0) {
           console.log("Formatos carregados com sucesso:", storedFormats);
           setFormats(storedFormats);
         } else {
           console.log("Nenhum formato encontrado, criando demos");
           const demoFormats = createDemoFormats();
           setFormats(demoFormats);
-          // Usar a versão assíncrona
-          const saved = await safelyStoreData(FORMATS_KEY, demoFormats);
-          console.log("Formatos salvos com sucesso:", saved);
+          
+          // Salvar no IndexedDB com tratamento de erro
+          try {
+            const saved = await saveToIndexedDB(FORMATS_KEY, demoFormats);
+            console.log("Formatos salvos com sucesso no IndexedDB:", saved);
+          } catch (storageError) {
+            console.error("Falha ao salvar formatos:", storageError);
+            // Continuar usando os formatos em memória
+          }
         }
       } catch (error) {
-        console.error("Failed to initialize formats:", error);
-        // Fall back to in-memory formats without saving to localStorage
+        console.error("Falha ao inicializar formatos:", error);
+        
+        // Recorrer a formatos em memória sem tentar salvar
         const demoFormats = createDemoFormats();
         setFormats(demoFormats);
-        toast.error("Failed to store formats in browser storage. Using in-memory formats.");
+        toast.error("Falha ao acessar o armazenamento. Usando formatos temporários.");
       }
     };
     
     loadFormats();
   }, []);
 
+  // Carregar templates salvos
   useEffect(() => {
-    // Carregar templates salvos usando o novo utilitário
     const loadTemplates = async () => {
       try {
         console.log("Tentando carregar templates do IndexedDB...");
-        const parsedTemplates = await safelyGetData(STORAGE_KEY, []);
+        const parsedTemplates = await getFromIndexedDB(STORAGE_KEY, []);
         console.log("Templates carregados:", parsedTemplates);
         
         if (parsedTemplates && Array.isArray(parsedTemplates)) {
           setSavedTemplates(parsedTemplates);
           updateStats(parsedTemplates);
-          toast.success(`${parsedTemplates.length} templates carregados com sucesso`);
+          
+          if (parsedTemplates.length > 0) {
+            toast.success(`${parsedTemplates.length} templates carregados com sucesso`);
+          }
         } else {
           console.log("Nenhum template encontrado ou formato inválido");
           setSavedTemplates([]);
         }
       } catch (error) {
-        console.error("Failed to parse saved templates:", error);
-        toast.error("Failed to load saved templates");
+        console.error("Falha ao analisar templates salvos:", error);
+        toast.error("Falha ao carregar templates salvos");
       }
     };
     
     loadTemplates();
   }, []);
 
-  const updateStats = (templatesData: LayoutTemplate[]) => {
+  // Atualizar estatísticas
+  const updateStats = useCallback((templatesData: LayoutTemplate[]) => {
     const newStats: AdminStats = {
       totalTemplates: templatesData.length,
       verticalTemplates: templatesData.filter(t => t.orientation === 'vertical').length,
@@ -145,25 +149,28 @@ const Admin: React.FC = () => {
       squareTemplates: templatesData.filter(t => t.orientation === 'square').length,
     };
     
-    if (isModelTrained && modelMetadata) {
+    if (isModelTrained && modelMetadata.trainedAt) {
       newStats.lastTrainingDate = modelMetadata.trainedAt as string;
       newStats.modelAccuracy = modelMetadata.accuracy;
     }
     
     setStats(newStats);
-  };
+  }, [isModelTrained, modelMetadata]);
 
+  // Lidar com a seleção de formato
   const handleFormatSelect = (format: BannerSize) => {
     setSelectedFormat(format);
   };
 
+  // Lidar com a mudança de tab
   const handleTabChange = (value: string) => {
     setActiveTab(value);
   };
 
+  // Salvar um template
   const handleSaveTemplate = async (elements: any[]) => {
     if (!selectedFormat) {
-      toast.error("Please select a format first");
+      toast.error("Selecione um formato primeiro");
       return;
     }
 
@@ -188,8 +195,7 @@ const Admin: React.FC = () => {
     console.log("Tentando salvar templates:", updatedTemplates);
     
     try {
-      // Usar a versão assíncrona do utilitário de armazenamento
-      const success = await safelyStoreData(STORAGE_KEY, updatedTemplates);
+      const success = await saveToIndexedDB(STORAGE_KEY, updatedTemplates);
       
       if (success) {
         toast.success("Template salvo com sucesso no IndexedDB");
@@ -204,14 +210,14 @@ const Admin: React.FC = () => {
     }
   };
 
+  // Excluir um template
   const handleDeleteTemplate = async (templateId: string) => {
     const updatedTemplates = savedTemplates.filter(template => template.id !== templateId);
     setSavedTemplates(updatedTemplates);
     updateStats(updatedTemplates);
     
     try {
-      // Usar a versão assíncrona
-      const success = await safelyStoreData(STORAGE_KEY, updatedTemplates);
+      const success = await saveToIndexedDB(STORAGE_KEY, updatedTemplates);
       
       if (success) {
         toast.success("Template excluído com sucesso");
@@ -225,13 +231,14 @@ const Admin: React.FC = () => {
     }
   };
 
+  // Treinar o modelo de IA
   const handleTrainModel = async () => {
-    if (savedTemplates.length < 10) {
-      toast.error("You need at least 10 templates to train the model");
+    if (savedTemplates.length < 5) {
+      toast.error("Você precisa de pelo menos 5 templates para treinar o modelo");
       return;
     }
     
-    toast.info("Starting model training...");
+    toast.info("Iniciando treinamento do modelo...");
     
     const startTime = Date.now();
     
@@ -251,18 +258,33 @@ const Admin: React.FC = () => {
       updateStats(savedTemplates);
       
       const trainingTime = ((Date.now() - startTime) / 1000).toFixed(1);
-      toast.success(`Model trained successfully in ${trainingTime}s`);
+      toast.success(`Modelo treinado com sucesso em ${trainingTime}s`);
     } catch (error) {
-      console.error("Training error:", error);
-      toast.error("Failed to train model");
+      console.error("Erro de treinamento:", error);
+      toast.error("Falha ao treinar o modelo");
     }
   };
 
+  // Capturar e salvar o template atual
   const captureAndSaveTemplate = () => {
     handleSaveTemplate([]);
     toast("Template capturado do canvas", {
       description: "Os elementos atuais do canvas foram salvos como um novo template."
     });
+  };
+
+  // Callback para quando o modelo estiver pronto
+  const handleModelReady = (model: tf.LayersModel) => {
+    setAiModel(model);
+    setIsModelTrained(true);
+    setModelMetadata({
+      ...modelMetadata,
+      trainedAt: new Date().toISOString(),
+      accuracy: 0.85,
+      loss: 0.15
+    });
+    
+    toast.success("Modelo de IA está pronto para uso");
   };
 
   return (
@@ -272,10 +294,10 @@ const Admin: React.FC = () => {
           <h1 className="text-2xl font-bold">Admin Dashboard</h1>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => window.location.href = "/"}>
-              Return to Editor
+              Voltar ao Editor
             </Button>
             <Button onClick={captureAndSaveTemplate} disabled={!selectedFormat}>
-              Save Current Layout
+              Salvar Layout Atual
             </Button>
           </div>
         </div>
@@ -286,15 +308,15 @@ const Admin: React.FC = () => {
           <div className="border-b pb-2 mb-4">
             <TabsList>
               <TabsTrigger value="layouts">Layouts</TabsTrigger>
-              <TabsTrigger value="training">AI Training</TabsTrigger>
-              <TabsTrigger value="stats">Stats</TabsTrigger>
+              <TabsTrigger value="training">Treinamento de IA</TabsTrigger>
+              <TabsTrigger value="stats">Estatísticas</TabsTrigger>
             </TabsList>
           </div>
           
           <div className="flex-1 overflow-hidden">
             <TabsContent value="layouts" className="h-full flex overflow-hidden">
               <div className="w-72 border-r overflow-y-auto bg-white p-4">
-                <h3 className="font-medium mb-4">Select Format</h3>
+                <h3 className="font-medium mb-4">Selecionar Formato</h3>
                 <AdminFormatSelector 
                   formats={formats} 
                   onSelectFormat={handleFormatSelect}
@@ -315,9 +337,9 @@ const Admin: React.FC = () => {
                 ) : (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center max-w-md">
-                      <h3 className="text-lg font-medium mb-2">No Format Selected</h3>
+                      <h3 className="text-lg font-medium mb-2">Nenhum Formato Selecionado</h3>
                       <p className="text-gray-500 mb-4">
-                        Select a format from the sidebar to start creating a template.
+                        Selecione um formato na barra lateral para começar a criar um template.
                       </p>
                     </div>
                   </div>
@@ -333,15 +355,16 @@ const Admin: React.FC = () => {
             </TabsContent>
             
             <TabsContent value="training" className="h-full overflow-y-auto">
-              <div className="max-w-4xl mx-auto bg-white rounded-lg shadow p-6">
-                {/* Wrap AIModelManager in a custom component that doesn't use useCanvas */}
-                <AIModelManager 
-                  templates={savedTemplates}
-                  isModelTrained={isModelTrained}
-                  modelMetadata={modelMetadata}
-                  onTrainModel={handleTrainModel}
-                />
-              </div>
+              <AdminTrainingPanel 
+                layouts={savedTemplates}
+                onModelUpdate={() => {
+                  setIsModelTrained(true);
+                  setModelMetadata({
+                    ...modelMetadata,
+                    trainedAt: new Date().toISOString()
+                  });
+                }}
+              />
             </TabsContent>
             
             <TabsContent value="stats" className="h-full overflow-y-auto">

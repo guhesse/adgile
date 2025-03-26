@@ -1,49 +1,37 @@
 
-export interface PSDFileData {
-  width: number;
-  height: number;
-  layers: LayerData[];
-  metadata: {
-    fileName: string;
-    fileSize: number;
-    importedAt: string;
-  };
-  backgroundColor?: string;
+export interface TextLayerStyle {
+  text: string;
+  fontFamily: string;
+  fontSize: number;
+  fontWeight: string;
+  fontStyle: string;
+  color: string;
+  alignment: 'left' | 'center' | 'right';
+  letterSpacing: number;
+  lineHeight: number;
 }
 
-export interface PSDMetadata {
-  storageKeys: string[];
-  lastUpdated: string;
-  length?: number;
+export interface PSDFileData {
+  fileName: string;
+  width: number;
+  height: number;
+  uploadDate: string;
+  storageKey: string;
+  backgroundColor?: string;
+  layers: LayerData[];
 }
 
 export interface LayerData {
   id: string;
   name: string;
-  type: "text" | "image" | "group" | "shape" | string; // Added generic string to be compatible with existing code
+  type: 'text' | 'image' | 'group' | 'shape';
   x: number;
   y: number;
   width: number;
   height: number;
-  imageData?: string;
   src?: string;
-  mask?: any;
   textContent?: string;
   textStyle?: TextLayerStyle;
-}
-
-export interface TextLayerStyle {
-  fontFamily: string;
-  fontSize: number;
-  color: string;
-  fontWeight: string;
-  letterSpacing?: number;
-  lineHeight?: number;
-  textAlign?: "left" | "center" | "right";
-  textDecoration?: string;
-  textTransform?: string;
-  // Additional properties
-  text?: string;
-  fontStyle?: string;
-  alignment?: "left" | "center" | "right";
+  mask?: any;
+  imageData?: string;
 }

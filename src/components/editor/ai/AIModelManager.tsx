@@ -1,185 +1,308 @@
 
-import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Loader2, AlertTriangle, CheckCircle, Brain } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
-import { AIModelManagerProps } from '@/types/admin';
+import React, { useState, useEffect } from 'react';
+import * as tf from '@tensorflow/tfjs';
+import { Button } from '../../ui/button';
+import { Separator } from '../../ui/separator';
+import { Progress } from '../../ui/progress';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../../ui/card';
+import { LayoutTemplate } from '../types/admin';
+import { BannerSize } from '../types';
+import { Brain, RefreshCw, Check, AlertCircle, HelpCircle } from 'lucide-react';
+import { toast } from 'sonner';
+
+export interface AIModelManagerProps {
+  templates: LayoutTemplate[];
+  isModelTrained?: boolean;
+  modelMetadata?: {
+    trainedAt: string | null;
+    iterations: number;
+    accuracy: number;
+    loss: number;
+  };
+  onTrainModel?: () => Promise<void>;
+  onModelReady?: (model: tf.LayersModel) => void;
+}
 
 export const AIModelManager: React.FC<AIModelManagerProps> = ({
-  templates,
-  isModelTrained,
-  modelMetadata,
-  onTrainModel
+  templates = [],
+  isModelTrained = false,
+  modelMetadata = {
+    trainedAt: null,
+    iterations: 0,
+    accuracy: 0,
+    loss: 0
+  },
+  onTrainModel,
+  onModelReady
 }) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-
+  const [isTraining, setIsTraining] = useState(false);
+  const [trainingProgress, setTrainingProgress] = useState(0);
+  const [trainingLogs, setTrainingLogs] = useState<string[]>([]);
+  const [model, setModel] = useState<tf.LayersModel | null>(null);
+  
+  // Inicializar o TensorFlow.js
   useEffect(() => {
-    // Reset progress when component mounts or when training status changes
-    if (!isLoading) {
-      setProgress(isModelTrained ? 100 : 0);
-    }
-  }, [isLoading, isModelTrained]);
-
-  const handleTrainModel = async () => {
-    setIsLoading(true);
-    setProgress(0);
+    const initialize = async () => {
+      try {
+        await tf.ready();
+        console.log("TensorFlow.js inicializado com sucesso");
+      } catch (error) {
+        console.error("Erro ao inicializar TensorFlow.js:", error);
+      }
+    };
     
-    // Simulate progress updates
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        const newProgress = prev + Math.random() * 10;
-        return newProgress < 90 ? newProgress : 90;
-      });
-    }, 300);
+    initialize();
+  }, []);
+  
+  const addTrainingLog = (message: string) => {
+    setTrainingLogs(prev => [...prev, message]);
+  };
+  
+  const handleTrainModel = async () => {
+    if (templates.length < 5) {
+      toast.error("Você precisa de pelo menos 5 templates para treinar o modelo");
+      return;
+    }
+    
+    setIsTraining(true);
+    setTrainingProgress(0);
+    setTrainingLogs([]);
     
     try {
-      await onTrainModel();
-      clearInterval(interval);
-      setProgress(100);
+      addTrainingLog("Inicializando o modelo de IA...");
+      
+      // Se temos um handler de treinamento externo, usamos ele
+      if (onTrainModel) {
+        await onTrainModel();
+        setTrainingProgress(100);
+        setIsTraining(false);
+        return;
+      }
+      
+      // Caso contrário, implementamos nossa própria lógica de treinamento
+      await tf.ready();
+      addTrainingLog("TensorFlow.js pronto");
+      
+      // Preparar dados de treinamento
+      addTrainingLog("Preparando dados de treinamento...");
+      
+      // Criar e treinar um modelo simples para demonstração
+      const model = tf.sequential();
+      
+      // Input shape: [width, height, isHorizontal, isVertical, isSquare]
+      model.add(tf.layers.dense({
+        inputShape: [5],
+        units: 16,
+        activation: 'relu'
+      }));
+      
+      model.add(tf.layers.dense({
+        units: 32,
+        activation: 'relu'
+      }));
+      
+      // Output: [x, y, width, height]
+      model.add(tf.layers.dense({
+        units: 4,
+        activation: 'sigmoid' // Para valores entre 0-1
+      }));
+      
+      model.compile({
+        optimizer: tf.train.adam(0.001),
+        loss: 'meanSquaredError',
+        metrics: ['accuracy']
+      });
+      
+      addTrainingLog("Modelo compilado com sucesso");
+      
+      // Dados de treinamento simulados
+      const inputData = templates.map(template => {
+        return [
+          template.width / 1000, // Normalizar dimensões 
+          template.height / 1000,
+          template.orientation === 'horizontal' ? 1 : 0,
+          template.orientation === 'vertical' ? 1 : 0,
+          template.orientation === 'square' ? 1 : 0,
+        ];
+      });
+      
+      // Saídas simuladas (posição e tamanho de um elemento)
+      const outputData = templates.map(template => {
+        // Preferências para posicionamento baseado na orientação
+        let x, y, width, height;
+        
+        if (template.orientation === 'horizontal') {
+          x = 0.1; // 10% da largura 
+          y = 0.2; // 20% da altura
+          width = 0.6; // 60% da largura
+          height = 0.4; // 40% da altura
+        } else if (template.orientation === 'vertical') {
+          x = 0.1; // 10% da largura
+          y = 0.1; // 10% da altura 
+          width = 0.8; // 80% da largura
+          height = 0.3; // 30% da altura
+        } else { // square
+          x = 0.2; // 20% da largura
+          y = 0.2; // 20% da altura
+          width = 0.6; // 60% da largura
+          height = 0.6; // 60% da altura
+        }
+        
+        return [x, y, width, height];
+      });
+      
+      const xs = tf.tensor2d(inputData);
+      const ys = tf.tensor2d(outputData);
+      
+      // Iterações simuladas
+      const totalEpochs = 50;
+      
+      await model.fit(xs, ys, {
+        epochs: totalEpochs,
+        batchSize: 8,
+        callbacks: {
+          onEpochEnd: (epoch, logs) => {
+            const progress = Math.round(((epoch + 1) / totalEpochs) * 100);
+            setTrainingProgress(progress);
+            
+            if ((epoch + 1) % 5 === 0 || epoch === 0 || epoch === totalEpochs - 1) {
+              addTrainingLog(`Época ${epoch + 1}/${totalEpochs} - perda: ${logs?.loss?.toFixed(4) || 'N/A'}`);
+            }
+          }
+        }
+      });
+      
+      setModel(model);
+      if (onModelReady) {
+        onModelReady(model);
+      }
+      
+      addTrainingLog("Treinamento concluído com sucesso!");
+      
+      // Testar o modelo
+      const testInput = tf.tensor2d([[0.8, 1.2, 0, 1, 0]]); // formato vertical
+      const prediction = model.predict(testInput) as tf.Tensor;
+      const predictionData = prediction.dataSync();
+      
+      addTrainingLog(`Teste: posição (${predictionData[0].toFixed(2)}, ${predictionData[1].toFixed(2)}), tamanho ${predictionData[2].toFixed(2)}x${predictionData[3].toFixed(2)}`);
+      
+      // Limpar tensores
+      xs.dispose();
+      ys.dispose();
+      testInput.dispose();
+      prediction.dispose();
+      
+      // Notificar usuário
+      toast.success("Modelo de IA treinado com sucesso!");
+      
     } catch (error) {
-      console.error("Error during model training:", error);
+      console.error("Erro durante o treinamento:", error);
+      addTrainingLog(`Erro durante o treinamento: ${error instanceof Error ? error.message : String(error)}`);
+      toast.error("Erro durante o treinamento do modelo");
     } finally {
-      clearInterval(interval);
-      setIsLoading(false);
+      setIsTraining(false);
+      setTrainingProgress(100);
     }
   };
-
+  
   return (
-    <div>
-      <CardHeader className="px-0 pt-0">
-        <CardTitle>AI Model Training</CardTitle>
+    <Card>
+      <CardHeader>
+        <CardTitle>Treinamento de IA</CardTitle>
         <CardDescription>
-          Train the AI model to generate layouts based on your template database.
+          Treine o modelo de IA com base nos seus layouts para obter sugestões inteligentes
         </CardDescription>
       </CardHeader>
-      
-      <CardContent className="px-0 pb-0">
-        <div className="space-y-6">
-          <div className="bg-gray-50 border rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center">
-                <Brain className="h-5 w-5 mr-2 text-purple-500" />
-                <span className="font-medium">Model Status</span>
-              </div>
-              <span className={`px-2 py-0.5 text-xs rounded-full ${
-                isModelTrained 
-                  ? "bg-green-100 text-green-700" 
-                  : "bg-amber-100 text-amber-700"
-              }`}>
-                {isModelTrained ? "Trained" : "Not Trained"}
-              </span>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="bg-white border rounded p-3">
-                <div className="text-sm text-gray-500 mb-1">Templates</div>
-                <div className="text-xl font-semibold">{templates.length}</div>
-              </div>
-              
-              {isModelTrained && (
-                <div className="bg-white border rounded p-3">
-                  <div className="text-sm text-gray-500 mb-1">Last Trained</div>
-                  <div className="text-sm font-medium">
-                    {new Date(modelMetadata.trainedAt).toLocaleDateString()}
-                  </div>
-                </div>
-              )}
-              
-              {isModelTrained && (
-                <div className="bg-white border rounded p-3">
-                  <div className="text-sm text-gray-500 mb-1">Accuracy</div>
-                  <div className="text-xl font-semibold">
-                    {(modelMetadata.accuracy * 100).toFixed(1)}%
-                  </div>
-                </div>
-              )}
-              
-              {isModelTrained && (
-                <div className="bg-white border rounded p-3">
-                  <div className="text-sm text-gray-500 mb-1">Iterations</div>
-                  <div className="text-xl font-semibold">{modelMetadata.iterations}</div>
-                </div>
-              )}
-            </div>
-            
-            {templates.length < 10 ? (
-              <div className="flex items-start space-x-3 bg-amber-50 text-amber-800 rounded-md p-3 text-sm">
-                <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-500" />
-                <div>
-                  <p className="font-medium">Not enough training data</p>
-                  <p className="mt-1">You need at least 10 templates to train the AI model. You currently have {templates.length}.</p>
-                </div>
-              </div>
-            ) : isModelTrained ? (
-              <div className="flex items-start space-x-3 bg-green-50 text-green-800 rounded-md p-3 text-sm">
-                <CheckCircle className="h-5 w-5 flex-shrink-0 text-green-500" />
-                <div>
-                  <p className="font-medium">Model trained successfully</p>
-                  <p className="mt-1">Your AI model has been trained on {templates.length} templates with {modelMetadata.iterations} iterations.</p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-start space-x-3 bg-blue-50 text-blue-800 rounded-md p-3 text-sm">
-                <Brain className="h-5 w-5 flex-shrink-0 text-blue-500" />
-                <div>
-                  <p className="font-medium">Ready to train</p>
-                  <p className="mt-1">You have {templates.length} templates available for training the AI model.</p>
-                </div>
-              </div>
-            )}
-            
-            {progress > 0 && (
-              <div className="mt-4">
-                <Progress value={progress} className="h-2 mb-2" />
-                <p className="text-xs text-gray-500">{Math.round(progress)}% complete</p>
-              </div>
-            )}
-            
-            <div className="mt-4">
-              <Button 
-                onClick={handleTrainModel}
-                disabled={templates.length < 10 || isLoading}
-                className="w-full"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Training in Progress...
-                  </>
-                ) : isModelTrained ? (
-                  <>
-                    <Brain className="mr-2 h-4 w-4" />
-                    Retrain Model
-                  </>
-                ) : (
-                  <>
-                    <Brain className="mr-2 h-4 w-4" />
-                    Train AI Model
-                  </>
-                )}
-              </Button>
-            </div>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center">
+            <Brain className="h-5 w-5 mr-2 text-blue-500" />
+            <span>Status do Modelo</span>
           </div>
-          
-          {isModelTrained && (
-            <div className="border rounded-lg p-4">
-              <h3 className="text-lg font-medium mb-2">Model Statistics</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">Loss</h4>
-                  <p className="text-xl font-semibold">{modelMetadata.loss.toFixed(4)}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">Accuracy</h4>
-                  <p className="text-xl font-semibold">{(modelMetadata.accuracy * 100).toFixed(1)}%</p>
-                </div>
-              </div>
+          <div>
+            {isModelTrained || model ? (
+              <span className="text-green-600 font-medium flex items-center">
+                <Check className="h-4 w-4 mr-1" /> Treinado
+              </span>
+            ) : (
+              <span className="text-gray-500">Não treinado</span>
+            )}
+          </div>
+        </div>
+        
+        <div>
+          <div className="flex justify-between text-sm mb-1">
+            <span>Layouts disponíveis para treinamento</span>
+            <span className={templates.length < 5 ? "text-amber-500" : "text-green-600"}>
+              {templates.length}
+            </span>
+          </div>
+          <Progress 
+            value={Math.min(templates.length / 20 * 100, 100)} 
+            className="h-2" 
+          />
+          {templates.length < 5 && (
+            <div className="flex items-start mt-2 text-sm text-amber-600">
+              <AlertCircle className="h-4 w-4 mr-1 shrink-0 mt-0.5" />
+              <span>Você precisa de pelo menos 5 layouts para treinar o modelo (recomendado: 20+)</span>
             </div>
           )}
         </div>
+        
+        {(isTraining || trainingLogs.length > 0) && (
+          <>
+            <Separator />
+            <div>
+              <h4 className="text-sm font-medium mb-2">Progresso do Treinamento</h4>
+              <Progress value={trainingProgress} className="h-2 mb-2" />
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>{trainingProgress}% Completo</span>
+                <span>{isTraining ? "Treinamento em andamento..." : "Concluído"}</span>
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 border rounded p-2 h-32 overflow-y-auto font-mono text-xs">
+              {trainingLogs.map((log, i) => (
+                <div key={i} className="py-0.5">
+                  <span className="text-gray-500">[{new Date().toLocaleTimeString()}]</span>{" "}
+                  {log}
+                </div>
+              ))}
+              {trainingLogs.length === 0 && (
+                <div className="text-gray-400 p-2">
+                  Os logs de treinamento aparecerão aqui...
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </CardContent>
-    </div>
+      <CardFooter className="flex justify-between">
+        <div className="text-sm flex items-center">
+          <HelpCircle className="h-4 w-4 mr-2 text-blue-500" />
+          {templates.length < 5 ? (
+            <span className="text-gray-500">Adicione mais layouts primeiro</span>
+          ) : (
+            <span className="text-gray-500">Pronto para treinar</span>
+          )}
+        </div>
+        <Button
+          onClick={handleTrainModel}
+          disabled={isTraining || templates.length < 5}
+        >
+          {isTraining ? (
+            <>
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              Treinando...
+            </>
+          ) : (
+            <>
+              <Brain className="h-4 w-4 mr-2" />
+              Treinar Modelo
+            </>
+          )}
+        </Button>
+      </CardFooter>
+    </Card>
   );
 };
