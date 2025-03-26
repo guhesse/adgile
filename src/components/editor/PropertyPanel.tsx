@@ -1,12 +1,15 @@
 
 import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { TextPanel } from "./panels/TextPanel";
 import ImagePanel from "./panels/ImagePanel";
 import { ButtonPanel } from "./panels/ButtonPanel";
 import { ArtboardPanel } from "./panels/ArtboardPanel";
 import { useCanvas } from "./CanvasContext";
 import { EditorElement, BannerSize } from "./types";
+import { copyElementToAllFormats, clearFormatSpecificStyles, hasFormatSpecificStyles } from "./utils/formatConversion";
+import { toast } from "sonner";
 
 // Define interfaces for all panel props
 interface PropertyPanelProps {
@@ -24,11 +27,14 @@ const PropertyPanel: React.FC<PropertyPanelProps> = ({ psdBackgroundColor }) => 
   const { 
     selectedElement, 
     selectedSize,
+    setElements,
+    elements,
     updateElementStyle,
     updateElementContent,
     updateElementAttribute,
     artboardBackgroundColor,
-    updateArtboardBackground
+    updateArtboardBackground,
+    activeSizes
   } = useCanvas();
 
   // Track active tab state
@@ -47,11 +53,80 @@ const PropertyPanel: React.FC<PropertyPanelProps> = ({ psdBackgroundColor }) => 
     }
   };
 
+  // Verificar se o elemento selecionado possui estilos específicos para este formato
+  const hasSpecificStyles = selectedElement ? 
+    hasFormatSpecificStyles(selectedElement, selectedSize.name) : false;
+
+  // Função para adaptar o elemento selecionado para todos os formatos
+  const handleAdaptToAllFormats = () => {
+    if (!selectedElement) return;
+    
+    const updatedElement = copyElementToAllFormats(
+      selectedElement, 
+      selectedSize, 
+      activeSizes
+    );
+    
+    // Atualizar o elemento no estado
+    setElements(prevElements => 
+      prevElements.map(el => 
+        el.id === selectedElement.id ? updatedElement : el
+      )
+    );
+  };
+
+  // Função para limpar adaptações específicas de formato
+  const handleClearFormatStyles = () => {
+    if (!selectedElement) return;
+    
+    const updatedElement = clearFormatSpecificStyles(
+      selectedElement, 
+      selectedSize.name
+    );
+    
+    // Atualizar o elemento no estado
+    setElements(prevElements => 
+      prevElements.map(el => 
+        el.id === selectedElement.id ? updatedElement : el
+      )
+    );
+    
+    toast.success(`Adaptações para o formato ${selectedSize.name} removidas`);
+  };
+
   return (
     <div className="p-4 space-y-4 bg-secondary rounded-md h-full">
       <div className="flex items-center justify-center">
         <div className="text-lg font-medium">Propriedades</div>
       </div>
+
+      {selectedElement && (
+        <div className="bg-background rounded-md p-2">
+          <div className="text-sm font-medium mb-2">Formato Atual: {selectedSize.name}</div>
+          <div className="flex gap-2 mt-2">
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={handleAdaptToAllFormats}
+              className="w-full text-xs"
+            >
+              Adaptar para todos os formatos
+            </Button>
+          </div>
+          {hasSpecificStyles && (
+            <div className="flex gap-2 mt-2">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={handleClearFormatStyles}
+                className="w-full text-xs text-red-500"
+              >
+                Remover adaptações neste formato
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       <Tabs 
         defaultValue="content" 

@@ -59,18 +59,8 @@ export type EditorElement = {
     // Valores para manter a proporção original da imagem
     originalWidth?: number;
     originalHeight?: number;
-    // Percentage-based positioning for responsive handling
-    xPercent?: number;
-    yPercent?: number;
-    widthPercent?: number;
-    heightPercent?: number;
-    // Constraint-based positioning (new)
-    constraintHorizontal?: "left" | "right" | "center" | "scale";
-    constraintVertical?: "top" | "bottom" | "center" | "scale";
-    minWidth?: number;  // Minimum width constraint
-    minHeight?: number; // Minimum height constraint
-    maxWidth?: number;  // Maximum width constraint
-    maxHeight?: number; // Maximum height constraint
+    // Formato ao qual este estilo se aplica
+    formatId?: string;
   };
   columns?: number;
   childElements?: EditorElement[];
@@ -80,8 +70,6 @@ export type EditorElement = {
   parentId?: string; // Reference to parent container/layout
   inContainer?: boolean; // Whether element is inside a container
   sizeId?: string; // The banner size this element belongs to
-  linkedElementId?: string; // ID of the linked element in other sizes
-  isIndividuallyPositioned?: boolean; // Whether this element has been individually positioned
   // PSD layer data for advanced operations
   psdLayerData?: {
     mask?: any;
@@ -89,12 +77,9 @@ export type EditorElement = {
     blendMode?: string;
     originalPath?: string;
   };
-  // Responsiveness settings
-  responsiveSettings?: {
-    preserveRatio?: boolean;
-    minimumFontSize?: number;
-    maximumCharactersPerLine?: number;
-    treatmentOverflow?: "wrap" | "truncate" | "expand";
+  // Responsive settings - simplified
+  formatSpecificStyles?: {
+    [formatId: string]: Partial<EditorElement['style']>;
   };
 };
 
@@ -160,8 +145,11 @@ export const PRESET_LAYOUTS: LayoutTemplate[] = [
   { id: "preset-text-text", name: "Texto e texto", columns: 2, preview: "TT", type: "preset" },
 ];
 
-// New type for constraint-based positioning
-export type ResponsiveConstraint = {
-  horizontal: "left" | "right" | "center" | "scale";
-  vertical: "top" | "bottom" | "center" | "scale";
+// Orientation types to help with responsive design
+export type Orientation = 'horizontal' | 'vertical' | 'square';
+
+// Function to determine orientation
+export const getOrientation = (size: BannerSize): Orientation => {
+  if (size.width === size.height) return 'square';
+  return size.width > size.height ? 'horizontal' : 'vertical';
 };

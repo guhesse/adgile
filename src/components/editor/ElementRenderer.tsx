@@ -76,18 +76,21 @@ const renderImageElement = (element: EditorElement) => {
 };
 
 export const ElementRenderer = ({ element }: ElementRendererProps) => {
+  // Use the provided element style (which may already include format-specific adjustments)
+  const { style } = element;
+
   if (element.type === "text") {
     return (
       <p style={{
-        fontSize: element.style.fontSize,
-        fontWeight: element.style.fontWeight,
-        fontStyle: element.style.fontStyle,
-        textDecoration: element.style.textDecoration,
-        color: element.style.color,
-        fontFamily: element.style.fontFamily,
-        lineHeight: element.style.lineHeight,
-        letterSpacing: element.style.letterSpacing ? `${element.style.letterSpacing}px` : undefined,
-        textAlign: element.style.textAlign,
+        fontSize: style.fontSize,
+        fontWeight: style.fontWeight,
+        fontStyle: style.fontStyle,
+        textDecoration: style.textDecoration,
+        color: style.color,
+        fontFamily: style.fontFamily,
+        lineHeight: style.lineHeight,
+        letterSpacing: style.letterSpacing ? `${style.letterSpacing}px` : undefined,
+        textAlign: style.textAlign,
         width: "100%",
         height: "100%",
         margin: 0,
@@ -95,7 +98,7 @@ export const ElementRenderer = ({ element }: ElementRendererProps) => {
         boxSizing: "border-box",
         overflow: "hidden",
         wordBreak: "break-word",
-        backgroundColor: element.style.backgroundColor,
+        backgroundColor: style.backgroundColor,
       }}>
         {element.content}
       </p>
@@ -105,11 +108,11 @@ export const ElementRenderer = ({ element }: ElementRendererProps) => {
   if (element.type === "button") {
     return (
       <Button style={{
-        fontSize: element.style.fontSize,
-        color: element.style.color,
-        fontFamily: element.style.fontFamily,
-        backgroundColor: element.style.backgroundColor,
-        padding: element.style.padding,
+        fontSize: style.fontSize,
+        color: style.color,
+        fontFamily: style.fontFamily,
+        backgroundColor: style.backgroundColor,
+        padding: style.padding,
         width: "100%",
         height: "100%",
         boxSizing: "border-box",
@@ -149,15 +152,15 @@ export const ElementRenderer = ({ element }: ElementRendererProps) => {
       <div 
         className="w-full h-full"
         style={{
-          backgroundColor: element.style.backgroundColor,
-          borderRadius: element.style.borderRadius ? `${element.style.borderRadius}px` : undefined,
-          borderTopLeftRadius: element.style.borderTopLeftRadius ? `${element.style.borderTopLeftRadius}px` : undefined,
-          borderTopRightRadius: element.style.borderTopRightRadius ? `${element.style.borderTopRightRadius}px` : undefined,
-          borderBottomLeftRadius: element.style.borderBottomLeftRadius ? `${element.style.borderBottomLeftRadius}px` : undefined,
-          borderBottomRightRadius: element.style.borderBottomRightRadius ? `${element.style.borderBottomRightRadius}px` : undefined,
-          borderWidth: element.style.borderWidth ? `${element.style.borderWidth}px` : undefined,
-          borderStyle: element.style.borderStyle,
-          borderColor: element.style.borderColor,
+          backgroundColor: style.backgroundColor,
+          borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined,
+          borderTopLeftRadius: style.borderTopLeftRadius ? `${style.borderTopLeftRadius}px` : undefined,
+          borderTopRightRadius: style.borderTopRightRadius ? `${style.borderTopRightRadius}px` : undefined,
+          borderBottomLeftRadius: style.borderBottomLeftRadius ? `${style.borderBottomLeftRadius}px` : undefined,
+          borderBottomRightRadius: style.borderBottomRightRadius ? `${style.borderBottomRightRadius}px` : undefined,
+          borderWidth: style.borderWidth ? `${style.borderWidth}px` : undefined,
+          borderStyle: style.borderStyle,
+          borderColor: style.borderColor,
           overflow: "hidden"
         }}
       >

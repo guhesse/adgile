@@ -2,7 +2,6 @@
 import { BannerSize, CanvasNavigationMode, EditorElement } from "../types";
 import { ElementRenderer } from "../ElementRenderer";
 import { ElementHandles } from "./ElementHandles";
-import { calculateSmartPosition } from "../utils/grid/responsivePosition";
 import { useCallback, useRef, useMemo } from "react";
 
 interface CanvasElementProps {
@@ -54,51 +53,27 @@ export const CanvasElement = ({
     return null;
   }
 
-  // Determine the position for this element using useMemo for performance
-  const position = useMemo(() => {
-    let pos = { 
-      x: element.style.x, 
-      y: element.style.y, 
-      width: element.style.width, 
-      height: element.style.height 
-    };
-    
-    // If element has percentage values and needs to be adjusted for this canvas size
-    if ((element.style.xPercent !== undefined || element.style.constraintHorizontal !== undefined) && 
-        element.sizeId !== canvasSize.name) {
-      
-      // Find the source size (the size this element was originally created for)
-      const sourceSize = {
-        name: element.sizeId || 'unknown',
-        width: canvasSize.width, // Fallback to current size if unknown
-        height: canvasSize.height
-      };
-      
-      // Use calculateSmartPosition to adjust to this canvas
-      pos = calculateSmartPosition(element, sourceSize, canvasSize);
+  // Get format-specific styles if they exist
+  const formatSpecificStyle = useMemo(() => {
+    // Check if the element has format-specific styles for this canvas size
+    if (element.formatSpecificStyles && element.formatSpecificStyles[canvasSize.name]) {
+      return element.formatSpecificStyles[canvasSize.name];
     }
-    
-    return pos;
-  }, [
-    element.id, 
-    element.style.x, 
-    element.style.y, 
-    element.style.width, 
-    element.style.height,
-    element.style.xPercent,
-    element.style.yPercent,
-    element.style.widthPercent,
-    element.style.heightPercent,
-    element.style.constraintHorizontal,
-    element.style.constraintVertical,
-    element.sizeId,
-    canvasSize
-  ]);
+    return {};
+  }, [element.formatSpecificStyles, canvasSize.name]);
+
+  // Combine base style with format-specific style, giving priority to format-specific
+  const combinedStyle = useMemo(() => {
+    return {
+      ...element.style,
+      ...formatSpecificStyle
+    };
+  }, [element.style, formatSpecificStyle]);
 
   // Handle object-fit and object-position for images
   const imageSpecificStyle = useMemo(() => {
     if (isImage) {
-      const { objectFit, objectPositionX, objectPositionY } = element.style;
+      const { objectFit, objectPositionX, objectPositionY } = combinedStyle;
       
       if (objectFit === 'cover' && (objectPositionX !== undefined || objectPositionY !== undefined)) {
         const x = objectPositionX !== undefined ? objectPositionX : 50;
@@ -116,18 +91,18 @@ export const CanvasElement = ({
     return {};
   }, [
     isImage, 
-    element.style.objectFit, 
-    element.style.objectPositionX, 
-    element.style.objectPositionY
+    combinedStyle.objectFit, 
+    combinedStyle.objectPositionX, 
+    combinedStyle.objectPositionY
   ]);
 
   // Apply the final position style
   const positionStyle: React.CSSProperties = {
     position: "absolute",
-    left: position.x,
-    top: position.y,
-    width: position.width,
-    height: position.height,
+    left: combinedStyle.x,
+    top: combinedStyle.y,
+    width: combinedStyle.width,
+    height: combinedStyle.height,
     ...imageSpecificStyle
   };
 
@@ -154,17 +129,23 @@ export const CanvasElement = ({
     handleMouseDown(e, element);
   }, [element, handleMouseDown]);
 
+  // Determine the final styles for rendering
+  const rendererProps = {
+    ...element,
+    style: combinedStyle, // Use the combined style for rendering
+  };
+
   return (
     <div
       ref={elementRef}
       style={{
         ...positionStyle,
-        animationPlayState: element.style.animationPlayState,
-        animationDelay: element.style.animationDelay != null ? `${element.style.animationDelay}s` : undefined,
-        animationDuration: element.style.animationDuration != null ? `${element.style.animationDuration}s` : undefined,
+        animationPlayState: combinedStyle.animationPlayState,
+        animationDelay: combinedStyle.animationDelay != null ? `${combinedStyle.animationDelay}s` : undefined,
+        animationDuration: combinedStyle.animationDuration != null ? `${combinedStyle.animationDuration}s` : undefined,
         backgroundColor: isContainer
           ? isHovered ? "rgba(200, 220, 255, 0.5)" : "rgba(240, 240, 240, 0.5)"
-          : element.style.backgroundColor,
+          : combinedStyle.backgroundColor,
         border: isContainer
           ? isHovered ? "1px dashed #4080ff" : "1px dashed #aaa"
           : undefined,
@@ -173,12 +154,12 @@ export const CanvasElement = ({
         overflow: isContainer ? "hidden" : "visible",
         cursor: canvasNavMode === 'pan' ? 'grab' : 'move',
         userSelect: "none",
-        opacity: element.style.opacity !== undefined ? element.style.opacity : 1,
+        opacity: combinedStyle.opacity !== undefined ? combinedStyle.opacity : 1,
         boxShadow: isSelected ? "0 0 0 2px #2563eb" : (isExiting ? "0 0 0 2px #ff4040" : undefined),
         outline: "none",
         touchAction: "none", // Prevents touch scrolling during drags
       }}
-      className={`${isSelected ? "outline-2 outline-blue-600" : ""} ${element.style.animation || ""}`}
+      className={`${isSelected ? "outline-2 outline-blue-600" : ""} ${combinedStyle.animation || ""}`}
       onMouseDown={handleElementMouseDown}
       onDragStart={handleDragStart}
       draggable={false}
@@ -202,7 +183,7 @@ export const CanvasElement = ({
         draggable={false}
         onDragStart={handleDragStart}
       >
-        <ElementRenderer element={element} />
+        <ElementRenderer element={rendererProps} />
       </div>
 
       {isContainer && element.childElements && (
@@ -230,7 +211,10 @@ export const CanvasElement = ({
 
       {isSelected && canvasNavMode !== 'pan' && (
         <ElementHandles 
-          element={element} 
+          element={{
+            ...element,
+            style: combinedStyle, // Use combined styles for handles too
+          }} 
           handleResizeStart={handleResizeStart}
         />
       )}
