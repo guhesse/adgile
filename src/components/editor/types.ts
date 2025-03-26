@@ -1,4 +1,3 @@
-
 export type BannerSize = {
   name: string;
   width: number;
@@ -45,7 +44,7 @@ export type EditorElement = {
     gridColumn?: string;
     gridRow?: string;
     opacity?: number;
-    zIndex?: number; // Added zIndex property
+    zIndex?: number;
     // Valores para manter a proporção original da imagem
     originalWidth?: number;
     originalHeight?: number;
@@ -72,9 +71,9 @@ export type EditorElement = {
   isIndividuallyPositioned?: boolean; // Whether this element has been individually positioned
   psdLayerData?: any; // Store the original PSD layer data
   artboardSize?: any; // Store artboard size information
+  src?: string; // Source for images
 };
 
-// Novo tipo para compartilhar entre componentes
 export type EditorMode = "email" | "banner" | "social" | "impressos";
 
 export type CanvasNavigationMode = 'edit' | 'pan';

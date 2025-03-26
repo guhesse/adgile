@@ -3,41 +3,39 @@ import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Square } from "lucide-react";
-
-interface AdminFormatSelectorProps {
-  formatPresets: {
-    vertical: { width: number; height: number }[];
-    horizontal: { width: number; height: number }[];
-    square: { width: number; height: number }[];
-  };
-  activeFormat: {
-    width: number;
-    height: number;
-    orientation: "vertical" | "horizontal" | "square";
-  } | null;
-  setActiveFormat: (format: {
-    width: number;
-    height: number;
-    orientation: "vertical" | "horizontal" | "square";
-  }) => void;
-}
+import { AdminFormatSelectorProps } from "@/types/admin";
+import { BannerSize } from "@/components/editor/types";
 
 export const AdminFormatSelector: React.FC<AdminFormatSelectorProps> = ({
-  formatPresets,
-  activeFormat,
-  setActiveFormat,
+  formats,
+  onSelectFormat,
+  selectedFormat,
 }) => {
   const [activeTab, setActiveTab] = useState<"horizontal" | "vertical" | "square">("horizontal");
 
-  const handleFormatSelect = (
-    width: number,
-    height: number,
-    orientation: "vertical" | "horizontal" | "square"
-  ) => {
-    setActiveFormat({ width, height, orientation });
-  };
+  // Group formats by orientation
+  const formatsByOrientation = formats.reduce((acc, format) => {
+    const ratio = format.width / format.height;
+    
+    // Determine orientation based on aspect ratio
+    let orientation: "horizontal" | "vertical" | "square" = "horizontal";
+    if (ratio >= 0.95 && ratio <= 1.05) {
+      orientation = "square";
+    } else if (ratio < 0.95) {
+      orientation = "vertical";
+    }
+    
+    if (!acc[orientation]) {
+      acc[orientation] = [];
+    }
+    
+    acc[orientation].push(format);
+    return acc;
+  }, {
+    horizontal: [] as BannerSize[],
+    vertical: [] as BannerSize[],
+    square: [] as BannerSize[]
+  });
 
   return (
     <Tabs
@@ -63,17 +61,17 @@ export const AdminFormatSelector: React.FC<AdminFormatSelectorProps> = ({
       <TabsContent value="horizontal" className="m-0">
         <ScrollArea className="h-[calc(100vh-230px)]">
           <div className="p-4 grid grid-cols-1 gap-3">
-            {formatPresets.horizontal.map((format, index) => (
+            {formatsByOrientation.horizontal.map((format, index) => (
               <FormatCard
                 key={`h-${index}`}
                 width={format.width}
                 height={format.height}
+                name={format.name}
                 isActive={
-                  activeFormat?.width === format.width &&
-                  activeFormat?.height === format.height &&
-                  activeFormat?.orientation === "horizontal"
+                  selectedFormat?.width === format.width &&
+                  selectedFormat?.height === format.height
                 }
-                onClick={() => handleFormatSelect(format.width, format.height, "horizontal")}
+                onClick={() => onSelectFormat(format)}
               />
             ))}
           </div>
@@ -83,17 +81,17 @@ export const AdminFormatSelector: React.FC<AdminFormatSelectorProps> = ({
       <TabsContent value="vertical" className="m-0">
         <ScrollArea className="h-[calc(100vh-230px)]">
           <div className="p-4 grid grid-cols-1 gap-3">
-            {formatPresets.vertical.map((format, index) => (
+            {formatsByOrientation.vertical.map((format, index) => (
               <FormatCard
                 key={`v-${index}`}
                 width={format.width}
                 height={format.height}
+                name={format.name}
                 isActive={
-                  activeFormat?.width === format.width &&
-                  activeFormat?.height === format.height &&
-                  activeFormat?.orientation === "vertical"
+                  selectedFormat?.width === format.width &&
+                  selectedFormat?.height === format.height
                 }
-                onClick={() => handleFormatSelect(format.width, format.height, "vertical")}
+                onClick={() => onSelectFormat(format)}
               />
             ))}
           </div>
@@ -103,17 +101,17 @@ export const AdminFormatSelector: React.FC<AdminFormatSelectorProps> = ({
       <TabsContent value="square" className="m-0">
         <ScrollArea className="h-[calc(100vh-230px)]">
           <div className="p-4 grid grid-cols-1 gap-3">
-            {formatPresets.square.map((format, index) => (
+            {formatsByOrientation.square.map((format, index) => (
               <FormatCard
                 key={`s-${index}`}
                 width={format.width}
                 height={format.height}
+                name={format.name}
                 isActive={
-                  activeFormat?.width === format.width &&
-                  activeFormat?.height === format.height &&
-                  activeFormat?.orientation === "square"
+                  selectedFormat?.width === format.width &&
+                  selectedFormat?.height === format.height
                 }
-                onClick={() => handleFormatSelect(format.width, format.height, "square")}
+                onClick={() => onSelectFormat(format)}
               />
             ))}
           </div>
@@ -126,11 +124,12 @@ export const AdminFormatSelector: React.FC<AdminFormatSelectorProps> = ({
 interface FormatCardProps {
   width: number;
   height: number;
+  name: string;
   isActive: boolean;
   onClick: () => void;
 }
 
-const FormatCard: React.FC<FormatCardProps> = ({ width, height, isActive, onClick }) => {
+const FormatCard: React.FC<FormatCardProps> = ({ width, height, name, isActive, onClick }) => {
   // Calculate aspect ratio for preview
   const aspectRatio = width / height;
   let previewWidth = 100;
@@ -160,6 +159,7 @@ const FormatCard: React.FC<FormatCardProps> = ({ width, height, isActive, onClic
         ></div>
       </div>
       <div className="text-xs font-medium">{width} × {height}px</div>
+      <div className="text-xs text-gray-500 truncate max-w-full">{name}</div>
     </Button>
   );
 };

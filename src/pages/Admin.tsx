@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { CanvasProvider } from "@/components/editor/CanvasContext";
 import { Canvas } from "@/components/editor/Canvas";
@@ -12,16 +11,12 @@ import { AIModelManager } from "@/components/editor/ai/AIModelManager";
 import { LayoutTemplate, AdminStats } from "@/components/editor/types/admin";
 import { BannerSize } from "@/components/editor/types";
 
-// Demo formats
 const createDemoFormats = () => {
   const formats: BannerSize[] = [];
   
-  // 100 Vertical formats (height > width)
   for (let i = 0; i < 100; i++) {
-    // Vary widths from 160px to 600px
-    const width = Math.floor(Math.random() * 441) + 160; // 160-600
-    // Heights from 600px to 1920px
-    const height = Math.floor(Math.random() * 1321) + 600; // 600-1920
+    const width = Math.floor(Math.random() * 441) + 160;
+    const height = Math.floor(Math.random() * 1321) + 600;
     
     formats.push({
       name: `Vertical ${i+1}`,
@@ -30,12 +25,9 @@ const createDemoFormats = () => {
     });
   }
   
-  // 100 Horizontal formats (width > height)
   for (let i = 0; i < 100; i++) {
-    // Widths from 600px to 1920px
-    const width = Math.floor(Math.random() * 1321) + 600; // 600-1920
-    // Heights from 160px to 600px
-    const height = Math.floor(Math.random() * 441) + 160; // 160-600
+    const width = Math.floor(Math.random() * 1321) + 600;
+    const height = Math.floor(Math.random() * 441) + 160;
     
     formats.push({
       name: `Horizontal ${i+1}`,
@@ -44,12 +36,9 @@ const createDemoFormats = () => {
     });
   }
   
-  // 50 Square formats (width ≈ height)
   for (let i = 0; i < 50; i++) {
-    // Size from 300px to 1200px
-    const size = Math.floor(Math.random() * 901) + 300; // 300-1200
-    // Small variation to not be perfectly square
-    const variation = Math.floor(Math.random() * 21) - 10; // -10 to 10
+    const size = Math.floor(Math.random() * 901) + 300;
+    const variation = Math.floor(Math.random() * 21) - 10;
     
     formats.push({
       name: `Square ${i+1}`,
@@ -62,7 +51,6 @@ const createDemoFormats = () => {
 };
 
 const determineOrientation = (width: number, height: number): 'vertical' | 'horizontal' | 'square' => {
-  // Consider a square if the ratio is between 0.95 and 1.05
   const ratio = width / height;
   if (ratio >= 0.95 && ratio <= 1.05) return 'square';
   return width > height ? 'horizontal' : 'vertical';
@@ -91,7 +79,6 @@ const Admin: React.FC = () => {
     loss: 0
   });
 
-  // Initialize formats if they don't exist
   useEffect(() => {
     const storedFormats = localStorage.getItem(FORMATS_KEY);
     if (storedFormats) {
@@ -103,7 +90,6 @@ const Admin: React.FC = () => {
     }
   }, []);
 
-  // Load saved templates on mount
   useEffect(() => {
     const savedTemplatesJson = localStorage.getItem(STORAGE_KEY);
     if (savedTemplatesJson) {
@@ -166,7 +152,6 @@ const Admin: React.FC = () => {
     setSavedTemplates(updatedTemplates);
     updateStats(updatedTemplates);
     
-    // Save to localStorage
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTemplates));
     
     toast.success("Template saved successfully");
@@ -177,7 +162,6 @@ const Admin: React.FC = () => {
     setSavedTemplates(updatedTemplates);
     updateStats(updatedTemplates);
     
-    // Update localStorage
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTemplates));
     
     toast.success("Template deleted");
@@ -191,25 +175,21 @@ const Admin: React.FC = () => {
     
     toast.info("Starting model training...");
     
-    // Simulate training process
     const startTime = Date.now();
     
     try {
-      // In a real implementation, we would use TensorFlow.js here
-      // For now, we'll simulate training with a delay
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       const trainingResult = {
         trainedAt: new Date().toISOString(),
         iterations: Math.floor(Math.random() * 50) + 50,
-        accuracy: Math.random() * 0.2 + 0.8, // 0.8-1.0
-        loss: Math.random() * 0.5  // 0-0.5
+        accuracy: Math.random() * 0.2 + 0.8,
+        loss: Math.random() * 0.5
       };
       
       setModelMetadata(trainingResult);
       setIsModelTrained(true);
       
-      // Update stats with training info
       updateStats(savedTemplates);
       
       const trainingTime = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -220,10 +200,7 @@ const Admin: React.FC = () => {
     }
   };
 
-  // Function to capture current canvas elements and save them as a template
   const captureAndSaveTemplate = () => {
-    // In a real implementation, we would get the elements from the Canvas component
-    // For demonstration, we'll just save a template with empty elements
     handleSaveTemplate([]);
     toast("Template captured from canvas", {
       description: "The current canvas elements have been saved as a new template."
@@ -310,7 +287,10 @@ const Admin: React.FC = () => {
             
             <TabsContent value="stats" className="h-full overflow-y-auto">
               <div className="max-w-4xl mx-auto bg-white rounded-lg shadow p-6">
-                <AdminLayoutStats stats={stats} />
+                <AdminLayoutStats 
+                  stats={stats} 
+                  layouts={savedTemplates}
+                />
               </div>
             </TabsContent>
           </div>

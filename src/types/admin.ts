@@ -5,7 +5,7 @@ import { AdminStats, LayoutTemplate } from '@/components/editor/types/admin';
 export interface AdminFormatSelectorProps {
   formats: BannerSize[];
   onSelectFormat: (format: BannerSize) => void;
-  selectedFormat: BannerSize;
+  selectedFormat: BannerSize | null;
 }
 
 export interface AdminLayoutListProps {
@@ -27,5 +27,5 @@ export interface AIModelManagerProps {
 
 export interface AdminLayoutStatsProps {
   stats: AdminStats;
-  layouts: LayoutTemplate[];
+  layouts?: LayoutTemplate[];
 }
