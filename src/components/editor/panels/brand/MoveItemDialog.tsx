@@ -1,7 +1,8 @@
-
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Folder } from 'lucide-react';
 import { BrandGroup } from '@/components/editor/types/brand';
 
 interface MoveItemDialogProps {
@@ -9,10 +10,10 @@ interface MoveItemDialogProps {
   onOpenChange: (open: boolean) => void;
   sourceGroupId: number | null;
   targetGroupId: number | null;
-  setTargetGroupId: (id: number | null) => void;
-  groups: { id: number; name: string; icon?: string; isOpen?: boolean; items: any[] }[]; // Simplified
+  setTargetGroupId: (id: number) => void;
+  groups: BrandGroup[];
   onMove: () => void;
-  renderFolderIcon: (iconType?: string) => string; // Changed to return string
+  renderFolderIcon: (iconType?: string) => React.ReactNode;
 }
 
 export const MoveItemDialog = ({
@@ -23,44 +24,43 @@ export const MoveItemDialog = ({
   setTargetGroupId,
   groups,
   onMove,
-  renderFolderIcon
+  renderFolderIcon,
 }: MoveItemDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle>Move Item to Group</DialogTitle>
+          <DialogTitle>Move Item</DialogTitle>
         </DialogHeader>
-        
         <div className="py-4">
-          <div className="text-sm font-medium mb-2">Select Destination Group:</div>
-          <div className="space-y-2 max-h-[300px] overflow-y-auto p-1">
-            {groups.map(group => (
-              <div
-                key={group.id}
-                className={`p-2 border rounded-md cursor-pointer flex items-center
-                           ${targetGroupId === group.id ? 'bg-purple-50 border-purple-200' : 'hover:bg-gray-50'}`}
-                onClick={() => setTargetGroupId(group.id)}
-              >
-                <div className="mr-2">
+          <div className="mb-4">
+            <Label className="text-sm font-medium block mb-2">
+              Select destination group:
+            </Label>
+            <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-2">
+              {groups.map((group) => (
+                <div 
+                  key={group.id}
+                  className={`p-2 rounded-md cursor-pointer hover:bg-gray-100 flex items-center ${targetGroupId === group.id ? 'bg-purple-100' : ''}`}
+                  onClick={() => setTargetGroupId(group.id)}
+                >
                   {renderFolderIcon(group.icon)}
+                  <span className="ml-2">{group.name}</span>
+                  {sourceGroupId === group.id && (
+                    <span className="ml-2 text-xs text-gray-500">(Current)</span>
+                  )}
                 </div>
-                <span>{group.name}</span>
-                {sourceGroupId === group.id && (
-                  <span className="ml-2 text-xs text-gray-500">(Current)</span>
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
-        
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button 
             onClick={onMove} 
-            disabled={targetGroupId === null || targetGroupId === sourceGroupId}
+            disabled={!targetGroupId || targetGroupId === sourceGroupId}
           >
             Move
           </Button>

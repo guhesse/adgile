@@ -6,10 +6,10 @@ import { CanvasWorkspace } from "./CanvasWorkspace";
 import { useCanvas } from "./CanvasContext";
 import { LeftSidebar } from "./LeftSidebar";
 import { PSDImport } from "./PSDImport";
-import { BannerSize, EditorMode } from "./types";
+import { BannerSize } from "./types";
 
 interface CanvasProps {
-  editorMode: EditorMode; // Changed to use the EditorMode type
+  editorMode: "email" | "banner";
   fixedSize?: BannerSize;
 }
 

@@ -18,23 +18,24 @@ import {
   Square, 
   TrendingUp 
 } from "lucide-react";
-import { AdminLayoutListProps } from "@/types/admin";
 
-export const AdminLayoutList: React.FC<AdminLayoutListProps> = ({ templates, onDeleteTemplate }) => {
-  // Add a safe check for templates array to prevent runtime errors
-  const layoutTemplates = templates || [];
-  
+interface AdminLayoutListProps {
+  layouts: LayoutTemplate[];
+  onDelete: (id: string) => void;
+}
+
+export const AdminLayoutList: React.FC<AdminLayoutListProps> = ({ layouts, onDelete }) => {
   return (
     <ScrollArea className="h-[calc(100vh-170px)]">
       <div className="p-4 space-y-4">
-        {layoutTemplates.length === 0 ? (
+        {layouts.length === 0 ? (
           <div className="text-center p-6 text-gray-500">
             <Terminal className="mx-auto h-8 w-8 opacity-50 mb-2" />
             <p>No layouts found</p>
             <p className="text-xs mt-1">Create and save new layouts to see them here</p>
           </div>
         ) : (
-          layoutTemplates.map((layout) => (
+          layouts.map((layout) => (
             <Card key={layout.id} className="overflow-hidden">
               <CardHeader className="p-3 pb-0">
                 <CardTitle className="text-sm flex items-center">
@@ -83,7 +84,7 @@ export const AdminLayoutList: React.FC<AdminLayoutListProps> = ({ templates, onD
                   variant="outline" 
                   size="sm" 
                   className="h-8 text-red-500 hover:text-red-600 hover:bg-red-50"
-                  onClick={() => onDeleteTemplate(layout.id)}
+                  onClick={() => onDelete(layout.id)}
                 >
                   <Trash2 className="h-3.5 w-3.5 mr-1" />
                   Delete

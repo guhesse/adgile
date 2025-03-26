@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -32,14 +31,8 @@ export const ItemDialog = ({
   const [itemName, setItemName] = useState(editingItem?.name || '');
   const [colorValue, setColorValue] = useState(editingItem?.color || '#000000');
   
-  // Create a proper TextStyle object for the default
+  // Text style defaults
   const defaultTextStyle: TextStyle = {
-    fontFamily: editingItem?.textStyle?.fontFamily || 'Inter',
-    fontSize: editingItem?.textStyle?.fontSize || 16,
-    fontWeight: editingItem?.textStyle?.fontWeight || 'normal',
-    lineHeight: editingItem?.textStyle?.lineHeight || 1.5,
-    letterSpacing: editingItem?.textStyle?.letterSpacing || 0,
-    color: editingItem?.textStyle?.color || '#000000',
     id: editingItem?.textStyle?.id || 0,
     name: editingItem?.textStyle?.name || '',
     style: editingItem?.textStyle?.style || {

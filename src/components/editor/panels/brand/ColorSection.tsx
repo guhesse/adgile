@@ -59,7 +59,7 @@ export const ColorSection = ({
                             className="flex items-center cursor-pointer"
                             onClick={() => toggleColorGroupOpen(group.id)}
                         >
-                            {group.isOpen ? 
+                            {group.isOpen ?
                                 <ChevronDown className="h-4 w-4 mr-1" /> :
                                 <ChevronRight className="h-4 w-4 mr-1" />
                             }

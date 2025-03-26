@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import { Button } from '../../ui/button';
@@ -8,34 +9,16 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from 'sonner';
 import { PopoverContent, Popover, PopoverTrigger } from '../../ui/popover';
 import { Wand2 } from 'lucide-react';
-import { LayoutTemplate } from '../types/admin';
 
 export const AIFormatSuggestions: React.FC = () => {
   const { selectedSize, handleAddElement, elements, setElements } = useCanvas();
   const [model, setModel] = useState<tf.LayersModel | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   
-  // Mock data for AIModelManager - in a real app you'd get this from a context or API
-  const mockTemplates: LayoutTemplate[] = [];
-  const mockModelMetadata = {
-    trainedAt: new Date().toISOString(),
-    iterations: 100,
-    accuracy: 0.85,
-    loss: 0.15
-  };
-  
   // Handle when model is ready
   const handleModelReady = useCallback((trainedModel: tf.LayersModel) => {
     setModel(trainedModel);
   }, []);
-  
-  // Mock train model function
-  const handleTrainModel = async () => {
-    // Simulate training process
-    return new Promise<void>(resolve => {
-      setTimeout(() => resolve(), 2000);
-    });
-  };
   
   // Generate a suggested format based on the trained model
   const generateSuggestedFormat = useCallback(async () => {
@@ -249,13 +232,7 @@ export const AIFormatSuggestions: React.FC = () => {
   
   return (
     <div className="space-y-4">
-      <AIModelManager 
-        templates={mockTemplates} 
-        isModelTrained={!!model} 
-        modelMetadata={mockModelMetadata}
-        onTrainModel={handleTrainModel}
-        onModelReady={handleModelReady}
-      />
+      <AIModelManager onModelReady={handleModelReady} />
       
       <Card>
         <CardHeader>

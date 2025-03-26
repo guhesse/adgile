@@ -1,8 +1,6 @@
 import { EditorElement, BannerSize } from '../../types';
 import { PSDFileData, TextLayerStyle } from './types';
 import { addFontImportToDocument } from './fontMapper';
-
-// Import from the storage module we just created
 import { saveImageToStorage } from './storage';
 
 // Sistema de logs centralizado
@@ -77,64 +75,6 @@ const logger = {
  */
 const generateUniqueId = (): string => {
   return `layer_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 9)}`;
-};
-
-/**
- * Creates a text element from layer data
- */
-const createTextElement = async (
-  layer: any,
-  selectedSize: BannerSize,
-  textStyle: TextLayerStyle
-): Promise<EditorElement | null> => {
-  try {
-    const id = generateUniqueId();
-    
-    // Extract position and dimensions
-    const x = layer.left || 0;
-    const y = layer.top || 0;
-    const width = (layer.right || 100) - x;
-    const height = (layer.bottom || 50) - y;
-    
-    // Convert text alignment to proper value
-    let textAlign: "left" | "center" | "right" = "left";
-    if (textStyle.alignment === "center") {
-      textAlign = "center";
-    } else if (textStyle.alignment === "right") {
-      textAlign = "right";
-    }
-    
-    // Create text element
-    return {
-      id,
-      type: 'text',
-      content: textStyle.text || layer.name,
-      sizeId: 'global',
-      style: {
-        x,
-        y,
-        width,
-        height,
-        rotation: 0,
-        fontFamily: textStyle.fontFamily || 'Roboto',
-        fontSize: textStyle.fontSize || 16,
-        fontWeight: textStyle.fontWeight || 'normal',
-        fontStyle: textStyle.fontStyle || 'normal',
-        textAlign: textAlign,
-        color: textStyle.color || '#000000',
-        opacity: 1,
-        letterSpacing: textStyle.letterSpacing || 0,
-        lineHeight: textStyle.lineHeight || 1.2,
-        xPercent: 0,
-        yPercent: 0,
-        widthPercent: 0,
-        heightPercent: 0
-      }
-    };
-  } catch (error) {
-    logger.error(`Error creating text element for ${layer.name}`, error);
-    return null;
-  }
 };
 
 /**
@@ -228,18 +168,6 @@ const createImageElement = async (
   }
 };
 
-// Update the psdData.layers.push calls to match the LayerData type
-const addLayerToPsdData = (psdData: PSDFileData, layerInfo: any) => {
-  const typedLayerInfo = {
-    ...layerInfo,
-    type: layerInfo.type as 'text' | 'image' | 'group' | 'shape'
-  };
-  
-  // Only add if it doesn't exist yet
-  if (!psdData.layers.some(l => l.name === typedLayerInfo.name)) {
-    psdData.layers.push(typedLayerInfo);
-  }
-};
 
 /**
  * Processa uma camada do PSD e a converte em um elemento de editor
