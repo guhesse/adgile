@@ -64,15 +64,17 @@ export const CanvasElement = ({
     };
     
     // If element has percentage values or constraints and needs to be adjusted for this canvas size
-    if (element.sizeId !== canvasSize.name && 
+    if ((element.sizeId === 'global' || element.sizeId !== canvasSize.name) && 
         (element.style.xPercent !== undefined || 
-        element.style.constraintHorizontal !== undefined)) {
+         element.style.constraintHorizontal !== undefined)) {
       
-      // Find the source size (the size this element was originally created for)
+      // Calculate source size (the size this element was originally created for)
       const sourceSize = {
-        name: element.sizeId || 'unknown',
-        width: element.sizeId === 'global' ? canvasSize.width : 600, // Fallback to current size if unknown
-        height: element.sizeId === 'global' ? canvasSize.height : 800
+        name: element.sizeId || 'global',
+        width: element.sizeId === 'global' ? canvasSize.width : 
+               (element._originalSize?.width || canvasSize.width),
+        height: element.sizeId === 'global' ? canvasSize.height : 
+                (element._originalSize?.height || canvasSize.height)
       };
       
       // Use calculateSmartPosition to adjust to this canvas
@@ -93,13 +95,21 @@ export const CanvasElement = ({
     element.style.constraintHorizontal,
     element.style.constraintVertical,
     element.sizeId,
+    element._originalSize,
     canvasSize
   ]);
 
   // Handle object-fit and object-position for images
   const imageSpecificStyle = useMemo(() => {
     if (isImage) {
-      const { objectFit, objectPositionX, objectPositionY } = element.style;
+      const { objectFit, objectPosition, objectPositionX, objectPositionY } = element.style;
+      
+      if (objectFit === 'cover' && objectPosition) {
+        return {
+          objectFit,
+          objectPosition
+        };
+      }
       
       if (objectFit === 'cover' && (objectPositionX !== undefined || objectPositionY !== undefined)) {
         const x = objectPositionX !== undefined ? objectPositionX : 50;
@@ -111,16 +121,52 @@ export const CanvasElement = ({
         };
       }
       
-      return { objectFit };
+      return { objectFit: objectFit || 'cover' };
     }
     
     return {};
   }, [
     isImage, 
     element.style.objectFit, 
+    element.style.objectPosition,
     element.style.objectPositionX, 
     element.style.objectPositionY
   ]);
+
+  // Apply filters for image elements if defined
+  const imageFilters = useMemo(() => {
+    if (!isImage) return {};
+    
+    const filters = [];
+    const { brightness, contrast, grayscale, saturate, hueRotate } = element.style;
+    
+    if (brightness !== undefined) filters.push(`brightness(${brightness})`);
+    if (contrast !== undefined) filters.push(`contrast(${contrast})`);
+    if (grayscale !== undefined) filters.push(`grayscale(${grayscale})`);
+    if (saturate !== undefined) filters.push(`saturate(${saturate})`);
+    if (hueRotate !== undefined) filters.push(`hue-rotate(${hueRotate}deg)`);
+    
+    if (filters.length > 0) {
+      return { filter: filters.join(' ') };
+    }
+    
+    return {};
+  }, [
+    isImage,
+    element.style.brightness,
+    element.style.contrast,
+    element.style.grayscale,
+    element.style.saturate,
+    element.style.hueRotate
+  ]);
+
+  // Apply clip-path for masked elements
+  const maskStyle = useMemo(() => {
+    if (element.style.hasMask && element.style.maskInfo) {
+      return { clipPath: element.style.clipPath || 'none' };
+    }
+    return {};
+  }, [element.style.hasMask, element.style.maskInfo, element.style.clipPath]);
 
   // Apply the final position style
   const positionStyle: React.CSSProperties = {
@@ -129,7 +175,9 @@ export const CanvasElement = ({
     top: position.y,
     width: position.width,
     height: position.height,
-    ...imageSpecificStyle
+    ...imageSpecificStyle,
+    ...imageFilters,
+    ...maskStyle
   };
 
   // Function to prevent default browser image dragging

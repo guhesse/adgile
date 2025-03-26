@@ -10,6 +10,7 @@ export type EditorElement = {
   type: "text" | "image" | "button" | "layout" | "container" | "paragraph" | "divider" | "spacer" | "logo" | "video" | "artboard-background";
   content: string;
   _layerName?: string; // Campo específico para o nome da camada no painel, não afeta os atributos do elemento
+  _originalSize?: { width: number; height: number }; // Tamanho original do canvas onde o elemento foi criado
   style: {
     x: number;
     y: number;
@@ -40,7 +41,7 @@ export type EditorElement = {
     borderBottomLeftRadius?: number;
     borderBottomRightRadius?: number;
     objectFit?: "contain" | "cover" | "fill" | "none" | "scale-down";
-    objectPosition?: "left" | "center" | "right" | "top" | "bottom" | string;
+    objectPosition?: string;
     objectPositionX?: number; // Nova propriedade para controle preciso da posição X
     objectPositionY?: number; // Nova propriedade para controle preciso da posição Y
     objectScale?: number; // Nova propriedade para controle de escala
@@ -71,6 +72,19 @@ export type EditorElement = {
     minHeight?: number; // Minimum height constraint
     maxWidth?: number;  // Maximum width constraint
     maxHeight?: number; // Maximum height constraint
+    // Para elementos com máscara
+    hasMask?: boolean;
+    maskInfo?: {
+      top: number;
+      left: number;
+      bottom: number;
+      right: number;
+      width: number;
+      height: number;
+      invert: boolean;
+      disabled: boolean;
+    };
+    clipPath?: string;
   };
   columns?: number;
   childElements?: EditorElement[];

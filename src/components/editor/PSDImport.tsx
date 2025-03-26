@@ -115,10 +115,17 @@ export const PSDImport = () => {
         // Import PSD file with the new custom size
         importLogger.debug("Iniciando processamento das camadas...");
         const elements = await importPSDFile(file, customSize);
-        importLogger.info(`Camadas processadas: ${elements.length}`);
+        
+        // Adicionar _originalSize em todos os elementos
+        const elementsWithOriginalSize = elements.map(element => ({
+          ...element,
+          _originalSize: { width, height }
+        }));
+        
+        importLogger.info(`Camadas processadas: ${elementsWithOriginalSize.length}`);
         
         // Update canvas elements
-        setElements(elements);
+        setElements(elementsWithOriginalSize);
         
         // Set the custom size as selected
         setSelectedSize(customSize);
@@ -127,27 +134,27 @@ export const PSDImport = () => {
         toast.dismiss(loadingToast);
         
         // Log information about imported elements
-        const textCount = elements.filter(el => el.type === 'text').length;
-        const imageElements = elements.filter(el => el.type === 'image').length;
-        const containerElements = elements.filter(el => el.type === 'container').length;
-        const elementsWithConstraints = elements.filter(
+        const textCount = elementsWithOriginalSize.filter(el => el.type === 'text').length;
+        const imageElements = elementsWithOriginalSize.filter(el => el.type === 'image').length;
+        const containerElements = elementsWithOriginalSize.filter(el => el.type === 'container').length;
+        const elementsWithConstraints = elementsWithOriginalSize.filter(
           el => el.style.constraintHorizontal && el.style.constraintVertical
         ).length;
         
         importLogger.info("=== PSD IMPORT COMPLETED ===");
         importLogger.info("Resumo da importação:", {
-          total: elements.length,
+          total: elementsWithOriginalSize.length,
           textos: textCount,
           imagens: imageElements,
           containers: containerElements,
           comConstraints: elementsWithConstraints
         });
         
-        if (elements.length === 0) {
+        if (elementsWithOriginalSize.length === 0) {
           toast.warning("Nenhum elemento foi importado do arquivo PSD. Verifique os logs para mais detalhes.");
         } else if (useAiAnalysis) {
           toast.success(
-            `Importados ${elements.length} elementos do arquivo PSD com análise de layout inteligente.`,
+            `Importados ${elementsWithOriginalSize.length} elementos do arquivo PSD com análise de layout inteligente.`,
             {
               description: `${textCount} textos, ${imageElements} imagens, ${elementsWithConstraints} elementos com posicionamento adaptativo.`,
               duration: 5000,
@@ -155,7 +162,7 @@ export const PSDImport = () => {
           );
         } else {
           toast.success(
-            `Importados ${elements.length} elementos do arquivo PSD.`,
+            `Importados ${elementsWithOriginalSize.length} elementos do arquivo PSD.`,
             { 
               description: `${textCount} textos, ${imageElements} imagens, ${containerElements} containers.`,
               duration: 4000

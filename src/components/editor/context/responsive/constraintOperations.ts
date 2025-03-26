@@ -7,16 +7,17 @@ import { snapToGrid } from "../../utils/grid/gridCore";
  * Detects and analyzes constraints for an element
  */
 export const detectElementConstraints = (
-  element: EditorElement
+  element: EditorElement,
+  canvasSize?: BannerSize
 ): { horizontalConstraint: "left" | "right" | "center" | "scale"; verticalConstraint: "top" | "bottom" | "center" | "scale" } => {
   // Create a default banner size if we don't have one
-  const canvasSize: BannerSize = { 
+  const size: BannerSize = canvasSize || { 
     name: element.sizeId || 'default', 
     width: 600, // Default width
     height: 800  // Default height
   };
   
-  return analyzeElementPosition(element, canvasSize);
+  return analyzeElementPosition(element, size);
 };
 
 /**
@@ -67,16 +68,36 @@ export const applyResponsiveTransformation = (
   
   // Special handling for images/logos to preserve aspect ratio
   if ((element.type === "image" || element.type === "logo") && 
-      element.style.originalWidth && element.style.originalHeight) {
+      (element.style.originalWidth && element.style.originalHeight || 
+       element.style.width && element.style.height)) {
       
-    const aspectRatio = element.style.originalWidth / element.style.originalHeight;
+    const aspectRatio = element.style.originalWidth && element.style.originalHeight
+      ? element.style.originalWidth / element.style.originalHeight
+      : element.style.width / element.style.height;
     
-    // If the aspect ratios of the source and target are very different, adjust more intelligently
+    // Handle aspect ratio difference between source and target sizes
     if (Math.abs(aspectRatioDifference - 1) > 0.3) {
       // For dramatic format changes (e.g. square to wide rectangle), use minimum scale
       const minScale = Math.min(scaleX, scaleY);
-      width = element.style.width * minScale;
-      height = width / aspectRatio;
+      
+      // Determine which dimension should be constrained based on the element's constraints
+      if (horizontalConstraint === "scale" && verticalConstraint === "scale") {
+        // Both dimensions scale proportionally
+        width = element.style.width * minScale;
+        height = element.style.height * minScale;
+      } else if (horizontalConstraint === "scale") {
+        // Width scales with canvas, height maintains aspect ratio
+        width = element.style.width * scaleX;
+        height = width / aspectRatio;
+      } else if (verticalConstraint === "scale") {
+        // Height scales with canvas, width maintains aspect ratio
+        height = element.style.height * scaleY;
+        width = height * aspectRatio;
+      } else {
+        // Default behavior for non-scaling constraints
+        width = element.style.width * minScale;
+        height = width / aspectRatio;
+      }
     } else {
       // For similar aspect ratios, maintain relative proportions
       width = element.style.width * scaleX;
@@ -155,9 +176,9 @@ export const applyResponsiveTransformation = (
   width = snapToGrid(width);
   height = snapToGrid(height);
   
-  // Ensure element stays within canvas boundaries
-  x = Math.max(0, Math.min(x, targetSize.width - width));
-  y = Math.max(0, Math.min(y, targetSize.height - height));
+  // Ensure element stays within canvas boundaries (with a small margin)
+  x = Math.max(-width * 0.1, Math.min(x, targetSize.width - width * 0.9));
+  y = Math.max(-height * 0.1, Math.min(y, targetSize.height - height * 0.9));
   
   // Return element with transformed properties
   return {

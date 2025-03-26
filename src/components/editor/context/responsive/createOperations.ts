@@ -51,11 +51,16 @@ export const createLinkedVersions = (
       size
     );
     
-    // Recalculate percentage values for the target size
+    // Calculate new percentage values for the target size
     const targetXPercent = (x / size.width) * 100;
     const targetYPercent = (y / size.height) * 100;
     const targetWidthPercent = (width / size.width) * 100;
     const targetHeightPercent = (height / size.height) * 100;
+    
+    // Adjust positioning based on aspect ratio differences
+    const sourceAspectRatio = selectedSize.width / selectedSize.height;
+    const targetAspectRatio = size.width / size.height;
+    const aspectRatioDifference = targetAspectRatio / sourceAspectRatio;
     
     let linkedElement: EditorElement;
     
@@ -86,12 +91,51 @@ export const createLinkedVersions = (
         }))
       };
     } else {
+      // Handle different element types differently
+      
+      // For images, consider aspect ratio more carefully
+      if (element.type === 'image' || element.type === 'logo') {
+        // Adjust width/height to maintain proper aspect ratio
+        const originalAspectRatio = element.style.width / element.style.height;
+        
+        if (Math.abs(aspectRatioDifference - 1) > 0.2) {
+          // For significant aspect ratio differences, adjust more intelligently
+          if (horizontalConstraint === 'left' || horizontalConstraint === 'right') {
+            // Anchor to the side but adjust height
+            height = width / originalAspectRatio;
+          } else if (verticalConstraint === 'top' || verticalConstraint === 'bottom') {
+            // Anchor to the top/bottom but adjust width
+            width = height * originalAspectRatio;
+          } else {
+            // For center or scale, prefer to fit proportionally
+            const scaleFactor = Math.min(
+              size.width / selectedSize.width,
+              size.height / selectedSize.height
+            );
+            width = element.style.width * scaleFactor;
+            height = element.style.height * scaleFactor;
+          }
+        }
+      }
+      
       // Adjust font size for text elements based on size change
       let adjustedFontSize = element.style.fontSize;
       
       if (element.type === 'text' && element.style.fontSize) {
-        const fontScaleFactor = Math.min(size.width / selectedSize.width, size.height / selectedSize.height);
-        adjustedFontSize = element.style.fontSize * fontScaleFactor;
+        // Base font scaling on target size dimensions
+        const fontScaleFactor = Math.min(
+          size.width / selectedSize.width,
+          size.height / selectedSize.height
+        );
+        
+        // Apply more nuanced scaling for very different aspect ratios
+        if (Math.abs(aspectRatioDifference - 1) > 0.3) {
+          // For wide formats (e.g. banners), scale more conservatively
+          adjustedFontSize = element.style.fontSize * Math.pow(fontScaleFactor, 0.8);
+        } else {
+          adjustedFontSize = element.style.fontSize * fontScaleFactor;
+        }
+        
         // Ensure minimum readable size
         adjustedFontSize = Math.max(adjustedFontSize, 9);
       }
