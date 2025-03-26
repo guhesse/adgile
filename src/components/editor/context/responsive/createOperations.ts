@@ -1,6 +1,6 @@
 
 import { EditorElement, BannerSize } from "../../types";
-import { analyzeElementPosition, calculateSmartPosition } from "../../utils/grid/responsivePosition";
+import { analyzeElementPosition, applyTransformationMatrix } from "../../utils/grid/responsivePosition";
 
 /**
  * Creates linked versions of an element for all active sizes
@@ -44,23 +44,18 @@ export const createLinkedVersions = (
     // Skip the current size
     if (size.name === selectedSize.name) return;
     
-    // Use calculateSmartPosition to get proper positioning based on constraints
-    const { x, y, width, height } = calculateSmartPosition(
-      {
-        ...element,
-        style: {
-          ...element.style,
-          xPercent,
-          yPercent,
-          widthPercent,
-          heightPercent,
-          constraintHorizontal: horizontalConstraint,
-          constraintVertical: verticalConstraint
-        }
-      },
+    // Apply transformations using the improved matrix transformation
+    const { x, y, width, height } = applyTransformationMatrix(
+      updatedElement,
       selectedSize,
       size
     );
+    
+    // Recalculate percentage values for the target size
+    const targetXPercent = (x / size.width) * 100;
+    const targetYPercent = (y / size.height) * 100;
+    const targetWidthPercent = (width / size.width) * 100;
+    const targetHeightPercent = (height / size.height) * 100;
     
     let linkedElement: EditorElement;
     
@@ -76,10 +71,10 @@ export const createLinkedVersions = (
           y,
           width,
           height,
-          xPercent,
-          yPercent,
-          widthPercent,
-          heightPercent,
+          xPercent: targetXPercent,
+          yPercent: targetYPercent,
+          widthPercent: targetWidthPercent,
+          heightPercent: targetHeightPercent,
           constraintHorizontal: horizontalConstraint,
           constraintVertical: verticalConstraint
         },
@@ -91,6 +86,16 @@ export const createLinkedVersions = (
         }))
       };
     } else {
+      // Adjust font size for text elements based on size change
+      let adjustedFontSize = element.style.fontSize;
+      
+      if (element.type === 'text' && element.style.fontSize) {
+        const fontScaleFactor = Math.min(size.width / selectedSize.width, size.height / selectedSize.height);
+        adjustedFontSize = element.style.fontSize * fontScaleFactor;
+        // Ensure minimum readable size
+        adjustedFontSize = Math.max(adjustedFontSize, 9);
+      }
+      
       linkedElement = {
         ...element,
         id: `${element.id}-${size.name.replace(/\s+/g, '-').toLowerCase()}`,
@@ -102,10 +107,11 @@ export const createLinkedVersions = (
           y,
           width,
           height,
-          xPercent,
-          yPercent,
-          widthPercent,
-          heightPercent,
+          fontSize: adjustedFontSize,
+          xPercent: targetXPercent,
+          yPercent: targetYPercent,
+          widthPercent: targetWidthPercent,
+          heightPercent: targetHeightPercent,
           constraintHorizontal: horizontalConstraint,
           constraintVertical: verticalConstraint
         }

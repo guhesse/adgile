@@ -43,7 +43,7 @@ export const CanvasArea = ({
 }: CanvasAreaProps) => {
   const { artboardBackgroundColor = '#ffffff' } = useCanvas();
   
-  // Use provided background color directly, no need to search for an element
+  // Use provided background color directly
   const backgroundColor = artboardBackgroundColor;
 
   // Filter elements that should appear in this specific size or globally
@@ -68,7 +68,7 @@ export const CanvasArea = ({
       
       <Card
         ref={canvasRef}
-        className="relative shadow-lg"
+        className="relative shadow-lg overflow-hidden"
         style={{
           width: size.width,
           height: size.height,

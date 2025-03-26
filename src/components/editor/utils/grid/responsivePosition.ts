@@ -22,51 +22,115 @@ export const analyzeElementPosition = (
   const centerXDistance = Math.abs((element.style.x + element.style.width / 2) - (canvasSize.width / 2));
   const centerYDistance = Math.abs((element.style.y + element.style.height / 2) - (canvasSize.height / 2));
   
-  // Determine horizontal constraint
+  // Enhanced detection for element position relative to canvas
+  const relativeX = element.style.x / canvasSize.width;
+  const relativeY = element.style.y / canvasSize.height;
+  const relativeRight = rightDistance / canvasSize.width;
+  const relativeBottom = bottomDistance / canvasSize.height;
+  
+  // Determine horizontal constraint with improved proportional logic
   let horizontalConstraint: "left" | "right" | "center" | "scale" = "left"; // Default
-  if (centerXDistance < threshold) {
+  
+  if (centerXDistance < threshold || relativeX > 0.4 && relativeX < 0.6) {
     horizontalConstraint = "center";
-  } else if (rightDistance < leftDistance || rightDistance < threshold * 2) {
+  } else if (rightDistance < leftDistance || relativeRight < 0.1) {
     horizontalConstraint = "right";
-  } else if (element.style.width > canvasSize.width * 0.9) {
+  } else if (element.style.width > canvasSize.width * 0.8) {
     // If element takes up most of the width, use scale constraint
     horizontalConstraint = "scale";
   }
   
-  // Determine vertical constraint
+  // Determine vertical constraint with improved proportion-based detection
   let verticalConstraint: "top" | "bottom" | "center" | "scale" = "top"; // Default
-  if (centerYDistance < threshold) {
+  
+  if (centerYDistance < threshold || (relativeY > 0.4 && relativeY < 0.6)) {
     verticalConstraint = "center";
-  } else if (bottomDistance < topDistance || bottomDistance < threshold * 2) {
+  } else if (bottomDistance < topDistance || relativeBottom < 0.2) {
     // Enhanced detection for bottom-aligned elements
     verticalConstraint = "bottom";
-  } else if (element.style.height > canvasSize.height * 0.9) {
+  } else if (element.style.height > canvasSize.height * 0.8) {
     // If element takes up most of the height, use scale constraint
     verticalConstraint = "scale";
   }
   
-  // Special case for images - check if it's likely to be a background or product image at bottom
+  // Special case for images - use more intelligent detection
   if (element.type === 'image') {
-    // Large image taking most of the canvas - likely background
-    if (element.style.width > canvasSize.width * 0.8 && element.style.height > canvasSize.height * 0.5) {
-      // Check if it's at the bottom
-      if (element.style.y + element.style.height > canvasSize.height * 0.7) {
+    // Large image taking most of the canvas width - likely background or banner image
+    if (element.style.width > canvasSize.width * 0.7) {
+      horizontalConstraint = "scale";
+      
+      // Check if it's likely to be a header or footer image
+      if (element.style.y < canvasSize.height * 0.3) {
+        verticalConstraint = "top";
+      } else if (element.style.y + element.style.height > canvasSize.height * 0.7) {
         verticalConstraint = "bottom";
       }
     }
     
-    // Check if it's a product image typically at bottom
-    if (bottomDistance < canvasSize.height * 0.2) {
+    // Product images typically at bottom
+    if (relativeBottom < 0.3 && element.style.height > canvasSize.height * 0.3) {
       verticalConstraint = "bottom";
+    }
+    
+    // Person/product portraits typically need to maintain their position 
+    if (element.style.height > canvasSize.height * 0.5) {
+      // Use aspect ratio to help determine if it's a portrait
+      const aspectRatio = element.style.width / element.style.height;
+      if (aspectRatio < 1.2) { // Portrait or square-ish image
+        // Check if image is at bottom half
+        if (element.style.y > canvasSize.height * 0.4) {
+          verticalConstraint = "bottom";
+        }
+      }
     }
   }
   
-  // Special case for CTA buttons - typically at bottom-right
-  if ((element.type === 'button' || (element.type === 'container' && element.style?.backgroundColor === '#2563eb')) && 
-      bottomDistance < canvasSize.height * 0.3) {
-    verticalConstraint = "bottom";
-    if (rightDistance < canvasSize.width * 0.3) {
-      horizontalConstraint = "right";
+  // Special case for CTA buttons - typically at bottom-right or centered at bottom
+  if ((element.type === 'button' || 
+      (element.type === 'container' && element.style?.backgroundColor === '#2563eb') ||
+      (element.content && element.content.toLowerCase().includes('saiba') || 
+       element.content && element.content.toLowerCase().includes('comprar')))) {
+       
+    if (relativeBottom < 0.3) {
+      verticalConstraint = "bottom";
+      
+      // Check if closer to right or center
+      if (relativeRight < relativeX) {
+        horizontalConstraint = "right";
+      } else if (centerXDistance < canvasSize.width * 0.3) {
+        horizontalConstraint = "center";
+      }
+    }
+  }
+  
+  // Special case for logos - typically at top-left or top-center
+  if (element.type === 'logo' || 
+      (element.type === 'image' && 
+       element.style.width < canvasSize.width * 0.5 && 
+       element.style.y < canvasSize.height * 0.2)) {
+    
+    verticalConstraint = "top";
+    
+    if (centerXDistance < canvasSize.width * 0.2) {
+      horizontalConstraint = "center";
+    } else if (leftDistance < canvasSize.width * 0.2) {
+      horizontalConstraint = "left";
+    }
+  }
+  
+  // Special case for headlines/titles - typically at top or center
+  if ((element.type === 'text' && element.style.fontSize && element.style.fontSize > 18) ||
+      (element.content && element.content.toUpperCase() === element.content && element.content.length < 30)) {
+    
+    if (relativeY < 0.3) {
+      verticalConstraint = "top";
+    } else if (relativeY > 0.3 && relativeY < 0.7) {
+      verticalConstraint = "center";
+    }
+    
+    // Centered headlines are common
+    if (Math.abs((element.style.x + element.style.width/2) - (canvasSize.width/2)) < canvasSize.width * 0.25) {
+      horizontalConstraint = "center";
     }
   }
   
@@ -82,9 +146,10 @@ export const applyTransformationMatrix = (
   sourceSize: BannerSize,
   targetSize: BannerSize
 ): { x: number, y: number, width: number, height: number } => {
-  // Calculate scaling factors
+  // Calculate scaling factors based on proportions
   const scaleX = targetSize.width / sourceSize.width;
   const scaleY = targetSize.height / sourceSize.height;
+  const aspectRatioDifference = (targetSize.width / targetSize.height) / (sourceSize.width / sourceSize.height);
   
   // Get constraints from element or calculate them if not present
   const horizontalConstraint = element.style.constraintHorizontal || 
@@ -93,38 +158,6 @@ export const applyTransformationMatrix = (
   const verticalConstraint = element.style.constraintVertical || 
     analyzeElementPosition(element, sourceSize).verticalConstraint;
   
-  // Handle horizontal constraint
-  let x = element.style.x * scaleX; // Default scaling
-  
-  if (horizontalConstraint === "right") {
-    // Maintain right edge distance
-    const rightEdgeDistance = sourceSize.width - (element.style.x + element.style.width);
-    x = targetSize.width - rightEdgeDistance * scaleX - element.style.width * scaleX;
-  } else if (horizontalConstraint === "center") {
-    // Maintain center position
-    const centerOffset = element.style.x + element.style.width / 2 - sourceSize.width / 2;
-    x = targetSize.width / 2 + centerOffset * scaleX - element.style.width * scaleX / 2;
-  } else if (horizontalConstraint === "scale") {
-    // For elements that should scale relative to canvas width
-    x = (element.style.x / sourceSize.width) * targetSize.width;
-  }
-  
-  // Handle vertical constraint
-  let y = element.style.y * scaleY; // Default scaling
-  
-  if (verticalConstraint === "bottom") {
-    // Maintain bottom edge distance
-    const bottomEdgeDistance = sourceSize.height - (element.style.y + element.style.height);
-    y = targetSize.height - bottomEdgeDistance * scaleY - element.style.height * scaleY;
-  } else if (verticalConstraint === "center") {
-    // Maintain center position
-    const centerOffset = element.style.y + element.style.height / 2 - sourceSize.height / 2;
-    y = targetSize.height / 2 + centerOffset * scaleY - element.style.height * scaleY / 2;
-  } else if (verticalConstraint === "scale") {
-    // For elements that should scale relative to canvas height
-    y = (element.style.y / sourceSize.height) * targetSize.height;
-  }
-  
   // Calculate dimensions based on scaling factors
   let width = element.style.width * scaleX;
   let height = element.style.height * scaleY;
@@ -132,28 +165,91 @@ export const applyTransformationMatrix = (
   // Special handling for images to preserve aspect ratio
   if ((element.type === "image" || element.type === "logo") && 
        element.style.originalWidth && element.style.originalHeight) {
-    const aspectRatio = element.style.originalWidth / element.style.originalHeight;
+    const imageAspectRatio = element.style.originalWidth / element.style.originalHeight;
     
-    // For bottom-aligned or centered images, maintain their position but adjust size
-    if (verticalConstraint === "bottom" || verticalConstraint === "center") {
-      // Use the smaller scale factor to preserve aspect ratio
+    // If the aspect ratio of the target format is very different, adjust more intelligently
+    if (Math.abs(aspectRatioDifference - 1) > 0.3) {
+      // For dramatic format changes (e.g. square to wide rectangle), use minimum scale
       const minScale = Math.min(scaleX, scaleY);
       width = element.style.width * minScale;
-      height = width / aspectRatio;
-      
-      // Re-adjust position based on new dimensions
-      if (verticalConstraint === "bottom") {
-        const bottomEdgeDistance = sourceSize.height - (element.style.y + element.style.height);
-        y = targetSize.height - bottomEdgeDistance * scaleY - height;
-      } else if (verticalConstraint === "center") {
-        const centerOffset = element.style.y + element.style.height / 2 - sourceSize.height / 2;
-        y = targetSize.height / 2 + centerOffset * scaleY - height / 2;
-      }
+      height = width / imageAspectRatio;
     } else {
-      // For top-aligned images, maintain their top position and adjust size
-      const minScale = Math.min(scaleX, scaleY);
-      width = element.style.width * minScale;
-      height = width / aspectRatio;
+      // For similar aspect ratios, maintain relative proportions
+      width = element.style.width * scaleX;
+      height = width / imageAspectRatio;
+    }
+  }
+  
+  // Handle horizontal constraint
+  let x = element.style.x * scaleX; // Default scaling
+  
+  if (horizontalConstraint === "right") {
+    // Maintain right edge distance proportionally
+    const rightEdgeDistance = sourceSize.width - (element.style.x + element.style.width);
+    const scaledRightDistance = rightEdgeDistance * scaleX;
+    x = targetSize.width - scaledRightDistance - width;
+  } else if (horizontalConstraint === "center") {
+    // Maintain center position proportionally
+    const sourceCenterX = sourceSize.width / 2;
+    const targetCenterX = targetSize.width / 2;
+    const elementOffsetFromCenter = (element.style.x + element.style.width / 2) - sourceCenterX;
+    const scaledOffset = elementOffsetFromCenter * scaleX;
+    x = targetCenterX + scaledOffset - width / 2;
+  } else if (horizontalConstraint === "scale") {
+    // For elements that should scale with canvas width
+    const relativeX = element.style.x / sourceSize.width;
+    x = relativeX * targetSize.width;
+    
+    // For full-width elements, scale width to match target
+    if (element.style.width > sourceSize.width * 0.8) {
+      width = targetSize.width * (element.style.width / sourceSize.width);
+    }
+  }
+  
+  // Handle vertical constraint
+  let y = element.style.y * scaleY; // Default scaling
+  
+  if (verticalConstraint === "bottom") {
+    // Maintain bottom edge distance proportionally
+    const bottomEdgeDistance = sourceSize.height - (element.style.y + element.style.height);
+    const scaledBottomDistance = bottomEdgeDistance * scaleY;
+    y = targetSize.height - scaledBottomDistance - height;
+  } else if (verticalConstraint === "center") {
+    // Maintain center position proportionally
+    const sourceCenterY = sourceSize.height / 2;
+    const targetCenterY = targetSize.height / 2;
+    const elementOffsetFromCenter = (element.style.y + element.style.height / 2) - sourceCenterY;
+    const scaledOffset = elementOffsetFromCenter * scaleY;
+    y = targetCenterY + scaledOffset - height / 2;
+  } else if (verticalConstraint === "scale") {
+    // For elements that should scale with canvas height
+    const relativeY = element.style.y / sourceSize.height;
+    y = relativeY * targetSize.height;
+    
+    // For full-height elements, scale height to match target
+    if (element.style.height > sourceSize.height * 0.8) {
+      height = targetSize.height * (element.style.height / sourceSize.height);
+    }
+  }
+  
+  // Font scaling for text elements
+  if (element.type === "text" && element.style.fontSize) {
+    // Scale font size relative to the width, as it's usually more important for readability
+    const fontScale = Math.min(scaleX, scaleY);
+    const targetFontSize = element.style.fontSize * fontScale;
+    
+    // Ensure font remains readable (minimum size)
+    element.style.fontSize = Math.max(targetFontSize, 9);
+    
+    // If text gets too large, cap it
+    if (element.style.fontSize > 72) {
+      element.style.fontSize = 72;
+    }
+    
+    // Adjust text width based on font scaling
+    if (Math.abs(fontScale - 1) > 0.2) {
+      // Only adjust if scale change is significant
+      width = width * (fontScale / scaleX);
     }
   }
   
@@ -175,13 +271,9 @@ export const applyTransformationMatrix = (
     height = element.style.maxHeight;
   }
   
-  // Ensure font sizes remain legible
-  if (element.type === "text" && element.style.fontSize) {
-    // Scale font size with width but ensure it remains legible
-    const newFontSize = element.style.fontSize * Math.min(scaleX, scaleY);
-    const minLegibleSize = 9; // Minimum legible font size in pixels
-    element.style.fontSize = Math.max(newFontSize, minLegibleSize);
-  }
+  // Ensure element stays within canvas boundaries
+  x = Math.max(0, Math.min(x, targetSize.width - width));
+  y = Math.max(0, Math.min(y, targetSize.height - height));
   
   return { 
     x: snapToGrid(x), 
@@ -200,72 +292,28 @@ export const calculateSmartPosition = (
   sourceSize: BannerSize,
   targetSize: BannerSize
 ): { x: number; y: number; width: number; height: number } => {
-  // Fix: Use constraint-based positioning as the primary approach for better consistency
-  if (element.style.constraintHorizontal || element.style.constraintVertical || 
-      sourceSize.width !== targetSize.width || sourceSize.height !== targetSize.height) {
-    // Create a temporary element with explicit constraints if none are defined
-    if (!element.style.constraintHorizontal || !element.style.constraintVertical) {
-      const { horizontalConstraint, verticalConstraint } = analyzeElementPosition(element, sourceSize);
-      
-      const elementWithConstraints = {
-        ...element,
-        style: {
-          ...element.style,
-          constraintHorizontal: element.style.constraintHorizontal || horizontalConstraint,
-          constraintVertical: element.style.constraintVertical || verticalConstraint
-        }
-      };
-      
-      return applyTransformationMatrix(elementWithConstraints, sourceSize, targetSize);
-    }
+  // Use constraint-based positioning for most consistent results
+  const sourceHasConstraints = element.style.constraintHorizontal && element.style.constraintVertical;
+  
+  // If there are no constraints set or the sizes differ significantly, analyze and set constraints
+  if (!sourceHasConstraints || 
+      Math.abs((sourceSize.width / sourceSize.height) - (targetSize.width / targetSize.height)) > 0.2) {
+    const { horizontalConstraint, verticalConstraint } = analyzeElementPosition(element, sourceSize);
     
-    return applyTransformationMatrix(element, sourceSize, targetSize);
+    const elementWithConstraints = {
+      ...element,
+      style: {
+        ...element.style,
+        constraintHorizontal: element.style.constraintHorizontal || horizontalConstraint,
+        constraintVertical: element.style.constraintVertical || verticalConstraint
+      }
+    };
+    
+    return applyTransformationMatrix(elementWithConstraints, sourceSize, targetSize);
   }
   
-  // Fallback to percentage-based positioning if no constraints and same size
-  const xPercent = element.style.xPercent !== undefined 
-    ? element.style.xPercent 
-    : (element.style.x / sourceSize.width) * 100;
-    
-  const yPercent = element.style.yPercent !== undefined 
-    ? element.style.yPercent 
-    : (element.style.y / sourceSize.height) * 100;
-    
-  const widthPercent = element.style.widthPercent !== undefined 
-    ? element.style.widthPercent 
-    : (element.style.width / sourceSize.width) * 100;
-    
-  const heightPercent = element.style.heightPercent !== undefined 
-    ? element.style.heightPercent 
-    : (element.style.height / sourceSize.height) * 100;
-
-  // Calculate position based on percentages
-  let x = (xPercent * targetSize.width) / 100;
-  let y = (yPercent * targetSize.height) / 100;
-  let width = (widthPercent * targetSize.width) / 100;
-  let height = (heightPercent * targetSize.height) / 100;
-
-  // Special handling for images to preserve aspect ratio
-  if (element.type === "image" || element.type === "logo") {
-    // Get original aspect ratio
-    const originalAspectRatio = 
-      (element.style.originalWidth && element.style.originalHeight) 
-        ? element.style.originalWidth / element.style.originalHeight
-        : element.style.width / element.style.height;
-    
-    // If original aspect ratio is available, use it to maintain proportion
-    if (originalAspectRatio) {
-      height = width / originalAspectRatio;
-    }
-  }
-
-  // Snap to grid
-  x = snapToGrid(x);
-  y = snapToGrid(y);
-  width = snapToGrid(width);
-  height = snapToGrid(height);
-
-  return { x, y, width, height };
+  // If constraints are already set and sizes are similar, use them directly
+  return applyTransformationMatrix(element, sourceSize, targetSize);
 };
 
 /**
@@ -296,10 +344,10 @@ export const calculateDragPosition = (
   newY = snapToGrid(newY);
 
   // Calculate and store percentage positions for responsive scaling
-  element.style.xPercent = (newX / canvasSize.width) * 100;
-  element.style.yPercent = (newY / canvasSize.height) * 100;
+  const xPercent = (newX / canvasSize.width) * 100;
+  const yPercent = (newY / canvasSize.height) * 100;
 
-  return { x: newX, y: newY };
+  return { x: newX, y: newY, xPercent, yPercent };
 };
 
 /**
@@ -359,18 +407,22 @@ export const updateLinkedElementsIntelligently = (
       ...el,
       style: {
         ...el.style,
-        x: x,
-        y: y,
-        width: width,
-        height: height,
+        x,
+        y,
+        width,
+        height,
         // Store constraint info for future transformations
         constraintHorizontal: horizontalConstraint,
         constraintVertical: verticalConstraint,
         // Update percentage values
-        xPercent: xPercent,
-        yPercent: yPercent,
-        widthPercent: widthPercent,
-        heightPercent: heightPercent
+        xPercent,
+        yPercent,
+        widthPercent,
+        heightPercent,
+        // If this is a text element, preserve font scaling
+        fontSize: sourceElement.type === 'text' && sourceElement.style.fontSize 
+          ? sourceElement.style.fontSize * (width / sourceElement.style.width)
+          : el.style.fontSize
       }
     };
   });

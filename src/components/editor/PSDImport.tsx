@@ -149,7 +149,7 @@ export const PSDImport = () => {
           toast.success(
             `Importados ${elements.length} elementos do arquivo PSD com análise de layout inteligente.`,
             {
-              description: `${textCount} textos, ${imageElements} imagens, ${elementsWithConstraints} elementos com posicionamento otimizado.`,
+              description: `${textCount} textos, ${imageElements} imagens, ${elementsWithConstraints} elementos com posicionamento adaptativo.`,
               duration: 5000,
             }
           );

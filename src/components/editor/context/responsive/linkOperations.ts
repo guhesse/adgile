@@ -1,5 +1,5 @@
 import { EditorElement, BannerSize } from "../../types";
-import { analyzeElementPosition } from "../../utils/grid/responsivePosition";
+import { analyzeElementPosition, applyTransformationMatrix } from "../../utils/grid/responsivePosition";
 import { toast } from "sonner";
 
 /**
@@ -60,73 +60,42 @@ export const linkElementsAcrossSizes = (
   activeSizes
     .filter(size => size.name !== sourceElement.sizeId)
     .forEach(targetSize => {
-      // Calculate dimensions for the new element based on constraints
-      const scaleX = targetSize.width / sourceSize.width;
-      const scaleY = targetSize.height / sourceSize.height;
-      
-      // Base calculations assuming left/top constraints
-      let x = sourceElement.style.x * scaleX;
-      let y = sourceElement.style.y * scaleY;
-      let width = sourceElement.style.width * scaleX;
-      let height = sourceElement.style.height * scaleY;
-      
-      // Apply horizontal constraint
-      if (horizontalConstraint === "right") {
-        const rightEdgeDistance = sourceSize.width - (sourceElement.style.x + sourceElement.style.width);
-        x = targetSize.width - rightEdgeDistance * scaleX - width;
-      } else if (horizontalConstraint === "center") {
-        const centerOffsetX = sourceElement.style.x + sourceElement.style.width / 2 - sourceSize.width / 2;
-        x = targetSize.width / 2 + centerOffsetX * scaleX - width / 2;
-      }
-      
-      // Apply vertical constraint
-      if (verticalConstraint === "bottom") {
-        const bottomEdgeDistance = sourceSize.height - (sourceElement.style.y + sourceElement.style.height);
-        y = targetSize.height - bottomEdgeDistance * scaleY - height;
-      } else if (verticalConstraint === "center") {
-        const centerOffsetY = sourceElement.style.y + sourceElement.style.height / 2 - sourceSize.height / 2;
-        y = targetSize.height / 2 + centerOffsetY * scaleY - height / 2;
-      }
-      
-      // Special handling for images to preserve aspect ratio
-      if ((sourceElement.type === "image" || sourceElement.type === "logo") && 
-          sourceElement.style.originalWidth && sourceElement.style.originalHeight) {
-        const aspectRatio = sourceElement.style.originalWidth / sourceElement.style.originalHeight;
-        
-        // Use the smaller scale factor for aspect-preserving scaling
-        const minScale = Math.min(scaleX, scaleY);
-        
-        if (verticalConstraint === "bottom" || verticalConstraint === "center") {
-          width = sourceElement.style.width * minScale;
-          height = width / aspectRatio;
-          
-          // Re-adjust position based on new dimensions
-          if (verticalConstraint === "bottom") {
-            const bottomEdgeDistance = sourceSize.height - (sourceElement.style.y + sourceElement.style.height);
-            y = targetSize.height - bottomEdgeDistance * scaleY - height;
-          } else if (verticalConstraint === "center") {
-            const centerOffsetY = sourceElement.style.y + sourceElement.style.height / 2 - sourceSize.height / 2;
-            y = targetSize.height / 2 + centerOffsetY * scaleY - height / 2;
+      // Apply transformations using matrix transformation
+      const { x, y, width, height } = applyTransformationMatrix(
+        {
+          ...sourceElement,
+          style: {
+            ...sourceElement.style,
+            constraintHorizontal: horizontalConstraint,
+            constraintVertical: verticalConstraint
           }
-        } else {
-          // For top-aligned images
-          width = sourceElement.style.width * minScale;
-          height = width / aspectRatio;
-        }
-      }
+        },
+        sourceSize,
+        targetSize
+      );
       
-      // For text elements, ensure font size is properly scaled but remains legible
+      // Calculate percentage values for the target size
+      const targetXPercent = (x / targetSize.width) * 100;
+      const targetYPercent = (y / targetSize.height) * 100;
+      const targetWidthPercent = (width / targetSize.width) * 100;
+      const targetHeightPercent = (height / targetSize.height) * 100;
+      
+      // Adjust font size for text elements based on size change
       let fontSize = sourceElement.style.fontSize;
-      if (sourceElement.type === "text" && fontSize) {
-        const minScale = Math.min(scaleX, scaleY);
-        fontSize = fontSize * minScale;
-        fontSize = Math.max(fontSize, 9); // Minimum legible size
+      if (sourceElement.type === 'text' && fontSize) {
+        const fontScaleFactor = Math.min(targetSize.width / sourceSize.width, targetSize.height / sourceSize.height);
+        fontSize = fontSize * fontScaleFactor;
+        // Ensure minimum readable size
+        fontSize = Math.max(fontSize, 9);
       }
       
-      // Create the linked element with the proper ID for this size
+      // Create new element ID for the linked version
+      const newId = `${sourceElement.id}-${targetSize.name.replace(/\s+/g, '-').toLowerCase()}`;
+      
+      // Create the linked element
       const linkedElement: EditorElement = {
         ...sourceElement,
-        id: `${sourceElement.id}-${targetSize.name.replace(/\s+/g, '-').toLowerCase()}`,
+        id: newId,
         sizeId: targetSize.name,
         linkedElementId: linkedId,
         style: {
@@ -136,26 +105,16 @@ export const linkElementsAcrossSizes = (
           width,
           height,
           fontSize,
-          xPercent: (x / targetSize.width) * 100,
-          yPercent: (y / targetSize.height) * 100,
-          widthPercent: (width / targetSize.width) * 100,
-          heightPercent: (height / targetSize.height) * 100,
+          xPercent: targetXPercent,
+          yPercent: targetYPercent,
+          widthPercent: targetWidthPercent,
+          heightPercent: targetHeightPercent,
           constraintHorizontal: horizontalConstraint,
           constraintVertical: verticalConstraint
         }
       };
       
-      // For containers or layouts, also update child element IDs
-      if (sourceElement.type === "container" || sourceElement.type === "layout") {
-        linkedElement.childElements = sourceElement.childElements?.map(child => ({
-          ...child,
-          id: `${child.id}-${targetSize.name.replace(/\s+/g, '-').toLowerCase()}`,
-          parentId: linkedElement.id,
-          sizeId: targetSize.name
-        }));
-      }
-      
-      // Add the linked element to our updated elements
+      // Add the linked element to the updated elements array
       updatedElements.push(linkedElement);
     });
   
@@ -163,7 +122,7 @@ export const linkElementsAcrossSizes = (
 };
 
 /**
- * Unlinks an element from its linked versions
+ * Unlinking an element from its linked versions
  */
 export const unlinkElement = (
   elements: EditorElement[],
@@ -175,29 +134,16 @@ export const unlinkElement = (
     return elements;
   }
   
-  const linkedId = element.linkedElementId;
-  
-  // Update all elements, removing linked ID from the specified element
-  // and removing all other elements with this linked ID
-  return elements
-    .filter(el => el.id === elementId || el.linkedElementId !== linkedId) // Keep this element and non-linked elements
-    .map(el => {
-      if (el.id === elementId) {
-        // Remove linked ID and constraints from this element
-        const { linkedElementId, ...styleWithoutLinkedProps } = el.style;
-        return {
-          ...el,
-          linkedElementId: undefined,
-          style: {
-            ...styleWithoutLinkedProps,
-            // Keep percentage values for future use
-            xPercent: el.style.xPercent,
-            yPercent: el.style.yPercent,
-            widthPercent: el.style.widthPercent,
-            heightPercent: el.style.heightPercent,
-          }
-        };
-      }
-      return el;
-    });
+  // Update all linked elements to remove the linkedElementId
+  return elements.map(el => {
+    if (el.linkedElementId === element.linkedElementId) {
+      // Remove the linkedElementId but keep position and constraint data
+      return {
+        ...el,
+        linkedElementId: undefined,
+        isIndividuallyPositioned: false
+      };
+    }
+    return el;
+  });
 };

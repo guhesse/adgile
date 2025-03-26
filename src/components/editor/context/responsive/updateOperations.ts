@@ -1,5 +1,5 @@
 import { EditorElement, BannerSize } from "../../types";
-import { applyResponsiveTransformation } from "./constraintOperations";
+import { applyTransformationMatrix } from "../../utils/grid/responsivePosition";
 import { analyzeElementPosition } from "../../utils/grid/responsivePosition";
 
 /**
@@ -37,9 +37,8 @@ export const updateAllLinkedElements = (
   }
   
   // Analyze element position to determine constraints if they're not already set
-  let { horizontalConstraint, verticalConstraint } = 
-    { horizontalConstraint: sourceElement.style.constraintHorizontal, 
-      verticalConstraint: sourceElement.style.constraintVertical };
+  let horizontalConstraint = sourceElement.style.constraintHorizontal;
+  let verticalConstraint = sourceElement.style.constraintVertical;
   
   if (!horizontalConstraint || !verticalConstraint) {
     const constraints = analyzeElementPosition(sourceElement, sourceSize);
@@ -47,22 +46,25 @@ export const updateAllLinkedElements = (
     verticalConstraint = verticalConstraint || constraints.verticalConstraint;
   }
   
+  // Create a source element with the changes applied for transformation calculations
+  const updatedSourceElement = {
+    ...sourceElement,
+    style: {
+      ...sourceElement.style,
+      ...absoluteChanges,
+      xPercent: calculatedPercentChanges.xPercent !== undefined ? calculatedPercentChanges.xPercent : sourceElement.style.xPercent,
+      yPercent: calculatedPercentChanges.yPercent !== undefined ? calculatedPercentChanges.yPercent : sourceElement.style.yPercent,
+      widthPercent: calculatedPercentChanges.widthPercent !== undefined ? calculatedPercentChanges.widthPercent : sourceElement.style.widthPercent,
+      heightPercent: calculatedPercentChanges.heightPercent !== undefined ? calculatedPercentChanges.heightPercent : sourceElement.style.heightPercent,
+      constraintHorizontal: horizontalConstraint,
+      constraintVertical: verticalConstraint
+    }
+  };
+  
   return elements.map(el => {
     // Update source element
     if (el.id === sourceElement.id) {
-      return {
-        ...el,
-        style: {
-          ...el.style,
-          ...absoluteChanges,
-          xPercent: calculatedPercentChanges.xPercent !== undefined ? calculatedPercentChanges.xPercent : el.style.xPercent,
-          yPercent: calculatedPercentChanges.yPercent !== undefined ? calculatedPercentChanges.yPercent : el.style.yPercent,
-          widthPercent: calculatedPercentChanges.widthPercent !== undefined ? calculatedPercentChanges.widthPercent : el.style.widthPercent,
-          heightPercent: calculatedPercentChanges.heightPercent !== undefined ? calculatedPercentChanges.heightPercent : el.style.heightPercent,
-          constraintHorizontal: horizontalConstraint,
-          constraintVertical: verticalConstraint
-        }
-      };
+      return updatedSourceElement;
     }
     
     // Update linked elements
@@ -70,36 +72,38 @@ export const updateAllLinkedElements = (
       const targetSize = activeSizes.find(size => size.name === el.sizeId);
       
       if (targetSize) {
-        // Create a source element with the changes applied
-        const updatedSourceElement = {
-          ...sourceElement,
-          style: {
-            ...sourceElement.style,
-            ...absoluteChanges,
-            xPercent: calculatedPercentChanges.xPercent !== undefined ? calculatedPercentChanges.xPercent : sourceElement.style.xPercent,
-            yPercent: calculatedPercentChanges.yPercent !== undefined ? calculatedPercentChanges.yPercent : sourceElement.style.yPercent,
-            widthPercent: calculatedPercentChanges.widthPercent !== undefined ? calculatedPercentChanges.widthPercent : sourceElement.style.widthPercent,
-            heightPercent: calculatedPercentChanges.heightPercent !== undefined ? calculatedPercentChanges.heightPercent : sourceElement.style.heightPercent,
-            constraintHorizontal: horizontalConstraint,
-            constraintVertical: verticalConstraint
-          }
-        };
-        
         // Apply transformation using responsive algorithm
-        const transformedElement = applyResponsiveTransformation(
+        const transformedStyle = applyTransformationMatrix(
           updatedSourceElement, 
           sourceSize, 
           targetSize
         );
+        
+        // Calculate new percentage values
+        const xPercent = (transformedStyle.x / targetSize.width) * 100;
+        const yPercent = (transformedStyle.y / targetSize.height) * 100;
+        const widthPercent = (transformedStyle.width / targetSize.width) * 100;
+        const heightPercent = (transformedStyle.height / targetSize.height) * 100;
         
         // Return the transformed element, keeping all other properties from the original element
         return {
           ...el,
           style: {
             ...el.style,
-            ...transformedElement.style,
+            x: transformedStyle.x,
+            y: transformedStyle.y,
+            width: transformedStyle.width,
+            height: transformedStyle.height,
+            xPercent,
+            yPercent,
+            widthPercent,
+            heightPercent,
             constraintHorizontal: horizontalConstraint,
-            constraintVertical: verticalConstraint
+            constraintVertical: verticalConstraint,
+            // If this is a text element, adjust font size in proportion
+            fontSize: sourceElement.type === 'text' && sourceElement.style.fontSize 
+              ? sourceElement.style.fontSize * (transformedStyle.width / updatedSourceElement.style.width)
+              : el.style.fontSize
           }
         };
       }
