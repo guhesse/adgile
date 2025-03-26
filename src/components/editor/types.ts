@@ -63,6 +63,8 @@ export type EditorElement = {
   sizeId?: string; // The banner size this element belongs to
   linkedElementId?: string; // ID of the linked element in other sizes
   isIndividuallyPositioned?: boolean; // Whether this element has been individually positioned
+  psdLayerData?: any; // Store the original PSD layer data
+  artboardSize?: any; // Store artboard size information
 };
 
 // Novo tipo para compartilhar entre componentes
@@ -126,3 +128,17 @@ export const PRESET_LAYOUTS: LayoutTemplate[] = [
   { id: "preset-image-text", name: "Imagem e texto", columns: 2, preview: "IT", type: "preset" },
   { id: "preset-text-text", name: "Texto e texto", columns: 2, preview: "TT", type: "preset" },
 ];
+
+export type BrandItem = {
+  id: number;
+  name: string;
+  type: 'color' | 'textStyle';
+  color?: string;
+  textStyle?: TextStyle;
+};
+
+// Adding ColorItem for backward compatibility
+export type ColorItem = BrandItem;
+
+export type TextStyleGroup = BrandGroup;
+export type ColorGroup = BrandGroup;

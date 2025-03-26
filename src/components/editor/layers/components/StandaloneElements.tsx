@@ -20,7 +20,7 @@ export const StandaloneElements: React.FC<StandaloneElementsProps> = ({
             {elements.map((element) => renderLayerItem(element))}
             {elements.length === 0 && (
                 <div className="text-xs text-gray-400 py-1 px-2">
-                    Sem elementos independentes
+                    No standalone elements
                 </div>
             )}
         </div>
