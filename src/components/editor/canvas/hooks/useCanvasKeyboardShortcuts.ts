@@ -64,18 +64,24 @@ export const useCanvasKeyboardShortcuts = ({
             const currentX = selectedElement.style.objectPositionX || 50;
             const currentY = selectedElement.style.objectPositionY || 50;
             
+            console.log(`Keyboard adjusting objectPosition - Current X: ${currentX}, Y: ${currentY}`);
+            
             switch (e.key) {
               case 'ArrowLeft':
                 updateElementStyle('objectPositionX', Math.max(0, currentX - step));
+                console.log(`ArrowLeft: Setting objectPositionX to ${Math.max(0, currentX - step)}`);
                 break;
               case 'ArrowRight':
                 updateElementStyle('objectPositionX', Math.min(100, currentX + step));
+                console.log(`ArrowRight: Setting objectPositionX to ${Math.min(100, currentX + step)}`);
                 break;
               case 'ArrowUp':
                 updateElementStyle('objectPositionY', Math.max(0, currentY - step));
+                console.log(`ArrowUp: Setting objectPositionY to ${Math.max(0, currentY - step)}`);
                 break;
               case 'ArrowDown':
                 updateElementStyle('objectPositionY', Math.min(100, currentY + step));
+                console.log(`ArrowDown: Setting objectPositionY to ${Math.min(100, currentY + step)}`);
                 break;
             }
           }

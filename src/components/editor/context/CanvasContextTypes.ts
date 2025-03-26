@@ -55,4 +55,9 @@ export interface CanvasContextType {
   undo: () => void;
   artboardBackgroundColor: string;
   updateArtboardBackground: (color: string) => void;
+  
+  // New methods for enhanced responsive behavior
+  detectElementConstraints: (element: EditorElement) => void;
+  applyResponsiveTransformation: (element: EditorElement, sourceSize: BannerSize, targetSize: BannerSize) => EditorElement;
+  setElementConstraints: (constraints: { horizontal?: "left" | "right" | "center" | "scale", vertical?: "top" | "bottom" | "center" | "scale" }) => void;
 }

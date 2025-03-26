@@ -3,7 +3,7 @@ import { BannerSize, CanvasNavigationMode, EditorElement } from "../types";
 import { ElementRenderer } from "../ElementRenderer";
 import { ElementHandles } from "./ElementHandles";
 import { calculateSmartPosition } from "../utils/grid/responsivePosition";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useMemo } from "react";
 
 interface CanvasElementProps {
   element: EditorElement;
@@ -37,6 +37,7 @@ export const CanvasElement = ({
   zIndex = 1
 }: CanvasElementProps) => {
   
+  // Determine state for styling
   const isHovered = hoveredContainer === element.id;
   const isContainer = element.type === "container" || element.type === "layout";
   const isExiting = isElementOutsideContainer && selectedElement?.id === element.id;
@@ -53,39 +54,81 @@ export const CanvasElement = ({
     return null;
   }
 
-  // Determine the position for this element
-  let position = { 
-    x: element.style.x, 
-    y: element.style.y, 
-    width: element.style.width, 
-    height: element.style.height 
-  };
-  
-  // If element has percentage values and needs to be adjusted for this canvas size
-  if (element.style.xPercent !== undefined && 
-      element.style.yPercent !== undefined && 
-      element.style.widthPercent !== undefined && 
-      element.style.heightPercent !== undefined &&
-      element.sizeId !== canvasSize.name) {
-    
-    // Find the source size (the size this element was originally created for)
-    const sourceSize = {
-      name: element.sizeId || 'unknown',
-      width: canvasSize.width, // Fallback to current size if unknown
-      height: canvasSize.height
+  // Determine the position for this element using useMemo for performance
+  const position = useMemo(() => {
+    let pos = { 
+      x: element.style.x, 
+      y: element.style.y, 
+      width: element.style.width, 
+      height: element.style.height 
     };
     
-    // Use calculateSmartPosition to adjust to this canvas
-    position = calculateSmartPosition(element, sourceSize, canvasSize);
-  }
+    // If element has percentage values and needs to be adjusted for this canvas size
+    if ((element.style.xPercent !== undefined || element.style.constraintHorizontal !== undefined) && 
+        element.sizeId !== canvasSize.name) {
+      
+      // Find the source size (the size this element was originally created for)
+      const sourceSize = {
+        name: element.sizeId || 'unknown',
+        width: canvasSize.width, // Fallback to current size if unknown
+        height: canvasSize.height
+      };
+      
+      // Use calculateSmartPosition to adjust to this canvas
+      pos = calculateSmartPosition(element, sourceSize, canvasSize);
+    }
+    
+    return pos;
+  }, [
+    element.id, 
+    element.style.x, 
+    element.style.y, 
+    element.style.width, 
+    element.style.height,
+    element.style.xPercent,
+    element.style.yPercent,
+    element.style.widthPercent,
+    element.style.heightPercent,
+    element.style.constraintHorizontal,
+    element.style.constraintVertical,
+    element.sizeId,
+    canvasSize
+  ]);
+
+  // Handle object-fit and object-position for images
+  const imageSpecificStyle = useMemo(() => {
+    if (isImage) {
+      const { objectFit, objectPositionX, objectPositionY } = element.style;
+      
+      if (objectFit === 'cover' && (objectPositionX !== undefined || objectPositionY !== undefined)) {
+        const x = objectPositionX !== undefined ? objectPositionX : 50;
+        const y = objectPositionY !== undefined ? objectPositionY : 50;
+        
+        return {
+          objectFit,
+          objectPosition: `${x}% ${y}%`
+        };
+      }
+      
+      return { objectFit };
+    }
+    
+    return {};
+  }, [
+    isImage, 
+    element.style.objectFit, 
+    element.style.objectPositionX, 
+    element.style.objectPositionY
+  ]);
 
   // Apply the final position style
-  let positionStyle: React.CSSProperties = {
+  const positionStyle: React.CSSProperties = {
     position: "absolute",
     left: position.x,
     top: position.y,
     width: position.width,
-    height: position.height
+    height: position.height,
+    ...imageSpecificStyle
   };
 
   // Function to prevent default browser image dragging

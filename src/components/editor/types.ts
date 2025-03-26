@@ -64,6 +64,13 @@ export type EditorElement = {
     yPercent?: number;
     widthPercent?: number;
     heightPercent?: number;
+    // Constraint-based positioning (new)
+    constraintHorizontal?: "left" | "right" | "center" | "scale";
+    constraintVertical?: "top" | "bottom" | "center" | "scale";
+    minWidth?: number;  // Minimum width constraint
+    minHeight?: number; // Minimum height constraint
+    maxWidth?: number;  // Maximum width constraint
+    maxHeight?: number; // Maximum height constraint
   };
   columns?: number;
   childElements?: EditorElement[];
@@ -75,6 +82,20 @@ export type EditorElement = {
   sizeId?: string; // The banner size this element belongs to
   linkedElementId?: string; // ID of the linked element in other sizes
   isIndividuallyPositioned?: boolean; // Whether this element has been individually positioned
+  // PSD layer data for advanced operations
+  psdLayerData?: {
+    mask?: any;
+    effects?: any[];
+    blendMode?: string;
+    originalPath?: string;
+  };
+  // Responsiveness settings
+  responsiveSettings?: {
+    preserveRatio?: boolean;
+    minimumFontSize?: number;
+    maximumCharactersPerLine?: number;
+    treatmentOverflow?: "wrap" | "truncate" | "expand";
+  };
 };
 
 // Novo tipo para compartilhar entre componentes
@@ -138,3 +159,9 @@ export const PRESET_LAYOUTS: LayoutTemplate[] = [
   { id: "preset-image-text", name: "Imagem e texto", columns: 2, preview: "IT", type: "preset" },
   { id: "preset-text-text", name: "Texto e texto", columns: 2, preview: "TT", type: "preset" },
 ];
+
+// New type for constraint-based positioning
+export type ResponsiveConstraint = {
+  horizontal: "left" | "right" | "center" | "scale";
+  vertical: "top" | "bottom" | "center" | "scale";
+};
