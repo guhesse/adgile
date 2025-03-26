@@ -1,4 +1,3 @@
-
 import { EditorElement, BannerSize } from "../types";
 
 export interface LayoutTemplate {
@@ -6,8 +5,8 @@ export interface LayoutTemplate {
   name: string;
   width: number;
   height: number;
-  orientation: 'vertical' | 'horizontal' | 'square';
-  elements: EditorElement[];
+  orientation: 'horizontal' | 'vertical' | 'square';
+  elements: any[];
   createdAt: string;
   updatedAt: string;
 }
@@ -15,11 +14,11 @@ export interface LayoutTemplate {
 export interface TrainingData {
   id: string;
   templates: LayoutTemplate[];
-  modelMetadata?: {
-    trainedAt?: string;
-    iterations?: number;
-    accuracy?: number;
-    loss?: number;
+  modelMetadata: {
+    trainedAt: string | null;
+    iterations: number;
+    accuracy: number;
+    loss: number;
   };
 }
 
@@ -30,4 +29,9 @@ export interface AdminStats {
   squareTemplates: number;
   lastTrainingDate?: string;
   modelAccuracy?: number;
+}
+
+export interface AdminLayoutListProps {
+  templates: LayoutTemplate[];
+  onDeleteTemplate: (id: string) => void;
 }

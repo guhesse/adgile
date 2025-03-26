@@ -1,4 +1,3 @@
-
 import React from "react";
 import { LayoutTemplate } from "@/components/editor/types/admin";
 import { AdminStats } from "@/components/editor/types/admin";
@@ -93,7 +92,7 @@ export const AdminLayoutStats: React.FC<AdminLayoutStatsProps> = ({ stats, layou
       <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Layout Orientation Distribution</CardTitle>
+            <CardTitle>Distribuição de Orientação</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-80">
@@ -123,7 +122,7 @@ export const AdminLayoutStats: React.FC<AdminLayoutStatsProps> = ({ stats, layou
 
         <Card>
           <CardHeader>
-            <CardTitle>Layout Size Distribution</CardTitle>
+            <CardTitle>Distribuição de Tamanhos</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-80">
@@ -133,7 +132,7 @@ export const AdminLayoutStats: React.FC<AdminLayoutStatsProps> = ({ stats, layou
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  <Bar dataKey="count" name="Number of Layouts" fill="#8884d8" />
+                  <Bar dataKey="count" name="Número de Layouts" fill="#8884d8" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -143,7 +142,7 @@ export const AdminLayoutStats: React.FC<AdminLayoutStatsProps> = ({ stats, layou
         {timelineData.length > 0 && (
           <Card className="md:col-span-2">
             <CardHeader>
-              <CardTitle>Layout Creation Timeline</CardTitle>
+              <CardTitle>Linha do Tempo de Criação</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="h-80">
@@ -153,7 +152,7 @@ export const AdminLayoutStats: React.FC<AdminLayoutStatsProps> = ({ stats, layou
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="count" name="Layouts Created" fill="#82ca9d" />
+                    <Bar dataKey="count" name="Layouts Criados" fill="#82ca9d" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

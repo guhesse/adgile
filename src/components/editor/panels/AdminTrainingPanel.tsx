@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { LayoutTemplate, TrainingData } from "@/components/editor/types/admin";
 import { saveTrainingData, getTrainingData } from "@/components/editor/utils/layoutStorage";
@@ -27,6 +26,17 @@ import {
 import { toast } from "sonner";
 import * as tf from '@tensorflow/tfjs';
 import { AIModelManager } from "../ai/AIModelManager";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { 
+  GraduationCap, 
+  Code, 
+  Terminal, 
+  BarChart, 
+  AlertTriangle, 
+  Loader, 
+  CheckCircle 
+} from "lucide-react";
 
 interface AdminTrainingPanelProps {
   layouts: LayoutTemplate[];

@@ -1,4 +1,3 @@
-
 import { LayoutTemplate, TrainingData } from "../types/admin";
 
 // Local storage keys
@@ -59,15 +58,48 @@ export const getLayoutTemplateById = (templateId: string): LayoutTemplate | null
 };
 
 // Save training data
-export const saveTrainingData = (data: TrainingData): TrainingData => {
-  localStorage.setItem(TRAINING_DATA_KEY, JSON.stringify(data));
-  return data;
+export const saveTrainingData = async (data: TrainingData): Promise<boolean> => {
+  try {
+    localStorage.setItem(TRAINING_DATA_KEY, JSON.stringify(data));
+    return true;
+  } catch (error) {
+    console.error("Erro ao salvar dados de treinamento:", error);
+    return false;
+  }
 };
 
 // Get training data
-export const getTrainingData = (): TrainingData | null => {
-  const storedData = localStorage.getItem(TRAINING_DATA_KEY);
-  return storedData ? JSON.parse(storedData) : null;
+export const getTrainingData = async (): Promise<TrainingData | null> => {
+  try {
+    const data = localStorage.getItem(TRAINING_DATA_KEY);
+    if (!data) return null;
+    return JSON.parse(data) as TrainingData;
+  } catch (error) {
+    console.error("Erro ao recuperar dados de treinamento:", error);
+    return null;
+  }
+};
+
+// Check if training data exists
+export const hasTrainingData = async (): Promise<boolean> => {
+  try {
+    const data = localStorage.getItem(TRAINING_DATA_KEY);
+    return !!data;
+  } catch (error) {
+    console.error("Erro ao verificar dados de treinamento:", error);
+    return false;
+  }
+};
+
+// Clear training data
+export const clearTrainingData = async (): Promise<boolean> => {
+  try {
+    localStorage.removeItem(TRAINING_DATA_KEY);
+    return true;
+  } catch (error) {
+    console.error("Erro ao limpar dados de treinamento:", error);
+    return false;
+  }
 };
 
 // Get admin statistics

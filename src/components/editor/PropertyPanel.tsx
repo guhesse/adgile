@@ -20,8 +20,8 @@ const LayoutPanel = () => <div>Painel de Layout</div>;
 const ContainerPanel = () => <div>Painel de Container</div>;
 
 const PropertyPanel: React.FC<PropertyPanelProps> = ({ psdBackgroundColor }) => {
-  const { 
-    selectedElement, 
+  const {
+    selectedElement,
     selectedSize,
     updateElementStyle,
     updateElementContent,
@@ -38,9 +38,9 @@ const PropertyPanel: React.FC<PropertyPanelProps> = ({ psdBackgroundColor }) => 
       console.log("APLICANDO COR DE FUNDO DO PSD:", psdBackgroundColor);
       updateArtboardBackground(psdBackgroundColor);
     } else {
-      console.log("NÃO FOI POSSÍVEL APLICAR A COR DE FUNDO:", { 
-        psdBackgroundColor, 
-        updateFunctionExists: !!updateArtboardBackground 
+      console.log("NÃO FOI POSSÍVEL APLICAR A COR DE FUNDO:", {
+        psdBackgroundColor,
+        updateFunctionExists: !!updateArtboardBackground
       });
     }
   };
@@ -56,8 +56,8 @@ const PropertyPanel: React.FC<PropertyPanelProps> = ({ psdBackgroundColor }) => 
         <div className="text-lg font-medium">Propriedades</div>
       </div>
 
-      <Tabs 
-        defaultValue="content" 
+      <Tabs
+        defaultValue="content"
         className="space-y-2"
         onValueChange={setActiveTab}
       >
@@ -79,16 +79,16 @@ const PropertyPanel: React.FC<PropertyPanelProps> = ({ psdBackgroundColor }) => 
           <>
             <TabsContent value="content" className="space-y-2">
               {selectedElement.type === "text" && (
-                <TextPanel 
-                  element={selectedElement} 
+                <TextPanel
+                  element={selectedElement}
                   updateElementStyle={updateElementStyle}
                   updateElementContent={updateElementContent}
                   activeTab={activeTab}
                 />
               )}
               {selectedElement.type === "button" && (
-                <ButtonPanel 
-                  element={selectedElement} 
+                <ButtonPanel
+                  element={selectedElement}
                   updateElementStyle={updateElementStyle}
                   updateElementContent={updateElementContent}
                   activeTab={activeTab}
@@ -99,16 +99,16 @@ const PropertyPanel: React.FC<PropertyPanelProps> = ({ psdBackgroundColor }) => 
             </TabsContent>
             <TabsContent value="style" className="space-y-2">
               {selectedElement.type === "text" && (
-                <TextPanel 
-                  element={selectedElement} 
+                <TextPanel
+                  element={selectedElement}
                   updateElementStyle={updateElementStyle}
                   updateElementContent={updateElementContent}
                   activeTab={activeTab}
                 />
               )}
               {selectedElement.type === "button" && (
-                <ButtonPanel 
-                  element={selectedElement} 
+                <ButtonPanel
+                  element={selectedElement}
                   updateElementStyle={updateElementStyle}
                   updateElementContent={updateElementContent}
                   activeTab={activeTab}
@@ -119,28 +119,28 @@ const PropertyPanel: React.FC<PropertyPanelProps> = ({ psdBackgroundColor }) => 
             </TabsContent>
             <TabsContent value="image" className="space-y-2">
               {selectedElement.type === "image" && (
-                <ImagePanel 
-                  selectedElement={selectedElement} 
-                  updateElementStyle={updateElementStyle} 
+                <ImagePanel
+                  selectedElement={selectedElement}
+                  updateElementStyle={updateElementStyle}
                 />
               )}
             </TabsContent>
           </>
         ) : (
           <TabsContent value="artboard" className="space-y-2">
-            <ArtboardPanel 
-              selectedSize={selectedSize} 
+            <ArtboardPanel
+              selectedSize={selectedSize}
               updateArtboardBackground={updateArtboardBackground}
               artboardBackgroundColor={artboardBackgroundColor}
             />
-            
+
             {/* Exibir a cor de fundo do PSD, se disponível */}
             {psdBackgroundColor && (
               <div className="mt-4 p-2 border rounded-md">
                 <div className="text-sm font-medium mb-2">Cor de fundo do PSD</div>
                 <div className="flex items-center space-x-2">
-                  <div 
-                    className="w-8 h-8 rounded-md border" 
+                  <div
+                    className="w-8 h-8 rounded-md border"
                     style={{ backgroundColor: psdBackgroundColor }}
                   ></div>
                   <div className="text-xs">{psdBackgroundColor}</div>

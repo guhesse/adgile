@@ -31,12 +31,12 @@ const CanvasContent = ({ editorMode }: CanvasProps) => {
   } = useCanvas();
 
   return (
-    <div className="flex flex-1">
+    <div className="flex flex-1 h-full">
       {/* Left Sidebar with Elements and Layers Panel */}
       <LeftSidebar editorMode={editorMode} />
 
       {/* Canvas Area */}
-      <div className="flex-1 bg-gray-100 overflow-hidden flex flex-col">
+      <div className="flex-1 bg-gray-100 overflow-hidden flex flex-col h-full">
         <div className="flex justify-between items-center px-4 py-2 border-b">
           <CanvasControls />
           <PSDImport />

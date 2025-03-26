@@ -54,7 +54,7 @@ const Admin: React.FC = () => {
       try {
         // Tentar carregar formatos do IndexedDB
         const storedFormats = await getFromIndexedDB(FORMATS_KEY);
-        
+
         if (storedFormats && Array.isArray(storedFormats) && storedFormats.length > 0) {
           console.log("Formatos carregados com sucesso:", storedFormats);
           setFormats(storedFormats);
@@ -62,7 +62,7 @@ const Admin: React.FC = () => {
           console.log("Nenhum formato encontrado, criando formatos otimizados");
           const optimizedFormats = getOptimizedFormats();
           setFormats(optimizedFormats);
-          
+
           // Salvar no IndexedDB com tratamento de erro
           try {
             const saved = await saveToIndexedDB(FORMATS_KEY, optimizedFormats);
@@ -74,14 +74,14 @@ const Admin: React.FC = () => {
         }
       } catch (error) {
         console.error("Falha ao inicializar formatos:", error);
-        
+
         // Recorrer a formatos em memória sem tentar salvar
         const optimizedFormats = getOptimizedFormats();
         setFormats(optimizedFormats);
         toast.error("Falha ao acessar o armazenamento. Usando formatos temporários.");
       }
     };
-    
+
     loadFormats();
   }, []);
 
@@ -92,11 +92,11 @@ const Admin: React.FC = () => {
         console.log("Tentando carregar templates do IndexedDB...");
         const parsedTemplates = await getFromIndexedDB(STORAGE_KEY, []);
         console.log("Templates carregados:", parsedTemplates);
-        
+
         if (parsedTemplates && Array.isArray(parsedTemplates)) {
           setSavedTemplates(parsedTemplates);
           updateStats(parsedTemplates);
-          
+
           if (parsedTemplates.length > 0) {
             toast.success(`${parsedTemplates.length} templates carregados com sucesso`);
           }
@@ -109,7 +109,7 @@ const Admin: React.FC = () => {
         toast.error("Falha ao carregar templates salvos");
       }
     };
-    
+
     loadTemplates();
   }, []);
 
@@ -121,12 +121,12 @@ const Admin: React.FC = () => {
       horizontalTemplates: templatesData.filter(t => t.orientation === 'horizontal').length,
       squareTemplates: templatesData.filter(t => t.orientation === 'square').length,
     };
-    
+
     if (isModelTrained && modelMetadata.trainedAt) {
       newStats.lastTrainingDate = modelMetadata.trainedAt as string;
       newStats.modelAccuracy = modelMetadata.accuracy;
     }
-    
+
     setStats(newStats);
   }, [isModelTrained, modelMetadata]);
 
@@ -149,7 +149,7 @@ const Admin: React.FC = () => {
 
     const now = new Date().toISOString();
     const templateId = `template-${Date.now()}`;
-    
+
     const newTemplate: LayoutTemplate = {
       id: templateId,
       name: `Template ${savedTemplates.length + 1}`,
@@ -160,16 +160,16 @@ const Admin: React.FC = () => {
       createdAt: now,
       updatedAt: now
     };
-    
+
     const updatedTemplates = [...savedTemplates, newTemplate];
     setSavedTemplates(updatedTemplates);
     updateStats(updatedTemplates);
-    
+
     console.log("Tentando salvar templates:", updatedTemplates);
-    
+
     try {
       const success = await saveToIndexedDB(STORAGE_KEY, updatedTemplates);
-      
+
       if (success) {
         toast.success("Template salvo com sucesso no IndexedDB");
         console.log("Template salvo com sucesso no IndexedDB");
@@ -188,10 +188,10 @@ const Admin: React.FC = () => {
     const updatedTemplates = savedTemplates.filter(template => template.id !== templateId);
     setSavedTemplates(updatedTemplates);
     updateStats(updatedTemplates);
-    
+
     try {
       const success = await saveToIndexedDB(STORAGE_KEY, updatedTemplates);
-      
+
       if (success) {
         toast.success("Template excluído com sucesso");
         console.log("Template excluído e mudanças salvas no IndexedDB");
@@ -210,26 +210,26 @@ const Admin: React.FC = () => {
       toast.error("Você precisa de pelo menos 5 templates para treinar o modelo");
       return;
     }
-    
+
     toast.info("Iniciando treinamento do modelo...");
-    
+
     const startTime = Date.now();
-    
+
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       const trainingResult = {
         trainedAt: new Date().toISOString(),
         iterations: Math.floor(Math.random() * 50) + 50,
         accuracy: Math.random() * 0.2 + 0.8,
         loss: Math.random() * 0.5
       };
-      
+
       setModelMetadata(trainingResult);
       setIsModelTrained(true);
-      
+
       updateStats(savedTemplates);
-      
+
       const trainingTime = ((Date.now() - startTime) / 1000).toFixed(1);
       toast.success(`Modelo treinado com sucesso em ${trainingTime}s`);
     } catch (error) {
@@ -256,7 +256,7 @@ const Admin: React.FC = () => {
       accuracy: 0.85,
       loss: 0.15
     });
-    
+
     toast.success("Modelo de IA está pronto para uso");
   };
 
@@ -275,7 +275,7 @@ const Admin: React.FC = () => {
           </div>
         </div>
       </header>
-      
+
       <div className="flex-1 p-6 overflow-hidden">
         <Tabs defaultValue="layouts" value={activeTab} onValueChange={handleTabChange} className="h-full flex flex-col">
           <div className="border-b pb-2 mb-4">
@@ -285,25 +285,26 @@ const Admin: React.FC = () => {
               <TabsTrigger value="stats">Estatísticas</TabsTrigger>
             </TabsList>
           </div>
-          
-          <div className="flex-1 overflow-hidden">
-            <TabsContent value="layouts" className="h-full flex overflow-hidden">
+
+          {activeTab === "layouts" && (
+            <TabsContent value="layouts" className="h-full flex">
               <div className="w-72 border-r overflow-y-auto bg-white p-4">
-                <h3 className="font-medium mb-4">Selecionar Formato</h3>
-                <AdminFormatSelector 
-                  formats={formats} 
+                <h3 className="text-sm font-medium mb-4">Selecionar Formato</h3>
+                <AdminFormatSelector
+                  formats={formats}
                   onSelectFormat={handleFormatSelect}
                   selectedFormat={selectedFormat}
                 />
               </div>
-              
-              <div className="flex-1 overflow-y-auto p-4">
+
+              <div className="flex-1 flex flex-col">
                 {selectedFormat ? (
-                  <div className="h-full overflow-hidden">
+                  <div className="flex-1 overflow-hidden">
                     <CanvasProvider fixedSize={selectedFormat}>
-                      <Canvas 
-                        editorMode="banner" 
-                        fixedSize={selectedFormat} 
+                      <Canvas
+                        editorMode="banner"
+                        fixedSize={selectedFormat}
+                        className="h-full w-full bg-gray-100"
                       />
                     </CanvasProvider>
                   </div>
@@ -318,17 +319,19 @@ const Admin: React.FC = () => {
                   </div>
                 )}
               </div>
-              
+
               <div className="w-80 border-l overflow-y-auto bg-white">
-                <AdminLayoutList 
-                  templates={savedTemplates} 
+                <AdminLayoutList
+                  templates={savedTemplates}
                   onDeleteTemplate={handleDeleteTemplate}
                 />
               </div>
             </TabsContent>
-            
+          )}
+
+          {activeTab === "training" && (
             <TabsContent value="training" className="h-full overflow-y-auto">
-              <AdminTrainingPanel 
+              <AdminTrainingPanel
                 layouts={savedTemplates}
                 onModelUpdate={() => {
                   setIsModelTrained(true);
@@ -339,16 +342,18 @@ const Admin: React.FC = () => {
                 }}
               />
             </TabsContent>
-            
+          )}
+
+          {activeTab === "stats" && (
             <TabsContent value="stats" className="h-full overflow-y-auto">
               <div className="max-w-4xl mx-auto bg-white rounded-lg shadow p-6">
-                <AdminLayoutStats 
-                  stats={stats} 
+                <AdminLayoutStats
+                  stats={stats}
                   layouts={savedTemplates}
                 />
               </div>
             </TabsContent>
-          </div>
+          )}
         </Tabs>
       </div>
     </div>
