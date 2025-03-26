@@ -42,7 +42,7 @@ const CanvasContent = ({ editorMode, canvasRef }: CanvasProps) => {
           <CanvasControls />
           <PSDImport />
         </div>
-        <CanvasWorkspace ref={canvasRef} />
+        <CanvasWorkspace canvasRef={canvasRef} />
       </div>
 
       {/* Right Properties Panel */}

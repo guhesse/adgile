@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { CanvasProvider } from "@/components/editor/CanvasContext";
 import { Canvas } from "@/components/editor/Canvas";
@@ -15,6 +14,7 @@ import { AdminTrainingPanel } from "@/components/editor/panels/AdminTrainingPane
 import { saveToIndexedDB, getFromIndexedDB } from "@/utils/indexedDBUtils";
 import { getOptimizedFormats } from "@/utils/formatGenerator";
 import * as tf from '@tensorflow/tfjs';
+import { useCanvas } from "@/components/editor/CanvasContext";
 
 // Chaves de armazenamento
 const STORAGE_KEY = 'admin-layout-templates';
@@ -144,64 +144,32 @@ const Admin: React.FC = () => {
 
   // Extract elements from the canvas context
   const getElementsFromCanvas = (): EditorElement[] => {
-    // Find the canvas element in the DOM
-    const canvasElement = canvasRef.current;
-    
-    if (!canvasElement) {
-      console.error("Canvas reference not found");
-      return [];
-    }
-    
-    // Look for a data attribute or context that might contain the elements
-    // This is a simplified example - the actual implementation would depend on how your Canvas exposes its elements
-    const canvasContext = (window as any).__CANVAS_CONTEXT__;
+    // Get elements directly from the canvas context
+    const canvasContext = useCanvas();
     
     if (canvasContext && Array.isArray(canvasContext.elements)) {
       return canvasContext.elements;
     }
     
-    // Fallback method: try to extract elements from any exposed APIs
-    try {
-      const elementsContainer = canvasElement.querySelector('[data-elements-container]');
-      if (elementsContainer) {
-        const elementNodes = elementsContainer.querySelectorAll('[data-element-id]');
-        
-        // Convert DOM nodes to element objects (simplified example)
-        return Array.from(elementNodes).map(node => {
-          const elementId = node.getAttribute('data-element-id');
-          const elementType = node.getAttribute('data-element-type');
-          const elementContent = node.textContent || '';
-          
-          // Extract style information
-          const style = {
-            x: parseInt(node.getAttribute('data-x') || '0'),
-            y: parseInt(node.getAttribute('data-y') || '0'),
-            width: parseInt(node.getAttribute('data-width') || '0'),
-            height: parseInt(node.getAttribute('data-height') || '0'),
-            backgroundColor: node.getAttribute('data-bg-color') || 'transparent'
-          };
-          
-          return {
-            id: elementId || `element-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            type: elementType as any || 'unknown',
-            content: elementContent,
-            style,
-            sizeId: selectedFormat?.name || ''
-          };
-        });
-      }
-    } catch (error) {
-      console.error("Error extracting elements from DOM:", error);
-    }
-    
-    console.warn("Could not extract elements from canvas, using empty array");
+    console.warn("Could not extract elements from canvas context, using empty array");
     return [];
   };
 
   // Salvar um template
-  const handleSaveTemplate = async (elements: EditorElement[]) => {
+  const handleSaveTemplate = async () => {
     if (!selectedFormat) {
       toast.error("Selecione um formato primeiro");
+      return;
+    }
+
+    // Get the canvas context
+    const canvasContext = useCanvas();
+    
+    // Get elements from the canvas context
+    const elements = canvasContext ? canvasContext.elements : [];
+
+    if (!elements || elements.length === 0) {
+      toast.warning("O canvas está vazio. Adicione elementos antes de salvar o template.");
       return;
     }
 
@@ -219,21 +187,19 @@ const Admin: React.FC = () => {
       updatedAt: now
     };
 
+    console.log("Saving template with elements:", elements);
+
     const updatedTemplates = [...savedTemplates, newTemplate];
     setSavedTemplates(updatedTemplates);
     updateStats(updatedTemplates);
-
-    console.log("Tentando salvar templates:", updatedTemplates);
 
     try {
       const success = await saveToIndexedDB(STORAGE_KEY, updatedTemplates);
 
       if (success) {
-        toast.success("Template salvo com sucesso no IndexedDB");
-        console.log("Template salvo com sucesso no IndexedDB");
+        toast.success("Template salvo com sucesso");
       } else {
         toast.error("Falha ao salvar o template");
-        console.error("Falha ao salvar o template");
       }
     } catch (error) {
       console.error("Erro ao salvar template:", error);
@@ -296,18 +262,9 @@ const Admin: React.FC = () => {
     }
   };
 
-  // Capturar e salvar o template atual
+  // Capture and save the template
   const captureAndSaveTemplate = () => {
-    // Get the current elements from the canvas
-    const canvasElements = getElementsFromCanvas();
-    
-    // If we couldn't get elements from the canvas, try to get them from the canvas context
-    const elements = canvasElements.length > 0 ? canvasElements : [];
-    
-    handleSaveTemplate(elements);
-    toast("Template capturado do canvas", {
-      description: "Os elementos atuais do canvas foram salvos como um novo template."
-    });
+    handleSaveTemplate();
   };
 
   // Callback para quando o modelo estiver pronto
