@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { CanvasProvider } from "@/components/editor/CanvasContext";
 import { Canvas } from "@/components/editor/Canvas";
@@ -11,6 +10,7 @@ import { AdminFormatSelector } from "@/components/editor/admin/AdminFormatSelect
 import { AIModelManager } from "@/components/editor/ai/AIModelManager";
 import { LayoutTemplate, AdminStats } from "@/components/editor/types/admin";
 import { BannerSize } from "@/components/editor/types";
+import { safelyStoreData, safelyGetData } from "@/utils/storageUtils";
 
 // Significantly reduce the number of formats to prevent localStorage quota issues
 const createDemoFormats = () => {
@@ -64,18 +64,6 @@ const determineOrientation = (width: number, height: number): 'vertical' | 'hori
 const STORAGE_KEY = 'admin-layout-templates';
 const FORMATS_KEY = 'admin-formats';
 
-// Add try-catch for localStorage operations to handle quota errors gracefully
-const safelyStoreData = (key: string, data: any) => {
-  try {
-    localStorage.setItem(key, JSON.stringify(data));
-    return true;
-  } catch (error) {
-    console.error(`Failed to store data in ${key}:`, error);
-    toast.error(`Storage error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    return false;
-  }
-};
-
 const Admin: React.FC = () => {
   const [activeTab, setActiveTab] = useState("layouts");
   const [templates, setTemplates] = useState<LayoutTemplate[]>([]);
@@ -97,36 +85,56 @@ const Admin: React.FC = () => {
   });
 
   useEffect(() => {
-    try {
-      const storedFormats = localStorage.getItem(FORMATS_KEY);
-      if (storedFormats) {
-        setFormats(JSON.parse(storedFormats));
-      } else {
+    // Carregar formatos usando o novo utilitário
+    const loadFormats = async () => {
+      try {
+        const storedFormats = await safelyGetData(FORMATS_KEY);
+        if (storedFormats) {
+          console.log("Formatos carregados com sucesso:", storedFormats);
+          setFormats(storedFormats);
+        } else {
+          console.log("Nenhum formato encontrado, criando demos");
+          const demoFormats = createDemoFormats();
+          setFormats(demoFormats);
+          // Usar a versão assíncrona
+          const saved = await safelyStoreData(FORMATS_KEY, demoFormats);
+          console.log("Formatos salvos com sucesso:", saved);
+        }
+      } catch (error) {
+        console.error("Failed to initialize formats:", error);
+        // Fall back to in-memory formats without saving to localStorage
         const demoFormats = createDemoFormats();
         setFormats(demoFormats);
-        safelyStoreData(FORMATS_KEY, demoFormats);
+        toast.error("Failed to store formats in browser storage. Using in-memory formats.");
       }
-    } catch (error) {
-      console.error("Failed to initialize formats:", error);
-      // Fall back to in-memory formats without saving to localStorage
-      const demoFormats = createDemoFormats();
-      setFormats(demoFormats);
-      toast.error("Failed to store formats in browser storage. Using in-memory formats.");
-    }
+    };
+    
+    loadFormats();
   }, []);
 
   useEffect(() => {
-    try {
-      const savedTemplatesJson = localStorage.getItem(STORAGE_KEY);
-      if (savedTemplatesJson) {
-        const parsedTemplates = JSON.parse(savedTemplatesJson);
-        setSavedTemplates(parsedTemplates);
-        updateStats(parsedTemplates);
+    // Carregar templates salvos usando o novo utilitário
+    const loadTemplates = async () => {
+      try {
+        console.log("Tentando carregar templates do IndexedDB...");
+        const parsedTemplates = await safelyGetData(STORAGE_KEY, []);
+        console.log("Templates carregados:", parsedTemplates);
+        
+        if (parsedTemplates && Array.isArray(parsedTemplates)) {
+          setSavedTemplates(parsedTemplates);
+          updateStats(parsedTemplates);
+          toast.success(`${parsedTemplates.length} templates carregados com sucesso`);
+        } else {
+          console.log("Nenhum template encontrado ou formato inválido");
+          setSavedTemplates([]);
+        }
+      } catch (error) {
+        console.error("Failed to parse saved templates:", error);
+        toast.error("Failed to load saved templates");
       }
-    } catch (error) {
-      console.error("Failed to parse saved templates:", error);
-      toast.error("Failed to load saved templates");
-    }
+    };
+    
+    loadTemplates();
   }, []);
 
   const updateStats = (templatesData: LayoutTemplate[]) => {
@@ -153,7 +161,7 @@ const Admin: React.FC = () => {
     setActiveTab(value);
   };
 
-  const handleSaveTemplate = (elements: any[]) => {
+  const handleSaveTemplate = async (elements: any[]) => {
     if (!selectedFormat) {
       toast.error("Please select a format first");
       return;
@@ -177,20 +185,43 @@ const Admin: React.FC = () => {
     setSavedTemplates(updatedTemplates);
     updateStats(updatedTemplates);
     
-    // Use the safe storage function
-    if (safelyStoreData(STORAGE_KEY, updatedTemplates)) {
-      toast.success("Template saved successfully");
+    console.log("Tentando salvar templates:", updatedTemplates);
+    
+    try {
+      // Usar a versão assíncrona do utilitário de armazenamento
+      const success = await safelyStoreData(STORAGE_KEY, updatedTemplates);
+      
+      if (success) {
+        toast.success("Template salvo com sucesso no IndexedDB");
+        console.log("Template salvo com sucesso no IndexedDB");
+      } else {
+        toast.error("Falha ao salvar o template");
+        console.error("Falha ao salvar o template");
+      }
+    } catch (error) {
+      console.error("Erro ao salvar template:", error);
+      toast.error("Erro ao salvar template");
     }
   };
 
-  const handleDeleteTemplate = (templateId: string) => {
+  const handleDeleteTemplate = async (templateId: string) => {
     const updatedTemplates = savedTemplates.filter(template => template.id !== templateId);
     setSavedTemplates(updatedTemplates);
     updateStats(updatedTemplates);
     
-    // Use the safe storage function
-    if (safelyStoreData(STORAGE_KEY, updatedTemplates)) {
-      toast.success("Template deleted");
+    try {
+      // Usar a versão assíncrona
+      const success = await safelyStoreData(STORAGE_KEY, updatedTemplates);
+      
+      if (success) {
+        toast.success("Template excluído com sucesso");
+        console.log("Template excluído e mudanças salvas no IndexedDB");
+      } else {
+        toast.error("Template excluído mas falha ao atualizar o armazenamento");
+      }
+    } catch (error) {
+      console.error("Erro ao excluir template:", error);
+      toast.error("Erro ao atualizar o armazenamento após exclusão");
     }
   };
 
@@ -229,8 +260,8 @@ const Admin: React.FC = () => {
 
   const captureAndSaveTemplate = () => {
     handleSaveTemplate([]);
-    toast("Template captured from canvas", {
-      description: "The current canvas elements have been saved as a new template."
+    toast("Template capturado do canvas", {
+      description: "Os elementos atuais do canvas foram salvos como um novo template."
     });
   };
 
