@@ -1,35 +1,75 @@
 
-/**
- * Utility function to convert PSD color format to hex
- * @param colors PSD color array or object
- * @returns Hex color string
- */
-export const convertPSDColorToHex = (colors: any): string => {
+// Format layer names by removing any special characters and making them URL-safe
+export const formatLayerName = (name: string): string => {
+  return name
+    .replace(/[^a-z0-9\s-]/gi, '')  // Remove special characters
+    .trim()
+    .replace(/\s+/g, '-')           // Replace spaces with hyphens
+    .toLowerCase();
+};
+
+// Normalize layer names for consistent handling
+export const normalizeLayerName = (name: string): string => {
+  if (!name) return 'unnamed-layer';
+  
+  // Remove common PSD layer naming conventions
+  const cleanName = name
+    .replace(/^(Layer\s+\d+|Copy(\s+\d+)?|Group(\s+\d+)?)/i, '')
+    .trim();
+  
+  return cleanName || 'layer';
+};
+
+// Format file size in a human-readable format
+export const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B';
+  
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+// Format timestamps in a human-readable format
+export const formatTimestamp = (timestamp: string): string => {
   try {
-    if (Array.isArray(colors) && colors.length >= 3) {
-      const [r, g, b] = colors;
-      return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-    }
-    return '#000000';
-  } catch (error) {
-    console.error("Error converting PSD color to hex:", error);
-    return '#000000';
+    const date = new Date(timestamp);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+  } catch (e) {
+    return 'Invalid date';
   }
 };
 
-/**
- * Utility function to convert PSD text alignment to CSS
- * @param alignment PSD alignment string
- * @returns CSS alignment value
- */
-export const convertPSDAlignmentToCSS = (alignment: string): "left" | "center" | "right" => {
-  switch (alignment) {
-    case 'right':
-      return 'right';
-    case 'center':
-      return 'center';
-    case 'left':
-    default:
-      return 'left';
+// Convert PSD color values to CSS colors
+export const formatColor = (color: any): string => {
+  if (!color) return '#000000';
+  
+  if (typeof color === 'string') {
+    return color;
   }
+  
+  if (color.r !== undefined && color.g !== undefined && color.b !== undefined) {
+    return `rgb(${color.r}, ${color.g}, ${color.b})`;
+  }
+  
+  return '#000000';
+};
+
+// Convert PSD color to hex format
+export const convertPSDColorToHex = (color: any): string => {
+  if (!color) return '#000000';
+  
+  if (typeof color === 'string') {
+    return color;
+  }
+  
+  if (color.r !== undefined && color.g !== undefined && color.b !== undefined) {
+    const r = Math.round(color.r).toString(16).padStart(2, '0');
+    const g = Math.round(color.g).toString(16).padStart(2, '0');
+    const b = Math.round(color.b).toString(16).padStart(2, '0');
+    return `#${r}${g}${b}`;
+  }
+  
+  return '#000000';
 };

@@ -66,6 +66,7 @@ export const TextStyleSection = ({
                 <span className="text-sm font-medium ml-1">{group.name}</span>
               </div>
             </div>
+            
             <div className="hidden group-hover:flex items-center">
               <Button
                 variant="ghost" 

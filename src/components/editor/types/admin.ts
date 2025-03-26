@@ -1,5 +1,5 @@
 
-import { EditorElement } from "../types";
+import { EditorElement, BannerSize } from "../types";
 
 export interface LayoutTemplate {
   id: string;
