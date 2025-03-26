@@ -56,8 +56,6 @@ export type EditorElement = {
     gridColumn?: string;
     gridRow?: string;
     opacity?: number;
-    rotation?: number;
-    zIndex?: number;
     // Valores para manter a proporção original da imagem
     originalWidth?: number;
     originalHeight?: number;
@@ -66,17 +64,13 @@ export type EditorElement = {
     yPercent?: number;
     widthPercent?: number;
     heightPercent?: number;
-    // Constraint-based positioning
+    // Constraint-based positioning (new)
     constraintHorizontal?: "left" | "right" | "center" | "scale";
     constraintVertical?: "top" | "bottom" | "center" | "scale";
     minWidth?: number;  // Minimum width constraint
     minHeight?: number; // Minimum height constraint
     maxWidth?: number;  // Maximum width constraint
     maxHeight?: number; // Maximum height constraint
-    // For masks
-    hasMask?: boolean;
-    maskInfo?: any;
-    clipPath?: string;
   };
   columns?: number;
   childElements?: EditorElement[];
@@ -94,7 +88,6 @@ export type EditorElement = {
     effects?: any[];
     blendMode?: string;
     originalPath?: string;
-    name?: string;
   };
   // Responsiveness settings
   responsiveSettings?: {
@@ -103,9 +96,9 @@ export type EditorElement = {
     maximumCharactersPerLine?: number;
     treatmentOverflow?: "wrap" | "truncate" | "expand";
   };
-  src?: string; // Added for image elements
 };
 
+// Novo tipo para compartilhar entre componentes
 export type EditorMode = "email" | "banner" | "social" | "impressos";
 
 export type CanvasNavigationMode = 'edit' | 'pan';
@@ -167,6 +160,7 @@ export const PRESET_LAYOUTS: LayoutTemplate[] = [
   { id: "preset-text-text", name: "Texto e texto", columns: 2, preview: "TT", type: "preset" },
 ];
 
+// New type for constraint-based positioning
 export type ResponsiveConstraint = {
   horizontal: "left" | "right" | "center" | "scale";
   vertical: "top" | "bottom" | "center" | "scale";

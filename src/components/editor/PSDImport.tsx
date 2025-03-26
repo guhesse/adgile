@@ -219,12 +219,10 @@ export const PSDImport = () => {
         const elementsWithMasks = elements.map(element => {
           // Verificar se o elemento tem informações de camada PSD original
           if (element.psdLayerData) {
-            // Access name from psdLayerData safely with optional chaining
-            const layerName = element.psdLayerData?.name || 'sem nome';
             const maskInfo = processMaskInfo(element.psdLayerData);
             
             if (maskInfo.hasValidMask) {
-              importLogger.debug(`Máscara detectada para camada '${layerName}':`, {
+              importLogger.debug(`Máscara detectada para camada '${element.psdLayerData.name || 'sem nome'}':`, {
                 dimensões: `${maskInfo.width}×${maskInfo.height}`,
                 posição: `(${maskInfo.left},${maskInfo.top})`,
                 invertida: maskInfo.invert,

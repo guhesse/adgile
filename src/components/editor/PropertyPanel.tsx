@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TextPanel } from "./panels/TextPanel";
@@ -25,6 +26,7 @@ const PropertyPanel: React.FC<PropertyPanelProps> = ({ psdBackgroundColor }) => 
     selectedSize,
     updateElementStyle,
     updateElementContent,
+    updateElementAttribute,
     artboardBackgroundColor,
     updateArtboardBackground
   } = useCanvas();

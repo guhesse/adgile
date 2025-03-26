@@ -11,11 +11,6 @@ import { generateRandomId } from "./utils/idGenerator";
 import { CanvasContextType } from "./context/CanvasContextTypes";
 import { updateLinkedElementsIntelligently } from "./utils/grid/responsivePosition";
 import { toast } from "sonner";
-import { 
-  detectElementConstraints as detectConstraints, 
-  applyResponsiveTransformation as applyTransformation, 
-  setElementConstraints as setConstraints
-} from "./context/responsive";
 
 interface CanvasProviderProps {
   children: React.ReactNode;
@@ -269,13 +264,13 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
   };
 
   const linkElementsAcrossSizes = (element: EditorElement) => {
-    const { linkElementsAcrossSizes: linkElements } = require('./context/responsive');
+    const { linkElementsAcrossSizes: linkElements } = require('./context/responsiveOperations');
     const updatedElements = linkElements(element, elements, selectedSize, activeSizes);
     setElements(updatedElements);
   };
 
   const unlinkElement = (element: EditorElement) => {
-    const { unlinkElement: unlink } = require('./context/responsive');
+    const { unlinkElement: unlink } = require('./context/responsiveOperations');
     const updatedElements = unlink(element, elements);
     setElements(updatedElements);
   };
@@ -336,65 +331,6 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
     }
   };
 
-  const detectElementConstraints = (element: EditorElement) => {
-    if (!element) return;
-    
-    const constraints = detectConstraints(element);
-    
-    setElements(prevElements => 
-      prevElements.map(el => {
-        if (el.id === element.id) {
-          return {
-            ...el,
-            style: {
-              ...el.style,
-              constraintHorizontal: constraints.horizontalConstraint,
-              constraintVertical: constraints.verticalConstraint
-            }
-          };
-        }
-        return el;
-      })
-    );
-    
-    if (selectedElement && selectedElement.id === element.id) {
-      setSelectedElement({
-        ...selectedElement,
-        style: {
-          ...selectedElement.style,
-          constraintHorizontal: constraints.horizontalConstraint,
-          constraintVertical: constraints.verticalConstraint
-        }
-      });
-    }
-  };
-  
-  const applyResponsiveTransformation = (element: EditorElement, sourceSize: BannerSize, targetSize: BannerSize): EditorElement => {
-    return applyTransformation(element, sourceSize, targetSize);
-  };
-  
-  const setElementConstraints = (
-    constraints: { 
-      horizontal?: "left" | "right" | "center" | "scale", 
-      vertical?: "top" | "bottom" | "center" | "scale" 
-    }
-  ) => {
-    if (!selectedElement) return;
-    
-    const fullConstraints = {
-      horizontal: constraints.horizontal || selectedElement.style.constraintHorizontal || "left",
-      vertical: constraints.vertical || selectedElement.style.constraintVertical || "top"
-    };
-    
-    const updatedElement = setConstraints(selectedElement, fullConstraints);
-    
-    setElements(prevElements => 
-      prevElements.map(el => el.id === selectedElement.id ? updatedElement : el)
-    );
-    
-    setSelectedElement(updatedElement);
-  };
-
   const updateArtboardBackground = (color: string) => {
     setArtboardBackgroundColor(color);
   };
@@ -447,10 +383,7 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
     removeCustomSize,
     undo,
     artboardBackgroundColor,
-    updateArtboardBackground,
-    detectElementConstraints,
-    applyResponsiveTransformation,
-    setElementConstraints
+    updateArtboardBackground
   };
 
   return <CanvasContext.Provider value={value}>{children}</CanvasContext.Provider>;

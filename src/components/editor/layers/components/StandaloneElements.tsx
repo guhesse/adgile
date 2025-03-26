@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { StandaloneElementsProps } from '../types';
 
@@ -7,14 +6,14 @@ export const StandaloneElements: React.FC<StandaloneElementsProps> = ({
     renderLayerItem,
     isDropTarget,
     onDragOver,
-    onDragLeave,
-    onDrop
+    onDrop,
+    onDragLeave
 }) => {
     return (
         <div
             className={`flex flex-col w-full ${isDropTarget ? 'bg-blue-50 border-blue-300' : ''}`}
-            onDragOver={onDragOver}
-            onDrop={onDrop}
+            onDragOver={(e) => onDragOver(e, 'standalone')}
+            onDrop={(e) => onDrop(e, 'standalone')}
             onDragLeave={onDragLeave}
         >
             {elements.map((element) => renderLayerItem(element))}
