@@ -44,9 +44,6 @@ const renderImageElement = (element: EditorElement) => {
     filterStyle += `saturate(${style.saturate}) `;
   }
   
-  // Verificar se temos informações de tamanho original
-  const hasOriginalSize = element._originalSize !== undefined;
-  
   return (
     <div className="relative w-full h-full overflow-hidden">
       <img
@@ -74,24 +71,11 @@ const renderImageElement = (element: EditorElement) => {
           }}
         />
       )}
-      
-      {/* Debug indicator for original size */}
-      {process.env.NODE_ENV === 'development' && hasOriginalSize && (
-        <div className="absolute bottom-0 right-0 bg-black bg-opacity-50 text-white text-xs px-1">
-          {element._originalSize?.width}x{element._originalSize?.height}
-        </div>
-      )}
     </div>
   );
 };
 
 export const ElementRenderer = ({ element }: ElementRendererProps) => {
-  // Verificar se a orientação original do elemento é diferente da atual
-  const isFromDifferentOrientation = element._originalSize && (
-    (element._originalSize.width > element._originalSize.height && element.style.height > element.style.width) ||
-    (element._originalSize.height > element._originalSize.width && element.style.width > element.style.height)
-  );
-  
   if (element.type === "text") {
     return (
       <p style={{
@@ -122,46 +106,95 @@ export const ElementRenderer = ({ element }: ElementRendererProps) => {
     return (
       <Button style={{
         fontSize: element.style.fontSize,
-        fontWeight: element.style.fontWeight,
+        color: element.style.color,
         fontFamily: element.style.fontFamily,
         backgroundColor: element.style.backgroundColor,
-        color: element.style.color,
+        padding: element.style.padding,
         width: "100%",
         height: "100%",
-        padding: "4px 8px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center"
+        boxSizing: "border-box",
       }}>
         {element.content}
       </Button>
     );
-  }
+  } 
   
-  if (element.type === "image" || element.type === "logo") {
-    return renderImageElement(element);
-  }
-
-  if (element.type === "container" || element.type === "layout") {
+  if (element.type === "image") {
+    const hasValidImage = element.content && isValidImageUrl(element.content as string);
+    const renderImageWithLink = (imageElement: JSX.Element) => {
+      if (element.link) {
+        return (
+          <a 
+            href={element.link} 
+            target={element.openInNewTab ? "_blank" : "_self"}
+            rel="noopener noreferrer"
+            className="w-full h-full block"
+          >
+            {imageElement}
+          </a>
+        );
+      }
+      return imageElement;
+    };
+    
+    const imageElement = hasValidImage ? (
+      renderImageElement(element)
+    ) : (
+      <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-500 text-sm p-2 text-center">
+        {element.alt || element.content || "Imagem"}
+      </div>
+    );
+    
     return (
       <div 
+        className="w-full h-full"
         style={{
-          width: "100%",
-          height: "100%",
-          backgroundColor: element.style.backgroundColor || "transparent",
-          overflow: "hidden",
-          position: "relative"
+          backgroundColor: element.style.backgroundColor,
+          borderRadius: element.style.borderRadius ? `${element.style.borderRadius}px` : undefined,
+          borderTopLeftRadius: element.style.borderTopLeftRadius ? `${element.style.borderTopLeftRadius}px` : undefined,
+          borderTopRightRadius: element.style.borderTopRightRadius ? `${element.style.borderTopRightRadius}px` : undefined,
+          borderBottomLeftRadius: element.style.borderBottomLeftRadius ? `${element.style.borderBottomLeftRadius}px` : undefined,
+          borderBottomRightRadius: element.style.borderBottomRightRadius ? `${element.style.borderBottomRightRadius}px` : undefined,
+          borderWidth: element.style.borderWidth ? `${element.style.borderWidth}px` : undefined,
+          borderStyle: element.style.borderStyle,
+          borderColor: element.style.borderColor,
+          overflow: "hidden"
         }}
       >
-        {/* Container elements could have child elements */}
+        {renderImageWithLink(imageElement)}
       </div>
     );
   }
-  
-  // Default renderer for other element types
-  return (
-    <div className="w-full h-full flex items-center justify-center">
-      {typeof element.content === "string" ? element.content : "Element"}
-    </div>
-  );
+
+  if (element.type === "container") {
+    return (
+      <div className="w-full h-full flex flex-col p-2 relative border border-dashed border-gray-300 rounded">
+        <div className="text-xs text-gray-500 absolute top-0 left-0 bg-white px-1">
+          {element.content || "Container"}
+        </div>
+      </div>
+    );
+  }
+
+  if (element.type === "layout") {
+    // Render layout with columns
+    return (
+      <div className="w-full h-full bg-white rounded flex relative">
+        <div className="text-xs text-gray-500 absolute top-0 left-0 bg-white px-1">
+          {element.content || "Layout"}
+        </div>
+        {element.columns && Array.from({ length: element.columns }).map((_, index) => (
+          <div 
+            key={index} 
+            className={`h-full ${index > 0 ? "border-l border-dashed border-gray-300" : ""}`} 
+            style={{ width: `${100 / element.columns!}%` }}
+          >
+            {/* We don't render child elements here anymore as they are handled in CanvasWorkspace */}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return null;
 };
