@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { CanvasProvider } from "@/components/editor/CanvasContext";
 import { Canvas } from "@/components/editor/Canvas";
 import { Button } from "@/components/ui/button";
@@ -9,16 +9,18 @@ import { AdminLayoutStats } from "@/components/editor/admin/AdminLayoutStats";
 import { AdminFormatSelector } from "@/components/editor/admin/AdminFormatSelector";
 import { AIModelManager } from "@/components/editor/ai/AIModelManager";
 import { LayoutTemplate, AdminStats } from "@/components/editor/types/admin";
-import { BannerSize, EditorElement } from "@/components/editor/types";
+import { BannerSize } from "@/components/editor/types";
 import { AdminTrainingPanel } from "@/components/editor/panels/AdminTrainingPanel";
 import { saveToIndexedDB, getFromIndexedDB } from "@/utils/indexedDBUtils";
 import { getOptimizedFormats } from "@/utils/formatGenerator";
 import * as tf from '@tensorflow/tfjs';
 
+// Chaves de armazenamento
 const STORAGE_KEY = 'admin-layout-templates';
 const FORMATS_KEY = 'admin-formats';
 const MODEL_KEY = 'ai-layout-model';
 
+// Função para determinar a orientação com base nas dimensões
 const determineOrientation = (width: number, height: number): 'vertical' | 'horizontal' | 'square' => {
   const ratio = width / height;
   if (ratio >= 0.95 && ratio <= 1.05) return 'square';
@@ -45,11 +47,12 @@ const Admin: React.FC = () => {
     loss: 0
   });
   const [aiModel, setAiModel] = useState<tf.LayersModel | null>(null);
-  const canvasRef = useRef<any>(null);
 
+  // Inicializar ou carregar formatos
   useEffect(() => {
     const loadFormats = async () => {
       try {
+        // Tentar carregar formatos do IndexedDB
         const storedFormats = await getFromIndexedDB(FORMATS_KEY);
 
         if (storedFormats && Array.isArray(storedFormats) && storedFormats.length > 0) {
@@ -60,16 +63,19 @@ const Admin: React.FC = () => {
           const optimizedFormats = getOptimizedFormats();
           setFormats(optimizedFormats);
 
+          // Salvar no IndexedDB com tratamento de erro
           try {
             const saved = await saveToIndexedDB(FORMATS_KEY, optimizedFormats);
             console.log("Formatos salvos com sucesso no IndexedDB:", saved);
           } catch (storageError) {
             console.error("Falha ao salvar formatos:", storageError);
+            // Continuar usando os formatos em memória
           }
         }
       } catch (error) {
         console.error("Falha ao inicializar formatos:", error);
 
+        // Recorrer a formatos em memória sem tentar salvar
         const optimizedFormats = getOptimizedFormats();
         setFormats(optimizedFormats);
         toast.error("Falha ao acessar o armazenamento. Usando formatos temporários.");
@@ -79,6 +85,7 @@ const Admin: React.FC = () => {
     loadFormats();
   }, []);
 
+  // Carregar templates salvos
   useEffect(() => {
     const loadTemplates = async () => {
       try {
@@ -106,6 +113,7 @@ const Admin: React.FC = () => {
     loadTemplates();
   }, []);
 
+  // Atualizar estatísticas
   const updateStats = useCallback((templatesData: LayoutTemplate[]) => {
     const newStats: AdminStats = {
       totalTemplates: templatesData.length,
@@ -122,32 +130,20 @@ const Admin: React.FC = () => {
     setStats(newStats);
   }, [isModelTrained, modelMetadata]);
 
+  // Lidar com a seleção de formato
   const handleFormatSelect = (format: BannerSize) => {
     setSelectedFormat(format);
   };
 
+  // Lidar com a mudança de tab
   const handleTabChange = (value: string) => {
     setActiveTab(value);
   };
 
-  const getCanvasElements = (): EditorElement[] => {
-    if (canvasRef.current && canvasRef.current.elements) {
-      return [...canvasRef.current.elements];
-    }
-    return [];
-  };
-
-  const handleSaveTemplate = async () => {
+  // Salvar um template
+  const handleSaveTemplate = async (elements: any[]) => {
     if (!selectedFormat) {
       toast.error("Selecione um formato primeiro");
-      return;
-    }
-
-    const elements = getCanvasElements();
-    console.log("Capturing elements from canvas:", elements);
-
-    if (!elements || elements.length === 0) {
-      toast.warning("O canvas está vazio. Adicione alguns elementos antes de salvar.");
       return;
     }
 
@@ -169,14 +165,13 @@ const Admin: React.FC = () => {
     setSavedTemplates(updatedTemplates);
     updateStats(updatedTemplates);
 
-    console.log("Tentando salvar template:", newTemplate);
-    console.log("Elementos capturados:", elements);
+    console.log("Tentando salvar templates:", updatedTemplates);
 
     try {
       const success = await saveToIndexedDB(STORAGE_KEY, updatedTemplates);
 
       if (success) {
-        toast.success("Template salvo com sucesso");
+        toast.success("Template salvo com sucesso no IndexedDB");
         console.log("Template salvo com sucesso no IndexedDB");
       } else {
         toast.error("Falha ao salvar o template");
@@ -188,6 +183,7 @@ const Admin: React.FC = () => {
     }
   };
 
+  // Excluir um template
   const handleDeleteTemplate = async (templateId: string) => {
     const updatedTemplates = savedTemplates.filter(template => template.id !== templateId);
     setSavedTemplates(updatedTemplates);
@@ -208,6 +204,7 @@ const Admin: React.FC = () => {
     }
   };
 
+  // Treinar o modelo de IA
   const handleTrainModel = async () => {
     if (savedTemplates.length < 5) {
       toast.error("Você precisa de pelo menos 5 templates para treinar o modelo");
@@ -241,6 +238,15 @@ const Admin: React.FC = () => {
     }
   };
 
+  // Capturar e salvar o template atual
+  const captureAndSaveTemplate = () => {
+    handleSaveTemplate([]);
+    toast("Template capturado do canvas", {
+      description: "Os elementos atuais do canvas foram salvos como um novo template."
+    });
+  };
+
+  // Callback para quando o modelo estiver pronto
   const handleModelReady = (model: tf.LayersModel) => {
     setAiModel(model);
     setIsModelTrained(true);
@@ -263,7 +269,7 @@ const Admin: React.FC = () => {
             <Button variant="outline" onClick={() => window.location.href = "/"}>
               Voltar ao Editor
             </Button>
-            <Button onClick={handleSaveTemplate} disabled={!selectedFormat}>
+            <Button onClick={captureAndSaveTemplate} disabled={!selectedFormat}>
               Salvar Layout Atual
             </Button>
           </div>
@@ -296,9 +302,9 @@ const Admin: React.FC = () => {
                   <div className="flex-1 overflow-hidden">
                     <CanvasProvider fixedSize={selectedFormat}>
                       <Canvas
-                        ref={canvasRef}
                         editorMode="banner"
                         fixedSize={selectedFormat}
+                        className="h-full w-full bg-gray-100"
                       />
                     </CanvasProvider>
                   </div>

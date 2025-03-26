@@ -43,7 +43,7 @@ export const generateFormats = (count: { vertical: number, horizontal: number, s
     formats.push({
       ...commonVertical[i],
       thumbnail: `vertical-${i+1}.png`
-    } as BannerSize);
+    });
   }
   
   // Gerar formatos verticais adicionais, se necessário
@@ -57,7 +57,7 @@ export const generateFormats = (count: { vertical: number, horizontal: number, s
       width,
       height,
       thumbnail: `vertical-${i+1}.png`
-    } as BannerSize;
+    };
     formats.push(format);
   }
   
@@ -66,7 +66,7 @@ export const generateFormats = (count: { vertical: number, horizontal: number, s
     formats.push({
       ...commonHorizontal[i],
       thumbnail: `horizontal-${i+1}.png`
-    } as BannerSize);
+    });
   }
   
   // Gerar formatos horizontais adicionais, se necessário
@@ -80,7 +80,7 @@ export const generateFormats = (count: { vertical: number, horizontal: number, s
       width,
       height,
       thumbnail: `horizontal-${i+1}.png`
-    } as BannerSize;
+    };
     formats.push(format);
   }
   
@@ -89,7 +89,7 @@ export const generateFormats = (count: { vertical: number, horizontal: number, s
     formats.push({
       ...commonSquare[i],
       thumbnail: `square-${i+1}.png`
-    } as BannerSize);
+    });
   }
   
   // Gerar formatos quadrados adicionais, se necessário
@@ -101,7 +101,7 @@ export const generateFormats = (count: { vertical: number, horizontal: number, s
       width: size,
       height: size,
       thumbnail: `square-${i+1}.png`
-    } as BannerSize;
+    };
     formats.push(format);
   }
   
@@ -111,7 +111,7 @@ export const generateFormats = (count: { vertical: number, horizontal: number, s
 // Função que retorna um subconjunto otimizado para não estourar quota
 export const getOptimizedFormats = (): BannerSize[] => {
   // Retorna um conjunto reduzido para evitar problemas de quota
-  return generateFormats({ vertical: 100, horizontal: 100, square: 25 });
+  return generateFormats({ vertical: 15, horizontal: 15, square: 10 });
 };
 
 // Função para pegar apenas os formatos mais comuns

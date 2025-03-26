@@ -1,8 +1,7 @@
-
-import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { useCanvas } from "../CanvasContext";
 import { AdminDraggableElement } from "./AdminDraggableElement";
-import { ElementRenderer } from "../ElementRenderer";
+import { ElementRender } from "../elements/ElementRender";
 import { useResizeObserver } from "@/hooks/useResizeObserver";
 import { BannerSize } from "../types";
 
@@ -10,7 +9,7 @@ interface AdminCanvasWorkspaceProps {
   fixedSize: BannerSize;
 }
 
-export const AdminCanvasWorkspace = forwardRef(({ fixedSize }: AdminCanvasWorkspaceProps, ref) => {
+export const AdminCanvasWorkspace = ({ fixedSize }: AdminCanvasWorkspaceProps) => {
   const { 
     elements,
     selectedElement,
@@ -30,24 +29,24 @@ export const AdminCanvasWorkspace = forwardRef(({ fixedSize }: AdminCanvasWorksp
     top: 0
   });
   
-  useImperativeHandle(ref, () => ({
-    elements
-  }));
-  
+  // Observer para ajustar o canvas ao tamanho do container
   useResizeObserver(containerRef, (entry) => {
     const { width, height } = entry.contentRect;
     setContainerSize({ width, height });
   });
   
+  // Calcular a escala para o canvas
   useEffect(() => {
     if (containerRef.current && containerSize.width > 0) {
       const containerWidth = containerSize.width;
       const containerHeight = containerSize.height;
       
+      // Calcular a escala mantendo a proporção
       const scaleX = (containerWidth - 60) / fixedSize.width;
       const scaleY = (containerHeight - 60) / fixedSize.height;
-      const scale = Math.min(scaleX, scaleY, 1);
+      const scale = Math.min(scaleX, scaleY, 1); // Limitar a 100%
       
+      // Centralizar o canvas
       const left = (containerWidth - (fixedSize.width * scale)) / 2;
       const top = (containerHeight - (fixedSize.height * scale)) / 2;
       
@@ -62,25 +61,13 @@ export const AdminCanvasWorkspace = forwardRef(({ fixedSize }: AdminCanvasWorksp
   }, [containerSize, fixedSize.width, fixedSize.height, zoomLevel]);
 
   const handleCanvasClick = (e: React.MouseEvent) => {
+    // Só desselecione se o clique foi diretamente no canvas, não em um elemento
     if (e.currentTarget === e.target) {
       setSelectedElement(null);
     }
   };
-
-  const handlePositionChange = (elementId: string, position: { left: number; top: number }) => {
-    updateElementStyle(elementId, { 
-      x: position.left,
-      y: position.top
-    });
-  };
-
-  const handleResize = (elementId: string, size: { width: number; height: number }) => {
-    updateElementStyle(elementId, {
-      width: size.width,
-      height: size.height
-    });
-  };
   
+  // Estilo para o container do workspace
   const workspaceStyle = {
     position: 'relative' as const,
     width: '100%',
@@ -88,6 +75,7 @@ export const AdminCanvasWorkspace = forwardRef(({ fixedSize }: AdminCanvasWorksp
     overflow: 'auto' as const,
   };
   
+  // Estilo para o canvas
   const canvasStyle = {
     position: 'absolute' as const,
     width: `${canvasSize.width}px`,
@@ -135,10 +123,16 @@ export const AdminCanvasWorkspace = forwardRef(({ fixedSize }: AdminCanvasWorksp
             isSelected={selectedElement?.id === element.id}
             onClick={() => setSelectedElement(element)}
             onPositionChange={(position) => 
-              handlePositionChange(element.id, position)
+              updateElementStyle(element.id, { 
+                left: position.left, 
+                top: position.top 
+              })
             }
             onResize={(size) => 
-              handleResize(element.id, size)
+              updateElementStyle(element.id, { 
+                width: size.width, 
+                height: size.height 
+              })
             }
             scale={canvasSize.scale * zoomLevel}
           />
@@ -146,6 +140,4 @@ export const AdminCanvasWorkspace = forwardRef(({ fixedSize }: AdminCanvasWorksp
       </div>
     </div>
   );
-});
-
-AdminCanvasWorkspace.displayName = "AdminCanvasWorkspace";
+};
