@@ -14,16 +14,17 @@ import { toast } from "sonner";
 
 interface CanvasProviderProps {
   children: React.ReactNode;
+  fixedSize?: BannerSize;
 }
 
 const defaultSize = BANNER_SIZES[0];
 
 export const CanvasContext = createContext<CanvasContextType | undefined>(undefined);
 
-export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
+export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedSize }) => {
   const [elements, setElements] = useState<EditorElement[]>([]);
   const [selectedElement, setSelectedElement] = useState<EditorElement | null>(null);
-  const [selectedSize, setSelectedSize] = useState<BannerSize>(defaultSize);
+  const [selectedSize, setSelectedSize] = useState<BannerSize>(fixedSize || defaultSize);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [resizeDirection, setResizeDirection] = useState("");
@@ -33,7 +34,7 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [canvasNavMode, setCanvasNavMode] = useState<CanvasNavigationMode>('edit');
-  const [activeSizes, setActiveSizes] = useState<BannerSize[]>([defaultSize]);
+  const [activeSizes, setActiveSizes] = useState<BannerSize[]>([fixedSize || defaultSize]);
   const [editingMode, setEditingMode] = useState<EditingMode>('global');
   const [gridLayout, setGridLayout] = useState(false);
   const [artboardBackgroundColor, setArtboardBackgroundColor] = useState<string>('#ffffff');
@@ -41,6 +42,13 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
   const historyRef = useRef<{elements: EditorElement[], selectedElement: EditorElement | null}[]>([]);
   const currentHistoryIndexRef = useRef<number>(-1);
   const maxHistoryLength = 50;
+
+  useEffect(() => {
+    if (fixedSize) {
+      setSelectedSize(fixedSize);
+      setActiveSizes([fixedSize]);
+    }
+  }, [fixedSize]);
 
   const organizeElements = () => {
     setKey(prevKey => prevKey + 1);

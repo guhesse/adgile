@@ -1,10 +1,12 @@
 
-export interface BrandGroup {
-  id: number;
-  name: string;
-  items: BrandItem[];
-  isOpen?: boolean;
-  icon?: string;
+export interface TextStyle {
+  fontFamily: string;
+  fontSize: number;
+  fontWeight: string;
+  lineHeight: number;
+  letterSpacing: number;
+  color: string;
+  textTransform?: string;
 }
 
 export interface BrandItem {
@@ -15,21 +17,13 @@ export interface BrandItem {
   textStyle?: TextStyle;
 }
 
-export interface TextStyle {
+export interface BrandGroup {
   id: number;
   name: string;
-  style: {
-    fontSize: number;
-    fontWeight: string;
-    fontFamily: string;
-    lineHeight?: number;
-    letterSpacing?: number;
-    color?: string;
-  };
+  items: BrandItem[];
 }
 
-export interface FolderIcon {
-  name: string;
-  icon: React.ReactNode;
-  value: string;
-}
+// For backward compatibility
+export type ColorItem = BrandItem;
+export type TextStyleGroup = BrandGroup;
+export type ColorGroup = BrandGroup;

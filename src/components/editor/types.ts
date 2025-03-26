@@ -1,3 +1,4 @@
+
 export type BannerSize = {
   name: string;
   width: number;
@@ -129,13 +130,7 @@ export const PRESET_LAYOUTS: LayoutTemplate[] = [
   { id: "preset-text-text", name: "Texto e texto", columns: 2, preview: "TT", type: "preset" },
 ];
 
-export type BrandItem = {
-  id: number;
-  name: string;
-  type: 'color' | 'textStyle';
-  color?: string;
-  textStyle?: TextStyle;
-};
+import { BrandItem, TextStyle, BrandGroup } from './types/brand';
 
 // Adding ColorItem for backward compatibility
 export type ColorItem = BrandItem;

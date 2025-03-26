@@ -6,9 +6,11 @@ import { CanvasWorkspace } from "./CanvasWorkspace";
 import { useCanvas } from "./CanvasContext";
 import { LeftSidebar } from "./LeftSidebar";
 import { PSDImport } from "./PSDImport";
+import { BannerSize } from "./types";
 
 interface CanvasProps {
   editorMode: "email" | "banner";
+  fixedSize?: BannerSize;
 }
 
 const CanvasContent = ({ editorMode }: CanvasProps) => {
@@ -76,7 +78,7 @@ const CanvasContent = ({ editorMode }: CanvasProps) => {
   );
 };
 
-export const Canvas = ({ editorMode }: CanvasProps) => {
+export const Canvas = ({ editorMode, fixedSize }: CanvasProps) => {
   return (
     <CanvasContent editorMode={editorMode} />
   );
