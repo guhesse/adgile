@@ -45,6 +45,7 @@ export type EditorElement = {
     gridColumn?: string;
     gridRow?: string;
     opacity?: number;
+    zIndex?: number; // Added zIndex property
     // Valores para manter a proporção original da imagem
     originalWidth?: number;
     originalHeight?: number;

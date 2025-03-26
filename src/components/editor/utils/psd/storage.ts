@@ -1,140 +1,119 @@
 
-import { PSDFileData, LayerData, PSDMetadata } from './types';
+import { PSDFileData, PSDMetadata, LayerData } from './types';
 
-// Storage key for PSD metadata
-const PSD_METADATA_KEY = 'psd_metadata';
-
-/**
- * Saves PSD data to local storage
- */
-export const savePSDData = (psdData: PSDFileData): string => {
-  const key = `psd_${Date.now()}`;
+// Store PSD data in localStorage
+export const savePSDDataToStorage = (fileName: string, data: PSDFileData): string => {
+  const storageKey = `psd_${Date.now()}_${fileName.replace(/[^a-z0-9]/gi, '_')}`;
   
-  // Process and optimize layer data for storage
-  const optimizedLayers = psdData.layers.map(layer => {
-    // For image layers, store image data separately
-    if (layer.type === 'image' && layer.imageData) {
-      const imageKey = `img_${layer.id}_${Date.now()}`;
-      localStorage.setItem(imageKey, layer.imageData);
-      
-      return {
-        ...layer,
-        imageData: null, // Clear the image data from the layer object
-        imageKey // Store reference to the image data
-      };
-    }
-    return layer;
-  });
-  
-  // Store the optimized PSD data
-  localStorage.setItem(key, JSON.stringify({
-    ...psdData,
-    layers: optimizedLayers
-  }));
-  
-  // Update metadata
-  savePSDMetadata(key);
-  
-  return key;
-};
-
-/**
- * Saves PSD metadata to local storage
- */
-export const savePSDMetadata = (newKey: string): void => {
-  // Get existing metadata
-  const metadata = getPSDMetadata();
-  
-  // Add new key if it doesn't exist
-  if (!metadata.storageKeys.includes(newKey)) {
-    metadata.storageKeys.push(newKey);
+  try {
+    // Store the PSD data
+    localStorage.setItem(storageKey, JSON.stringify(data));
+    
+    // Update the metadata
+    const metadata = getPSDMetadata();
+    metadata.storageKeys.push(storageKey);
+    metadata.lastUpdated = new Date().toISOString();
+    localStorage.setItem('psd_metadata', JSON.stringify(metadata));
+    
+    return storageKey;
+  } catch (error) {
+    console.error('Error saving PSD data to storage:', error);
+    return '';
   }
-  
-  // Update timestamp
-  metadata.lastUpdated = new Date().toISOString();
-  
-  // Save updated metadata
-  localStorage.setItem(PSD_METADATA_KEY, JSON.stringify(metadata));
 };
 
-/**
- * Gets PSD metadata from local storage
- */
+// Get metadata about stored PSD files
 export const getPSDMetadata = (): PSDMetadata => {
-  const storedMetadata = localStorage.getItem(PSD_METADATA_KEY);
-  
-  if (!storedMetadata) {
-    // Return default metadata if none exists
-    return {
-      storageKeys: [],
-      lastUpdated: new Date().toISOString()
-    };
-  }
-  
-  return JSON.parse(storedMetadata);
-};
-
-/**
- * Gets PSD data from local storage
- */
-export const getPSDData = (key: string): PSDFileData | null => {
-  const storedData = localStorage.getItem(key);
-  
-  if (!storedData) {
-    return null;
-  }
-  
-  const psdData = JSON.parse(storedData) as PSDFileData;
-  
-  // Restore image data for image layers
-  const layersWithImages = psdData.layers.map(layer => {
-    if (layer.type === 'image' && (layer as any).imageKey) {
-      const imageKey = (layer as any).imageKey;
-      const imageData = localStorage.getItem(imageKey);
-      
-      return {
-        ...layer,
-        imageData: imageData || null
-      };
+  try {
+    const metadata = localStorage.getItem('psd_metadata');
+    if (metadata) {
+      const parsed = JSON.parse(metadata) as PSDMetadata;
+      // Add length property to support array-like behavior
+      parsed.length = parsed.storageKeys.length;
+      return parsed;
     }
-    return layer;
-  });
+  } catch (error) {
+    console.error('Error retrieving PSD metadata:', error);
+  }
   
-  return {
-    ...psdData,
-    layers: layersWithImages
+  // Return empty metadata if none exists
+  return { 
+    storageKeys: [], 
+    lastUpdated: new Date().toISOString(),
+    length: 0
   };
 };
 
-/**
- * Removes PSD data from local storage
- */
-export const removePSDData = (key: string): void => {
-  // Remove the PSD data
-  localStorage.removeItem(key);
+// Load PSD data from localStorage
+export const loadPSDDataFromStorage = (storageKey: string): PSDFileData | null => {
+  try {
+    const data = localStorage.getItem(storageKey);
+    if (data) {
+      return JSON.parse(data) as PSDFileData;
+    }
+  } catch (error) {
+    console.error('Error loading PSD data from storage:', error);
+  }
   
-  // Update metadata
-  const metadata = getPSDMetadata();
-  metadata.storageKeys = metadata.storageKeys.filter(k => k !== key);
-  metadata.lastUpdated = new Date().toISOString();
-  
-  localStorage.setItem(PSD_METADATA_KEY, JSON.stringify(metadata));
+  return null;
 };
 
-/**
- * Clears all PSD data from local storage
- */
-export const clearAllPSDData = (): void => {
-  const metadata = getPSDMetadata();
+// Save image data to storage
+export const saveImageToStorage = (imageData: string, layerName: string): string => {
+  const storageKey = `img_${Date.now()}_${layerName.replace(/[^a-z0-9]/gi, '_')}`;
   
-  // Remove all PSD data
-  metadata.storageKeys.forEach(key => {
-    localStorage.removeItem(key);
+  try {
+    localStorage.setItem(storageKey, imageData);
+    return storageKey;
+  } catch (error) {
+    console.error('Error saving image to storage:', error);
+    return '';
+  }
+};
+
+// Get image data from storage
+export const getImageFromStorage = (storageKey: string): string | null => {
+  try {
+    return localStorage.getItem(storageKey);
+  } catch (error) {
+    console.error('Error retrieving image from storage:', error);
+    return null;
+  }
+};
+
+// Clear PSD data from storage
+export const removePSDData = (storageKey: string): boolean => {
+  try {
+    // Remove the PSD data
+    localStorage.removeItem(storageKey);
+    
+    // Update the metadata
+    const metadata = getPSDMetadata();
+    metadata.storageKeys = metadata.storageKeys.filter(key => key !== storageKey);
+    metadata.lastUpdated = new Date().toISOString();
+    localStorage.setItem('psd_metadata', JSON.stringify(metadata));
+    
+    return true;
+  } catch (error) {
+    console.error('Error removing PSD data from storage:', error);
+    return false;
+  }
+};
+
+// For layers with images, clean up their image data to avoid duplication
+export const preprocessLayersForStorage = (layers: LayerData[]): LayerData[] => {
+  return layers.map(layer => {
+    if (layer.type === 'image' && layer.imageData) {
+      // Store the image data separately
+      const imageKey = saveImageToStorage(layer.imageData, layer.name);
+      
+      // Return layer without the imageData property
+      const { imageData, ...layerWithoutImage } = layer;
+      return {
+        ...layerWithoutImage,
+        src: imageKey
+      };
+    }
+    return layer;
   });
-  
-  // Reset metadata
-  localStorage.setItem(PSD_METADATA_KEY, JSON.stringify({
-    storageKeys: [],
-    lastUpdated: new Date().toISOString()
-  }));
 };

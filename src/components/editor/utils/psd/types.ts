@@ -34,6 +34,9 @@ export interface PSDMetadata {
 
   /** Date when the metadata was last updated */
   lastUpdated: string;
+  
+  /** Length property to support array-like behavior */
+  length?: number;
 }
 
 /**
