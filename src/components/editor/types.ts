@@ -1,4 +1,3 @@
-
 export type BannerSize = {
   name: string;
   width: number;
@@ -41,17 +40,6 @@ export type EditorElement = {
     borderBottomRightRadius?: number;
     objectFit?: "contain" | "cover" | "fill" | "none" | "scale-down";
     objectPosition?: "left" | "center" | "right" | "top" | "bottom" | string;
-    objectPositionX?: number; // Nova propriedade para controle preciso da posição X
-    objectPositionY?: number; // Nova propriedade para controle preciso da posição Y
-    objectScale?: number; // Nova propriedade para controle de escala
-    overlayColor?: string; // Propriedade para sobreposição de cor
-    overlayOpacity?: number; // Propriedade para opacidade da sobreposição
-    // Novas propriedades para filtros CSS
-    hueRotate?: number; // Valor em graus para hue-rotate (0-360)
-    grayscale?: number; // Valor de 0 a 1 (0% a 100%)
-    brightness?: number; // Valor de 0 a 2 (0% a 200%)
-    contrast?: number; // Valor de 0 a 2 (0% a 200%)
-    saturate?: number; // Valor de 0 a 2 (0% a 200%)
     gridArea?: string;
     gridColumn?: string;
     gridRow?: string;
@@ -59,8 +47,11 @@ export type EditorElement = {
     // Valores para manter a proporção original da imagem
     originalWidth?: number;
     originalHeight?: number;
-    // Formato ao qual este estilo se aplica
-    formatId?: string;
+    // Percentage-based positioning for responsive handling
+    xPercent?: number;
+    yPercent?: number;
+    widthPercent?: number;
+    heightPercent?: number;
   };
   columns?: number;
   childElements?: EditorElement[];
@@ -70,17 +61,8 @@ export type EditorElement = {
   parentId?: string; // Reference to parent container/layout
   inContainer?: boolean; // Whether element is inside a container
   sizeId?: string; // The banner size this element belongs to
-  // PSD layer data for advanced operations
-  psdLayerData?: {
-    mask?: any;
-    effects?: any[];
-    blendMode?: string;
-    originalPath?: string;
-  };
-  // Responsive settings - simplified
-  formatSpecificStyles?: {
-    [formatId: string]: Partial<EditorElement['style']>;
-  };
+  linkedElementId?: string; // ID of the linked element in other sizes
+  isIndividuallyPositioned?: boolean; // Whether this element has been individually positioned
 };
 
 // Novo tipo para compartilhar entre componentes
@@ -144,12 +126,3 @@ export const PRESET_LAYOUTS: LayoutTemplate[] = [
   { id: "preset-image-text", name: "Imagem e texto", columns: 2, preview: "IT", type: "preset" },
   { id: "preset-text-text", name: "Texto e texto", columns: 2, preview: "TT", type: "preset" },
 ];
-
-// Orientation types to help with responsive design
-export type Orientation = 'horizontal' | 'vertical' | 'square';
-
-// Function to determine orientation
-export const getOrientation = (size: BannerSize): Orientation => {
-  if (size.width === size.height) return 'square';
-  return size.width > size.height ? 'horizontal' : 'vertical';
-};

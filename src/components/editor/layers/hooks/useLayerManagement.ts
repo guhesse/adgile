@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { EditorElement, BANNER_SIZES } from '../../types';
 
@@ -16,18 +15,26 @@ export const useLayerManagement = (
         }));
     };
 
-    // Use BANNER_SIZES to get artboard name from its dimensions 
+    // Usar BANNER_SIZES para obter nome do artboard a partir do tamanho
     const getArtboardName = (size: string) => {
         if (!size) return 'Sem tamanho';
 
-        // Try to match with known banner sizes
-        const bannerSize = BANNER_SIZES.find(bs => bs.name === size);
-        if (bannerSize) return bannerSize.name;
-        
-        return size;
+        // Extrair largura e altura do formato "widthxheight"
+        const dimensions = size.split('x');
+        if (dimensions.length !== 2) return size;
+
+        const width = parseInt(dimensions[0]);
+        const height = parseInt(dimensions[1]);
+
+        // Encontrar o tamanho correspondente em BANNER_SIZES
+        const bannerSize = BANNER_SIZES.find(
+            bs => bs.width === width && bs.height === height
+        );
+
+        return bannerSize ? bannerSize.name : size;
     };
 
-    // Move element up in the layers panel (decrease z-index visually, but increase in rendering)
+    // Move element up in the layers panel (decrease z-index visualmente, mas aumenta na renderização)
     const moveElementUp = (elementId: string, parentId?: string) => {
         const updatedElements = [...elements];
 
@@ -64,7 +71,7 @@ export const useLayerManagement = (
         }
     };
 
-    // Move element down in the layers panel (increase z-index visually, but decrease in rendering)
+    // Move element down in the layers panel (increase z-index visualmente, mas diminui na renderização)
     const moveElementDown = (elementId: string, parentId?: string) => {
         const updatedElements = [...elements];
 
@@ -101,40 +108,39 @@ export const useLayerManagement = (
         }
     };
 
-    // Extract artboards from elements
+    // Extrair artboards dos elementos
     const getArtboards = () => {
-        // Collect all unique size IDs from elements
-        const artboardSizes = Array.from(new Set(elements
-            .filter(el => el.sizeId)
-            .map(el => el.sizeId || 'global')));
-            
-        // If no specific sizes, default to global
-        if (artboardSizes.length === 0) {
-            artboardSizes.push('global');
+        const artboards = Array.from(new Set(elements
+            .filter(el => el.artboardSize)
+            .map(el => el.artboardSize || '300x250')));
+
+        if (artboards.length === 0) {
+            // Se não houver artboards definidos, assumir um padrão
+            artboards.push('300x250');
         }
 
-        return artboardSizes;
+        return artboards;
     };
 
-    // Group elements by artboard
+    // Agrupar elementos por artboard
     const groupElementsByArtboard = () => {
         const artboards = getArtboards();
         const elementsByArtboard: Record<string, EditorElement[]> = {};
 
         artboards.forEach(size => {
             elementsByArtboard[size] = elements.filter(el =>
-                (el.sizeId === size || (!el.sizeId && size === artboards[0]))
+                (el.artboardSize === size || (!el.artboardSize && size === artboards[0]))
             );
 
-            // Reverse order so z-index matches the visual hierarchy
-            // Elements higher in the list render last (appear on top)
+            // Inverter a ordem para que o z-index corresponda à visualização
+            // Os elementos mais acima na lista são renderizados por último (aparecem no topo)
             elementsByArtboard[size] = [...elementsByArtboard[size]].reverse();
         });
 
         return elementsByArtboard;
     };
 
-    // Find all container/layout elements by artboard
+    // Find all container/layout elements por artboard
     const getContainersByArtboard = () => {
         const artboards = getArtboards();
         const elementsByArtboard = groupElementsByArtboard();

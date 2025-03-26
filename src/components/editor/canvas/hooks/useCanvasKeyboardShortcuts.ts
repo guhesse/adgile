@@ -1,14 +1,13 @@
 
 import { useEffect } from 'react';
-import { CanvasNavigationMode, EditorElement } from '../../types';
+import { CanvasNavigationMode } from '../../types';
 
 interface UseCanvasKeyboardShortcutsProps {
   canvasNavMode: CanvasNavigationMode;
   setCanvasNavMode: (mode: CanvasNavigationMode) => void;
-  selectedElement: EditorElement | null;
-  removeElement: (elementId: string) => void;
+  selectedElement: any;
+  removeElement: (id: string) => void;
   undo: () => void;
-  updateElementStyle?: (property: string, value: any) => void;
 }
 
 export const useCanvasKeyboardShortcuts = ({
@@ -16,103 +15,44 @@ export const useCanvasKeyboardShortcuts = ({
   setCanvasNavMode,
   selectedElement,
   removeElement,
-  undo,
-  updateElementStyle
+  undo
 }: UseCanvasKeyboardShortcutsProps) => {
   useEffect(() => {
+    const handleSpacebarDown = () => {
+      if (canvasNavMode !== 'pan') {
+        setCanvasNavMode('pan');
+      }
+    };
+
+    const handleSpacebarUp = () => {
+      if (canvasNavMode === 'pan') {
+        setCanvasNavMode('edit');
+      }
+    };
+
+    // Handle keyboard shortcuts
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if editing a text field
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
-      }
-
-      // Don't handle keyboard shortcuts when meta key (Command on Mac, Ctrl on Windows) is pressed
-      // to avoid interfering with browser shortcuts
-      if (e.metaKey || e.ctrlKey) {
-        // Handle undo with Command/Ctrl+Z
-        if (e.key === 'z') {
-          e.preventDefault();
-          undo();
-        }
-        return;
-      }
-
-      // Toggle canvas mode with Spacebar
-      if (e.key === ' ' && !e.repeat) {
-        e.preventDefault();
-        setCanvasNavMode(canvasNavMode === 'edit' ? 'pan' : 'edit');
-      }
-
-      // Delete selected element with Delete or Backspace
-      if (selectedElement && (e.key === 'Delete' || e.key === 'Backspace')) {
-        e.preventDefault();
+      // Delete/Backspace to remove selected element
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElement) {
         removeElement(selectedElement.id);
       }
-
-      // Use arrow keys to move selected element
-      if (selectedElement && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-        e.preventDefault();
-        
-        const altKey = e.altKey;
-        const shiftKey = e.shiftKey;
-        const step = shiftKey ? 10 : 1;
-        
-        // If Alt key is pressed and the selected element is an image with objectFit=cover,
-        // adjust the image position within the container instead of moving the element
-        if (altKey && selectedElement.type === 'image' && selectedElement.style.objectFit === 'cover') {
-          if (updateElementStyle) {
-            const currentX = selectedElement.style.objectPositionX || 50;
-            const currentY = selectedElement.style.objectPositionY || 50;
-            
-            console.log(`Keyboard adjusting objectPosition - Current X: ${currentX}, Y: ${currentY}`);
-            
-            switch (e.key) {
-              case 'ArrowLeft':
-                updateElementStyle('objectPositionX', Math.max(0, currentX - step));
-                console.log(`ArrowLeft: Setting objectPositionX to ${Math.max(0, currentX - step)}`);
-                break;
-              case 'ArrowRight':
-                updateElementStyle('objectPositionX', Math.min(100, currentX + step));
-                console.log(`ArrowRight: Setting objectPositionX to ${Math.min(100, currentX + step)}`);
-                break;
-              case 'ArrowUp':
-                updateElementStyle('objectPositionY', Math.max(0, currentY - step));
-                console.log(`ArrowUp: Setting objectPositionY to ${Math.max(0, currentY - step)}`);
-                break;
-              case 'ArrowDown':
-                updateElementStyle('objectPositionY', Math.min(100, currentY + step));
-                console.log(`ArrowDown: Setting objectPositionY to ${Math.min(100, currentY + step)}`);
-                break;
-            }
-          }
-        } else {
-          // Move the entire element
-          if (updateElementStyle) {
-            const currentX = selectedElement.style.x;
-            const currentY = selectedElement.style.y;
-            
-            switch (e.key) {
-              case 'ArrowLeft':
-                updateElementStyle('x', currentX - step);
-                break;
-              case 'ArrowRight':
-                updateElementStyle('x', currentX + step);
-                break;
-              case 'ArrowUp':
-                updateElementStyle('y', currentY - step);
-                break;
-              case 'ArrowDown':
-                updateElementStyle('y', currentY + step);
-                break;
-            }
-          }
-        }
+      
+      // Ctrl+Z to undo
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault(); // Prevent browser's default undo
+        console.log("Undo shortcut triggered");
+        undo();
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('canvas-spacebar-down', handleSpacebarDown);
+    document.addEventListener('canvas-spacebar-up', handleSpacebarUp);
+    document.addEventListener('keydown', handleKeyDown);
+
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('canvas-spacebar-down', handleSpacebarDown);
+      document.removeEventListener('canvas-spacebar-up', handleSpacebarUp);
+      document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [canvasNavMode, setCanvasNavMode, selectedElement, removeElement, undo, updateElementStyle]);
+  }, [canvasNavMode, setCanvasNavMode, selectedElement, removeElement, undo]);
 };

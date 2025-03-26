@@ -1,8 +1,7 @@
 
 import { EditorElement, BannerSize } from "../types";
 import { toast } from "sonner";
-import { calculateSmartPosition, analyzeElementPosition } from "../utils/grid/responsivePosition";
-import { applyConstraintBasedPositioning } from "../utils/grid/positionUtils";
+import { calculateSmartPosition } from "../utils/grid/responsivePosition";
 
 // Link an element across all active sizes
 export const linkElementsAcrossSizes = (
@@ -22,13 +21,10 @@ export const linkElementsAcrossSizes = (
   const widthPercent = (element.style.width / selectedSize.width) * 100;
   const heightPercent = (element.style.height / selectedSize.height) * 100;
   
-  // Analyze element's position to determine appropriate constraints
-  const { horizontalConstraint, verticalConstraint } = analyzeElementPosition(element, selectedSize);
-  
   // Update the elements array with linked versions across all sizes
   const updatedElements = [...elements];
   
-  // Find the element in the array and update it with percentage values and constraints
+  // Find the element in the array and update it with percentage values
   const sourceIndex = updatedElements.findIndex(el => el.id === element.id);
   if (sourceIndex !== -1) {
     updatedElements[sourceIndex] = {
@@ -39,9 +35,7 @@ export const linkElementsAcrossSizes = (
         xPercent,
         yPercent,
         widthPercent,
-        heightPercent,
-        constraintHorizontal: horizontalConstraint as any,
-        constraintVertical: verticalConstraint as any
+        heightPercent
       }
     };
   }
@@ -51,15 +45,8 @@ export const linkElementsAcrossSizes = (
     // Skip the current size (source element's size)
     if (size.name === selectedSize.name) return;
     
-    // Calculate position and size for this specific canvas size using constraints
-    const { x, y, width, height } = calculateSmartPosition({
-      ...element,
-      style: {
-        ...element.style,
-        constraintHorizontal: horizontalConstraint as any,
-        constraintVertical: verticalConstraint as any
-      }
-    }, selectedSize, size);
+    // Calculate position and size for this specific canvas size
+    const { x, y, width, height } = calculateSmartPosition(element, selectedSize, size);
     
     // Create a clone for this size
     const clone: EditorElement = {
@@ -77,10 +64,7 @@ export const linkElementsAcrossSizes = (
         xPercent,
         yPercent,
         widthPercent,
-        heightPercent,
-        // Store constraints for responsive positioning
-        constraintHorizontal: horizontalConstraint as any,
-        constraintVertical: verticalConstraint as any
+        heightPercent
       }
     };
     
@@ -147,17 +131,6 @@ export const updateAllLinkedElements = (
     calculatedPercentChanges.heightPercent = (absoluteChanges.height / sourceSize.height) * 100;
   }
   
-  // Analyze element position to determine constraints if they're not already set
-  let { horizontalConstraint, verticalConstraint } = 
-    { horizontalConstraint: sourceElement.style.constraintHorizontal, 
-      verticalConstraint: sourceElement.style.constraintVertical };
-  
-  if (!horizontalConstraint || !verticalConstraint) {
-    const constraints = analyzeElementPosition(sourceElement, sourceSize);
-    horizontalConstraint = horizontalConstraint || constraints.horizontalConstraint as any;
-    verticalConstraint = verticalConstraint || constraints.verticalConstraint as any;
-  }
-  
   return elements.map(el => {
     // Update source element
     if (el.id === sourceElement.id) {
@@ -166,49 +139,41 @@ export const updateAllLinkedElements = (
         style: {
           ...el.style,
           ...absoluteChanges,
-          ...calculatedPercentChanges,
-          constraintHorizontal: horizontalConstraint,
-          constraintVertical: verticalConstraint
+          ...calculatedPercentChanges
         }
       };
     }
     
     // Update linked elements
     if (el.linkedElementId === sourceElement.linkedElementId && !el.isIndividuallyPositioned) {
-      const targetSize = activeSizes.find(size => size.name === el.sizeId);
+      const size = activeSizes.find(size => size.name === el.sizeId);
       
-      if (targetSize) {
-        // Apply transformation using constraints
-        const { x, y, width, height } = applyConstraintBasedPositioning({
-          ...sourceElement,
-          style: {
-            ...sourceElement.style,
-            ...absoluteChanges,
-            constraintHorizontal: horizontalConstraint,
-            constraintVertical: verticalConstraint
-          }
-        }, targetSize.width, targetSize.height);
+      if (size) {
+        // Calculate absolute values for this size based on percentage
+        const newAbsoluteValues: Record<string, number> = {};
         
-        // Calculate new percentage values
-        const xPercent = (x / targetSize.width) * 100;
-        const yPercent = (y / targetSize.height) * 100;
-        const widthPercent = (width / targetSize.width) * 100;
-        const heightPercent = (height / targetSize.height) * 100;
+        if (calculatedPercentChanges.xPercent !== undefined) {
+          newAbsoluteValues.x = (calculatedPercentChanges.xPercent * size.width) / 100;
+        }
+        
+        if (calculatedPercentChanges.yPercent !== undefined) {
+          newAbsoluteValues.y = (calculatedPercentChanges.yPercent * size.height) / 100;
+        }
+        
+        if (calculatedPercentChanges.widthPercent !== undefined) {
+          newAbsoluteValues.width = (calculatedPercentChanges.widthPercent * size.width) / 100;
+        }
+        
+        if (calculatedPercentChanges.heightPercent !== undefined) {
+          newAbsoluteValues.height = (calculatedPercentChanges.heightPercent * size.height) / 100;
+        }
         
         return {
           ...el,
           style: {
             ...el.style,
-            x,
-            y,
-            width,
-            height,
-            xPercent,
-            yPercent,
-            widthPercent,
-            heightPercent,
-            constraintHorizontal: horizontalConstraint,
-            constraintVertical: verticalConstraint
+            ...newAbsoluteValues,
+            ...calculatedPercentChanges
           }
         };
       }
@@ -233,10 +198,7 @@ export const createLinkedVersions = (
   const widthPercent = (element.style.width / selectedSize.width) * 100;
   const heightPercent = (element.style.height / selectedSize.height) * 100;
   
-  // Analyze element position to determine constraints
-  const { horizontalConstraint, verticalConstraint } = analyzeElementPosition(element, selectedSize);
-  
-  // Update the original element with the linked ID, percentage values, and constraints
+  // Update the original element with the linked ID and percentage values
   const updatedElement = {
     ...element,
     linkedElementId: linkedId,
@@ -245,9 +207,7 @@ export const createLinkedVersions = (
       xPercent,
       yPercent,
       widthPercent,
-      heightPercent,
-      constraintHorizontal: horizontalConstraint as any,
-      constraintVertical: verticalConstraint as any
+      heightPercent
     }
   };
   
@@ -258,7 +218,7 @@ export const createLinkedVersions = (
     // Skip the current size
     if (size.name === selectedSize.name) return;
     
-    // Use calculateSmartPosition to get proper positioning based on constraints
+    // Use calculateSmartPosition to get proper positioning based on percentages
     const { x, y, width, height } = calculateSmartPosition(
       {
         ...element,
@@ -267,9 +227,7 @@ export const createLinkedVersions = (
           xPercent,
           yPercent,
           widthPercent,
-          heightPercent,
-          constraintHorizontal: horizontalConstraint as any,
-          constraintVertical: verticalConstraint as any
+          heightPercent
         }
       },
       selectedSize,
@@ -293,9 +251,7 @@ export const createLinkedVersions = (
           xPercent,
           yPercent,
           widthPercent,
-          heightPercent,
-          constraintHorizontal: horizontalConstraint as any,
-          constraintVertical: verticalConstraint as any
+          heightPercent
         },
         childElements: element.childElements?.map(child => ({
           ...child,
@@ -319,9 +275,7 @@ export const createLinkedVersions = (
           xPercent,
           yPercent,
           widthPercent,
-          heightPercent,
-          constraintHorizontal: horizontalConstraint as any,
-          constraintVertical: verticalConstraint as any
+          heightPercent
         }
       };
     }

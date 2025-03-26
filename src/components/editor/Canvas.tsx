@@ -6,7 +6,6 @@ import { CanvasWorkspace } from "./CanvasWorkspace";
 import { useCanvas } from "./CanvasContext";
 import { LeftSidebar } from "./LeftSidebar";
 import { PSDImport } from "./PSDImport";
-import { OrientationIndicator } from "./utils/OrientationIndicator";
 
 interface CanvasProps {
   editorMode: "email" | "banner";
@@ -26,12 +25,8 @@ const CanvasContent = ({ editorMode }: CanvasProps) => {
     isPlaying,
     togglePlayPause,
     setCurrentTime,
-    updateAnimations,
-    selectedSize
+    updateAnimations
   } = useCanvas();
-
-  // Determine if the current format is horizontal or vertical
-  const isHorizontal = selectedSize.width > selectedSize.height;
 
   return (
     <div className="flex flex-1">
@@ -42,7 +37,6 @@ const CanvasContent = ({ editorMode }: CanvasProps) => {
       <div className="flex-1 bg-gray-100 overflow-hidden flex flex-col">
         <div className="flex justify-between items-center px-4 py-2 border-b">
           <CanvasControls />
-          <OrientationIndicator isHorizontal={isHorizontal} />
           <PSDImport />
         </div>
         <CanvasWorkspace />
