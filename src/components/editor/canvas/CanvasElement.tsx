@@ -63,15 +63,16 @@ export const CanvasElement = ({
       height: element.style.height 
     };
     
-    // If element has percentage values and needs to be adjusted for this canvas size
-    if ((element.style.xPercent !== undefined || element.style.constraintHorizontal !== undefined) && 
-        element.sizeId !== canvasSize.name) {
+    // If element has percentage values or constraints and needs to be adjusted for this canvas size
+    if (element.sizeId !== canvasSize.name && 
+        (element.style.xPercent !== undefined || 
+        element.style.constraintHorizontal !== undefined)) {
       
       // Find the source size (the size this element was originally created for)
       const sourceSize = {
         name: element.sizeId || 'unknown',
-        width: canvasSize.width, // Fallback to current size if unknown
-        height: canvasSize.height
+        width: element.sizeId === 'global' ? canvasSize.width : 600, // Fallback to current size if unknown
+        height: element.sizeId === 'global' ? canvasSize.height : 800
       };
       
       // Use calculateSmartPosition to adjust to this canvas

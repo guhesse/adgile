@@ -1,5 +1,6 @@
 import { EditorElement, BannerSize } from "../../types";
 import { applyResponsiveTransformation } from "./constraintOperations";
+import { analyzeElementPosition } from "../../utils/grid/responsivePosition";
 
 /**
  * Updates all linked elements when one is modified
@@ -41,7 +42,6 @@ export const updateAllLinkedElements = (
       verticalConstraint: sourceElement.style.constraintVertical };
   
   if (!horizontalConstraint || !verticalConstraint) {
-    const { analyzeElementPosition } = require('../../utils/grid/responsivePosition');
     const constraints = analyzeElementPosition(sourceElement, sourceSize);
     horizontalConstraint = horizontalConstraint || constraints.horizontalConstraint;
     verticalConstraint = verticalConstraint || constraints.verticalConstraint;
@@ -73,6 +73,7 @@ export const updateAllLinkedElements = (
           style: {
             ...sourceElement.style,
             ...absoluteChanges,
+            ...calculatedPercentChanges,
             constraintHorizontal: horizontalConstraint,
             constraintVertical: verticalConstraint
           }
@@ -90,7 +91,9 @@ export const updateAllLinkedElements = (
           ...el,
           style: {
             ...el.style,
-            ...transformedElement.style
+            ...transformedElement.style,
+            constraintHorizontal: horizontalConstraint,
+            constraintVertical: verticalConstraint
           }
         };
       }
