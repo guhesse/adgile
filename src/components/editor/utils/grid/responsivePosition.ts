@@ -37,6 +37,11 @@ export const analyzeElementPosition = (
   return { horizontalConstraint, verticalConstraint };
 };
 
+// Determine if a banner size has a vertical orientation
+const isVerticalOrientation = (size: BannerSize): boolean => {
+  return size.height > size.width;
+};
+
 /**
  * Applies a transformation matrix to position an element
  * from one artboard size to another
@@ -46,7 +51,16 @@ export const applyTransformationMatrix = (
   sourceSize: BannerSize,
   targetSize: BannerSize
 ): { x: number, y: number, width: number, height: number } => {
-  // Calculate scaling factors
+  // Check if we need to handle orientation change
+  const sourceIsVertical = isVerticalOrientation(sourceSize);
+  const targetIsVertical = isVerticalOrientation(targetSize);
+  const isOrientationChange = sourceIsVertical !== targetIsVertical;
+  
+  if (isOrientationChange) {
+    return applyOrientationChangeMatrix(element, sourceSize, targetSize);
+  }
+  
+  // Calculate scaling factors for same orientation
   const scaleX = targetSize.width / sourceSize.width;
   const scaleY = targetSize.height / sourceSize.height;
   
@@ -130,6 +144,92 @@ export const applyTransformationMatrix = (
 };
 
 /**
+ * Special matrix transformation for orientation changes (vertical to horizontal or vice versa)
+ */
+export const applyOrientationChangeMatrix = (
+  element: EditorElement,
+  sourceSize: BannerSize,
+  targetSize: BannerSize
+): { x: number, y: number, width: number, height: number } => {
+  const sourceIsVertical = isVerticalOrientation(sourceSize);
+  
+  // Calculate element's position in source as percentages
+  const xPercent = (element.style.x / sourceSize.width) * 100;
+  const yPercent = (element.style.y / sourceSize.height) * 100;
+  const widthPercent = (element.style.width / sourceSize.width) * 100;
+  const heightPercent = (element.style.height / sourceSize.height) * 100;
+  
+  let x, y, width, height;
+  
+  if (sourceIsVertical) {
+    // Vertical to horizontal transformation
+    const isTopHalf = yPercent < 50;
+    
+    if (isTopHalf) {
+      // Elements in top half go to left side
+      x = targetSize.width * 0.25 - (widthPercent / 200) * targetSize.width;
+      y = (yPercent / 50) * targetSize.height;
+    } else {
+      // Elements in bottom half go to right side
+      x = targetSize.width * 0.75 - (widthPercent / 200) * targetSize.width;
+      y = ((yPercent - 50) / 50) * targetSize.height;
+    }
+    
+    // Swap width/height percentages, adjusted for aspect ratio
+    const aspectRatioAdjustment = (targetSize.width / targetSize.height) / (sourceSize.width / sourceSize.height);
+    width = Math.min(heightPercent * aspectRatioAdjustment, 45) * (targetSize.width / 100);
+    height = Math.min(widthPercent / aspectRatioAdjustment, 90) * (targetSize.height / 100);
+    
+    // For text elements, scale font size
+    if (element.type === "text" && element.style.fontSize) {
+      const fontScale = Math.min(
+        targetSize.width / sourceSize.height,  // intentional cross-axis
+        targetSize.height / sourceSize.width   // intentional cross-axis
+      );
+      element.style.fontSize = Math.max(element.style.fontSize * fontScale, 12);
+    }
+  } else {
+    // Horizontal to vertical transformation
+    const isLeftHalf = xPercent < 50;
+    
+    if (isLeftHalf) {
+      // Elements in left half go to top
+      x = (xPercent / 50) * targetSize.width;
+      y = targetSize.height * 0.25 - (heightPercent / 200) * targetSize.height;
+    } else {
+      // Elements in right half go to bottom
+      x = ((xPercent - 50) / 50) * targetSize.width;
+      y = targetSize.height * 0.75 - (heightPercent / 200) * targetSize.height;
+    }
+    
+    // Swap width/height percentages, adjusted for aspect ratio
+    const aspectRatioAdjustment = (targetSize.width / targetSize.height) / (sourceSize.width / sourceSize.height);
+    width = Math.min(heightPercent * aspectRatioAdjustment, 90) * (targetSize.width / 100);
+    height = Math.min(widthPercent / aspectRatioAdjustment, 45) * (targetSize.height / 100);
+    
+    // For text elements, scale font size
+    if (element.type === "text" && element.style.fontSize) {
+      const fontScale = Math.min(
+        targetSize.width / sourceSize.height,  // intentional cross-axis
+        targetSize.height / sourceSize.width   // intentional cross-axis
+      );
+      element.style.fontSize = Math.max(element.style.fontSize * fontScale * 0.8, 10);
+    }
+  }
+  
+  // Ensure elements are within canvas boundaries
+  x = Math.max(0, Math.min(x, targetSize.width - width));
+  y = Math.max(0, Math.min(y, targetSize.height - height));
+  
+  return { 
+    x: snapToGrid(x), 
+    y: snapToGrid(y), 
+    width: snapToGrid(width), 
+    height: snapToGrid(height) 
+  };
+};
+
+/**
  * Calculates a smart position for an element linked in different canvas sizes
  * based on percentages, respecting canvas boundaries
  */
@@ -141,6 +241,15 @@ export const calculateSmartPosition = (
   // Use constraint-based positioning if available
   if (element.style.constraintHorizontal || element.style.constraintVertical) {
     return applyTransformationMatrix(element, sourceSize, targetSize);
+  }
+  
+  // Check if we need to handle orientation change
+  const sourceIsVertical = isVerticalOrientation(sourceSize);
+  const targetIsVertical = isVerticalOrientation(targetSize);
+  const isOrientationChange = sourceIsVertical !== targetIsVertical;
+  
+  if (isOrientationChange) {
+    return applyOrientationChangeMatrix(element, sourceSize, targetSize);
   }
   
   // First, ensure we have percentage values

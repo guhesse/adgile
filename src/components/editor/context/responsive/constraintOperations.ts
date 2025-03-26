@@ -1,3 +1,4 @@
+
 import { EditorElement, BannerSize } from '../../types';
 
 // Type for constraint detection results
@@ -63,20 +64,32 @@ export const detectElementConstraints = (element: EditorElement): ConstraintDete
   return result;
 };
 
-// Apply responsive transformation based on constraints
+// Determine if a banner size has a vertical orientation
+const isVerticalOrientation = (size: BannerSize): boolean => {
+  return size.height > size.width;
+};
+
+// Apply responsive transformation based on constraints and orientation
 export const applyResponsiveTransformation = (
   element: EditorElement, 
   sourceSize: BannerSize, 
   targetSize: BannerSize
 ): EditorElement => {
   // Clone the element to avoid mutating the original
-  const transformedElement = { ...element };
+  const transformedElement = { ...element, style: { ...element.style } };
   const { style } = transformedElement;
   
-  // Apply transformations based on constraints
-  const horizontalConstraint = style.constraintHorizontal || "left";
-  const verticalConstraint = style.constraintVertical || "top";
+  // Determine orientation of source and target
+  const sourceIsVertical = isVerticalOrientation(sourceSize);
+  const targetIsVertical = isVerticalOrientation(targetSize);
   
+  // Check if we're transforming between different orientations
+  const isOrientationChange = sourceIsVertical !== targetIsVertical;
+  
+  // Apply transformations based on constraints
+  let horizontalConstraint = style.constraintHorizontal || "left";
+  let verticalConstraint = style.constraintVertical || "top";
+
   const sourceWidth = sourceSize.width;
   const sourceHeight = sourceSize.height;
   const targetWidth = targetSize.width;
@@ -85,6 +98,18 @@ export const applyResponsiveTransformation = (
   // Calculate width and height scaling
   const widthScale = targetWidth / sourceWidth;
   const heightScale = targetHeight / sourceHeight;
+  
+  // For orientation changes, we need to adapt constraint strategies
+  if (isOrientationChange) {
+    // Apply special transformation for orientation changes
+    return applyOrientationChangeTransformation(
+      element, 
+      sourceSize, 
+      targetSize
+    );
+  }
+  
+  // Standard transformation for same orientation
   
   // Calculate new dimensions
   if (horizontalConstraint === "scale") {
@@ -128,6 +153,125 @@ export const applyResponsiveTransformation = (
       break;
   }
   
+  // Special handling for text elements to scale font size
+  if (element.type === 'text' && style.fontSize) {
+    // Scale font size but ensure minimum legibility
+    const fontScale = Math.min(widthScale, heightScale);
+    style.fontSize = Math.max(style.fontSize * fontScale, 10); // minimum 10px font size
+  }
+  
+  // Update percentage values
+  style.xPercent = (style.x / targetWidth) * 100;
+  style.yPercent = (style.y / targetHeight) * 100;
+  style.widthPercent = (style.width / targetWidth) * 100;
+  style.heightPercent = (style.height / targetHeight) * 100;
+  
+  return transformedElement;
+};
+
+// Special transformation for orientation changes (vertical to horizontal or vice versa)
+const applyOrientationChangeTransformation = (
+  element: EditorElement,
+  sourceSize: BannerSize,
+  targetSize: BannerSize
+): EditorElement => {
+  // Clone the element to avoid mutating the original
+  const transformedElement = { ...element, style: { ...element.style } };
+  const { style } = transformedElement;
+  
+  const sourceIsVertical = isVerticalOrientation(sourceSize);
+  const sourceWidth = sourceSize.width;
+  const sourceHeight = sourceSize.height;
+  const targetWidth = targetSize.width;
+  const targetHeight = targetSize.height;
+  
+  // Calculate the element's position in the source banner as percentages
+  const xPercent = (style.x / sourceWidth) * 100;
+  const yPercent = (style.y / sourceHeight) * 100;
+  const widthPercent = (style.width / sourceWidth) * 100;
+  const heightPercent = (style.height / sourceHeight) * 100;
+  
+  // For vertical to horizontal transformation:
+  // - Top half elements go to left side
+  // - Bottom half elements go to right side
+  // For horizontal to vertical transformation:
+  // - Left half elements go to top
+  // - Right half elements go to bottom
+  
+  if (sourceIsVertical) {
+    // Vertical to horizontal transformation
+    
+    // Determine if element is in top half or bottom half
+    const isTopHalf = yPercent < 50;
+    
+    if (isTopHalf) {
+      // Element is in top half, position to left side
+      style.x = (targetWidth * 0.25) - (style.width / 2);
+      // Maintain vertical position proportionally in the top half
+      style.y = (yPercent / 50) * targetHeight;
+    } else {
+      // Element is in bottom half, position to right side
+      style.x = (targetWidth * 0.75) - (style.width / 2);
+      // Maintain vertical position proportionally in the bottom half
+      style.y = ((yPercent - 50) / 50) * targetHeight;
+    }
+    
+    // For text elements, adjust font size based on target dimensions
+    if (element.type === 'text' && style.fontSize) {
+      // Scale based on the smallest dimension ratio for legibility
+      const fontScale = Math.min(targetWidth / sourceWidth, targetHeight / sourceHeight);
+      style.fontSize = Math.max(style.fontSize * fontScale * 1.2, 12); // Increase by 20% for better readability
+    }
+    
+    // For images, adjust dimensions while maintaining aspect ratio
+    if (element.type === 'image' || element.type === 'logo') {
+      // Maintain aspect ratio but scale proportionally
+      const aspectRatio = style.width / style.height;
+      
+      // Scale down width for horizontal layout
+      style.width = Math.min(style.width, targetWidth * 0.4);
+      style.height = style.width / aspectRatio;
+    }
+  } else {
+    // Horizontal to vertical transformation
+    
+    // Determine if element is in left half or right half
+    const isLeftHalf = xPercent < 50;
+    
+    if (isLeftHalf) {
+      // Element is in left half, position to top half
+      style.y = (targetHeight * 0.25) - (style.height / 2);
+      // Maintain horizontal position proportionally in the left half
+      style.x = (xPercent / 50) * targetWidth;
+    } else {
+      // Element is in right half, position to bottom half
+      style.y = (targetHeight * 0.75) - (style.height / 2);
+      // Maintain horizontal position proportionally in the right half
+      style.x = ((xPercent - 50) / 50) * targetWidth;
+    }
+    
+    // For text elements, adjust font size
+    if (element.type === 'text' && style.fontSize) {
+      // Scale based on the smallest dimension ratio for legibility
+      const fontScale = Math.min(targetWidth / sourceWidth, targetHeight / sourceHeight);
+      style.fontSize = Math.max(style.fontSize * fontScale * 0.8, 10); // Reduce by 20% for vertical layout
+    }
+    
+    // For images, adjust dimensions while maintaining aspect ratio
+    if (element.type === 'image' || element.type === 'logo') {
+      // Maintain aspect ratio but scale proportionally
+      const aspectRatio = style.width / style.height;
+      
+      // Scale down width for vertical layout
+      style.width = Math.min(style.width, targetWidth * 0.8);
+      style.height = style.width / aspectRatio;
+    }
+  }
+  
+  // Ensure elements are not positioned outside the canvas
+  style.x = Math.max(0, Math.min(style.x, targetWidth - style.width));
+  style.y = Math.max(0, Math.min(style.y, targetHeight - style.height));
+  
   // Update percentage values
   style.xPercent = (style.x / targetWidth) * 100;
   style.yPercent = (style.y / targetHeight) * 100;
@@ -146,21 +290,15 @@ export const setElementConstraints = (
   }
 ): EditorElement => {
   // Clone the element to avoid mutating the original
-  const updatedElement = { ...element };
+  const updatedElement = { ...element, style: { ...element.style } };
   
   // Only update if constraints are provided
   if (constraints.horizontal) {
-    updatedElement.style = {
-      ...updatedElement.style,
-      constraintHorizontal: constraints.horizontal
-    };
+    updatedElement.style.constraintHorizontal = constraints.horizontal;
   }
   
   if (constraints.vertical) {
-    updatedElement.style = {
-      ...updatedElement.style,
-      constraintVertical: constraints.vertical
-    };
+    updatedElement.style.constraintVertical = constraints.vertical;
   }
   
   return updatedElement;

@@ -6,9 +6,10 @@ import { CanvasWorkspace } from "./CanvasWorkspace";
 import { useCanvas } from "./CanvasContext";
 import { LeftSidebar } from "./LeftSidebar";
 import { PSDImport } from "./PSDImport";
+import { EditorMode } from "./types";
 
 interface CanvasProps {
-  editorMode: "email" | "banner";
+  editorMode: EditorMode;
 }
 
 const CanvasContent = ({ editorMode }: CanvasProps) => {

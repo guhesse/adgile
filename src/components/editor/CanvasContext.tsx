@@ -12,9 +12,9 @@ import { CanvasContextType } from "./context/CanvasContextTypes";
 import { updateLinkedElementsIntelligently } from "./utils/grid/responsivePosition";
 import { toast } from "sonner";
 import { 
-  detectElementConstraints as detectConstraints, 
-  applyResponsiveTransformation as applyTransformation, 
-  setElementConstraints as setConstraints
+  detectElementConstraints, 
+  applyResponsiveTransformation, 
+  setElementConstraints
 } from "./context/responsive";
 
 interface CanvasProviderProps {
@@ -369,22 +369,19 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children }) => {
     }
   };
   
-  const applyResponsiveTransformation = (element: EditorElement, sourceSize: BannerSize, targetSize: BannerSize) => {
+  const applyResponsiveTransformation = (element: EditorElement, sourceSize: BannerSize, targetSize: BannerSize): EditorElement => {
     return applyTransformation(element, sourceSize, targetSize);
   };
   
-  const setElementConstraints = (constraints: { 
-    horizontal?: "left" | "right" | "center" | "scale", 
-    vertical?: "top" | "bottom" | "center" | "scale" 
-  }) => {
+  const setElementConstraints = (
+    constraints: { 
+      horizontal?: "left" | "right" | "center" | "scale", 
+      vertical?: "top" | "bottom" | "center" | "scale" 
+    }
+  ) => {
     if (!selectedElement) return;
     
-    const fullConstraints = {
-      horizontal: constraints.horizontal || "left",
-      vertical: constraints.vertical || "top"
-    };
-    
-    const updatedElement = setConstraints(selectedElement, fullConstraints);
+    const updatedElement = setConstraints(selectedElement, constraints);
     
     setElements(prevElements => 
       prevElements.map(el => el.id === selectedElement.id ? updatedElement : el)
