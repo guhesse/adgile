@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
+
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { CanvasProvider } from "@/components/editor/CanvasContext";
 import { Canvas } from "@/components/editor/Canvas";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { AdminLayoutStats } from "@/components/editor/admin/AdminLayoutStats";
 import { AdminFormatSelector } from "@/components/editor/admin/AdminFormatSelector";
 import { AIModelManager } from "@/components/editor/ai/AIModelManager";
 import { LayoutTemplate, AdminStats } from "@/components/editor/types/admin";
-import { BannerSize } from "@/components/editor/types";
+import { BannerSize, EditorElement } from "@/components/editor/types";
 import { AdminTrainingPanel } from "@/components/editor/panels/AdminTrainingPanel";
 import { saveToIndexedDB, getFromIndexedDB } from "@/utils/indexedDBUtils";
 import { getOptimizedFormats } from "@/utils/formatGenerator";
@@ -47,6 +48,7 @@ const Admin: React.FC = () => {
     loss: 0
   });
   const [aiModel, setAiModel] = useState<tf.LayersModel | null>(null);
+  const canvasProviderRef = useRef<any>(null);
 
   // Inicializar ou carregar formatos
   useEffect(() => {
@@ -140,10 +142,27 @@ const Admin: React.FC = () => {
     setActiveTab(value);
   };
 
+  // Get elements from Canvas
+  const getCanvasElements = (): EditorElement[] => {
+    if (canvasProviderRef.current && canvasProviderRef.current.elements) {
+      return [...canvasProviderRef.current.elements];
+    }
+    return [];
+  };
+
   // Salvar um template
-  const handleSaveTemplate = async (elements: any[]) => {
+  const handleSaveTemplate = async () => {
     if (!selectedFormat) {
       toast.error("Selecione um formato primeiro");
+      return;
+    }
+
+    // Get elements from the canvas context
+    const elements = getCanvasElements();
+    console.log("Capturing elements from canvas:", elements);
+
+    if (!elements || elements.length === 0) {
+      toast.warning("O canvas está vazio. Adicione alguns elementos antes de salvar.");
       return;
     }
 
@@ -165,13 +184,14 @@ const Admin: React.FC = () => {
     setSavedTemplates(updatedTemplates);
     updateStats(updatedTemplates);
 
-    console.log("Tentando salvar templates:", updatedTemplates);
+    console.log("Tentando salvar template:", newTemplate);
+    console.log("Elementos capturados:", elements);
 
     try {
       const success = await saveToIndexedDB(STORAGE_KEY, updatedTemplates);
 
       if (success) {
-        toast.success("Template salvo com sucesso no IndexedDB");
+        toast.success("Template salvo com sucesso");
         console.log("Template salvo com sucesso no IndexedDB");
       } else {
         toast.error("Falha ao salvar o template");
@@ -238,14 +258,6 @@ const Admin: React.FC = () => {
     }
   };
 
-  // Capturar e salvar o template atual
-  const captureAndSaveTemplate = () => {
-    handleSaveTemplate([]);
-    toast("Template capturado do canvas", {
-      description: "Os elementos atuais do canvas foram salvos como um novo template."
-    });
-  };
-
   // Callback para quando o modelo estiver pronto
   const handleModelReady = (model: tf.LayersModel) => {
     setAiModel(model);
@@ -260,6 +272,11 @@ const Admin: React.FC = () => {
     toast.success("Modelo de IA está pronto para uso");
   };
 
+  // Set canvas provider reference
+  const setCanvasProviderRef = (ref: any) => {
+    canvasProviderRef.current = ref;
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       <header className="bg-white border-b px-6 py-4">
@@ -269,7 +286,7 @@ const Admin: React.FC = () => {
             <Button variant="outline" onClick={() => window.location.href = "/"}>
               Voltar ao Editor
             </Button>
-            <Button onClick={captureAndSaveTemplate} disabled={!selectedFormat}>
+            <Button onClick={handleSaveTemplate} disabled={!selectedFormat}>
               Salvar Layout Atual
             </Button>
           </div>
@@ -300,11 +317,13 @@ const Admin: React.FC = () => {
               <div className="flex-1 flex flex-col">
                 {selectedFormat ? (
                   <div className="flex-1 overflow-hidden">
-                    <CanvasProvider fixedSize={selectedFormat}>
+                    <CanvasProvider 
+                      fixedSize={selectedFormat}
+                      ref={setCanvasProviderRef}
+                    >
                       <Canvas
                         editorMode="banner"
                         fixedSize={selectedFormat}
-                        className="h-full w-full bg-gray-100"
                       />
                     </CanvasProvider>
                   </div>

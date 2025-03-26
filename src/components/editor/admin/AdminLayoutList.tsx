@@ -16,9 +16,19 @@ import {
   Calendar, 
   Terminal,
   Square, 
-  TrendingUp 
+  TrendingUp,
+  Maximize,
+  FileCode
 } from "lucide-react";
 import { AdminLayoutListProps } from "@/types/admin";
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ElementRender } from "../elements/ElementRender";
 
 export const AdminLayoutList: React.FC<AdminLayoutListProps> = ({ templates, onDeleteTemplate }) => {
   // Add a safe check for templates array to prevent runtime errors
@@ -70,15 +80,135 @@ export const AdminLayoutList: React.FC<AdminLayoutListProps> = ({ templates, onD
                       backgroundColor: "#f1f5f9"
                     }}
                   >
-                    {/* Layout preview would go here */}
+                    {/* Canvas preview with elements */}
+                    <div className="absolute inset-0">
+                      {layout.elements && layout.elements.length > 0 && (
+                        layout.elements.map((element) => (
+                          <div 
+                            key={element.id}
+                            className="absolute"
+                            style={{
+                              left: `${(element.style.x / layout.width) * 100}%`,
+                              top: `${(element.style.y / layout.height) * 100}%`,
+                              width: `${(element.style.width / layout.width) * 100}%`,
+                              height: `${(element.style.height / layout.height) * 100}%`,
+                              backgroundColor: element.type === 'image' ? '#e2e8f0' : 
+                                              element.type === 'text' ? 'transparent' : 
+                                              element.style.backgroundColor || '#94a3b8',
+                              border: '1px solid #cbd5e1',
+                              borderRadius: element.style.borderRadius ? `${element.style.borderRadius}px` : '0',
+                              overflow: 'hidden',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                          >
+                            {element.type === 'text' && (
+                              <div className="w-full h-1 bg-gray-400"></div>
+                            )}
+                            {element.type === 'image' && (
+                              <FileCode className="w-3 h-3 text-gray-400" />
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>
               <CardFooter className="p-3 pt-2 flex justify-between">
-                <Button variant="outline" size="sm" className="h-8">
-                  <Eye className="h-3.5 w-3.5 mr-1" />
-                  View
-                </Button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8">
+                      <Eye className="h-3.5 w-3.5 mr-1" />
+                      View
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-3xl">
+                    <DialogHeader>
+                      <DialogTitle>{layout.name} ({layout.width} × {layout.height}px)</DialogTitle>
+                    </DialogHeader>
+                    <div className="mt-4 border rounded-md overflow-hidden">
+                      <div 
+                        className="relative mx-auto"
+                        style={{ 
+                          width: `${Math.min(layout.width, 800)}px`,
+                          height: `${Math.min(layout.height, 600)}px`,
+                          maxWidth: '100%',
+                          backgroundColor: "white",
+                          transform: layout.width > 800 ? `scale(${800/layout.width})` : '1',
+                          transformOrigin: 'top left'
+                        }}
+                      >
+                        {layout.elements && layout.elements.length > 0 && (
+                          layout.elements.map((element) => (
+                            <div 
+                              key={element.id}
+                              className="absolute"
+                              style={{
+                                left: `${element.style.x}px`,
+                                top: `${element.style.y}px`,
+                                width: `${element.style.width}px`,
+                                height: `${element.style.height}px`,
+                                backgroundColor: element.style.backgroundColor || 'transparent',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: element.style.borderRadius ? `${element.style.borderRadius}px` : '0',
+                                overflow: 'hidden'
+                              }}
+                            >
+                              {element.type === 'text' && (
+                                <div 
+                                  style={{
+                                    color: element.style.color || '#000',
+                                    fontSize: `${element.style.fontSize || 16}px`,
+                                    fontWeight: element.style.fontWeight || 'normal',
+                                    fontFamily: element.style.fontFamily || 'sans-serif',
+                                    lineHeight: element.style.lineHeight || 1.2,
+                                    textAlign: element.style.textAlign || 'left',
+                                    padding: '4px'
+                                  }}
+                                >
+                                  {element.content || 'Text Element'}
+                                </div>
+                              )}
+                              {element.type === 'image' && (
+                                <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                                  {element.src ? (
+                                    <img 
+                                      src={element.src} 
+                                      alt={element.alt || 'Image'} 
+                                      className="max-w-full max-h-full object-contain"
+                                    />
+                                  ) : (
+                                    <FileCode className="w-8 h-8 text-gray-400" />
+                                  )}
+                                </div>
+                              )}
+                              {element.type === 'button' && (
+                                <button
+                                  className="w-full h-full flex items-center justify-center"
+                                  style={{
+                                    backgroundColor: element.style.backgroundColor || '#3b82f6',
+                                    color: element.style.color || 'white',
+                                    fontWeight: element.style.fontWeight || 'bold',
+                                    borderRadius: element.style.borderRadius ? `${element.style.borderRadius}px` : '4px'
+                                  }}
+                                >
+                                  {element.content || 'Button'}
+                                </button>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-4 text-sm text-gray-500">
+                      <p>Created: {new Date(layout.createdAt).toLocaleString()}</p>
+                      <p>Last Updated: {new Date(layout.updatedAt).toLocaleString()}</p>
+                      <p>Elements: {layout.elements?.length || 0}</p>
+                    </div>
+                  </DialogContent>
+                </Dialog>
                 <Button 
                   variant="outline" 
                   size="sm" 

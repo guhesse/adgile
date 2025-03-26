@@ -1,268 +1,272 @@
-import React, { useState } from 'react';
-import { BannerSize } from '@/components/editor/types';
-import { Card, CardContent } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  LayoutGrid, 
-  LayoutList, 
-  Square, 
-  ImageIcon,
-  ChevronDown,
-  ChevronUp,
-  Search
-} from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+import React, { useState } from "react";
+import { BannerSize } from "@/components/editor/types";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Search, TrendingUp, Square } from "lucide-react";
 
 interface AdminFormatSelectorProps {
   formats: BannerSize[];
-  selectedFormat: BannerSize | null;
   onSelectFormat: (format: BannerSize) => void;
+  selectedFormat: BannerSize | null;
 }
 
-export const AdminFormatSelector = ({ 
-  formats, 
-  selectedFormat, 
-  onSelectFormat 
-}: AdminFormatSelectorProps) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showVertical, setShowVertical] = useState(true);
-  const [showHorizontal, setShowHorizontal] = useState(true);
-  const [showSquare, setShowSquare] = useState(true);
+export const AdminFormatSelector: React.FC<AdminFormatSelectorProps> = ({
+  formats,
+  onSelectFormat,
+  selectedFormat,
+}) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState<"all" | "vertical" | "horizontal" | "square">("all");
 
-  // Organizar formatos por orientação
-  const verticalFormats = formats.filter(f => f.height > f.width);
-  const horizontalFormats = formats.filter(f => f.width > f.height);
-  const squareFormats = formats.filter(f => {
-    const ratio = f.width / f.height;
-    return ratio >= 0.95 && ratio <= 1.05;
-  });
+  // Filtrar formatos por orientação e pesquisa
+  const filteredFormats = formats
+    .filter((format) => {
+      if (searchTerm) {
+        return (
+          format.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          `${format.width}x${format.height}`.includes(searchTerm)
+        );
+      }
+      return true;
+    })
+    .filter((format) => {
+      if (activeTab === "all") return true;
+      const ratio = format.width / format.height;
+      if (activeTab === "square" && ratio >= 0.95 && ratio <= 1.05) return true;
+      if (activeTab === "horizontal" && ratio > 1.05) return true;
+      if (activeTab === "vertical" && ratio < 0.95) return true;
+      return false;
+    });
 
-  // Filtrar formatos com base na busca
-  const filterFormats = (formats: BannerSize[]) => {
-    if (!searchQuery) return formats;
-    return formats.filter(format => 
-      format.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      `${format.width}x${format.height}`.includes(searchQuery)
-    );
+  const handleSelectFormat = (format: BannerSize) => {
+    onSelectFormat(format);
   };
-
-  const filteredVertical = filterFormats(verticalFormats);
-  const filteredHorizontal = filterFormats(horizontalFormats);
-  const filteredSquare = filterFormats(squareFormats);
-
-  // Função para gerar um thumbnail placeholder baseado na orientação do formato
-  const getFormatPlaceholder = (format: BannerSize) => {
-    const ratio = format.width / format.height;
-    
-    if (ratio >= 0.95 && ratio <= 1.05) {
-      return <Square className="h-4 w-4 text-purple-400" />;
-    } else if (ratio > 1) {
-      return <LayoutList className="h-4 w-4 text-blue-400" />;
-    } else {
-      return <LayoutGrid className="h-4 w-4 text-green-400" />;
-    }
-  };
-
-  // Renderização do item de formato compacto
-  const renderFormatItem = (format: BannerSize, colorClass: string, bgClass: string, icon: React.ReactNode) => (
-    <div 
-      key={format.name}
-      className={`flex items-center p-2 rounded-md cursor-pointer hover:bg-gray-100 ${
-        selectedFormat?.name === format.name ? 'bg-blue-50 ring-1 ring-blue-200' : ''
-      }`}
-      onClick={() => onSelectFormat(format)}
-    >
-      <div className={`mr-3 w-8 h-8 ${bgClass} rounded flex items-center justify-center flex-shrink-0`}>
-        {format.thumbnail ? (
-          <img
-            src={`/thumbnails/${format.thumbnail}`}
-            alt={format.name}
-            className="w-full h-full object-cover rounded"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-              e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
-              const iconEl = document.createElement('div');
-              iconEl.innerHTML = icon.toString();
-              e.currentTarget.parentElement?.appendChild(iconEl);
-            }}
-          />
-        ) : (
-          icon
-        )}
-      </div>
-      <div className="flex-grow min-w-0">
-        <div className="text-xs font-medium truncate">{format.name}</div>
-        <div className="text-xs text-gray-500">{format.width}×{format.height}</div>
-      </div>
-    </div>
-  );
 
   return (
-    <div className="flex flex-col h-[calc(100vh-220px)]">
-      <div className="mb-3 px-1">
-        <div className="relative">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Buscar formatos..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8"
-          />
-        </div>
+    <div className="flex flex-col h-full">
+      <div className="relative mb-4">
+        <Input
+          placeholder="Pesquisar formatos..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-9"
+        />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
       </div>
 
-      <Tabs defaultValue="all" className="w-full">
-        <TabsList className="w-full mb-3">
-          <TabsTrigger value="all" className="flex-1">Todos</TabsTrigger>
-          <TabsTrigger value="vertical" className="flex-1">Verticais</TabsTrigger>
-          <TabsTrigger value="horizontal" className="flex-1">Horizontais</TabsTrigger>
-          <TabsTrigger value="square" className="flex-1">Quadrados</TabsTrigger>
+      <Tabs defaultValue="all" value={activeTab} onValueChange={(val) => setActiveTab(val as any)}>
+        <TabsList className="w-full">
+          <TabsTrigger value="all" className="flex-1">
+            Todos
+          </TabsTrigger>
+          <TabsTrigger value="vertical" className="flex-1">
+            <TrendingUp className="h-4 w-4 rotate-90 mr-1" />
+            V
+          </TabsTrigger>
+          <TabsTrigger value="horizontal" className="flex-1">
+            <TrendingUp className="h-4 w-4 mr-1" />
+            H
+          </TabsTrigger>
+          <TabsTrigger value="square" className="flex-1">
+            <Square className="h-4 w-4 mr-1" />
+            Q
+          </TabsTrigger>
         </TabsList>
-        
-        <ScrollArea className="flex-grow">
-          <div className="space-y-4 pr-3">
-            <TabsContent value="all" className="m-0 space-y-4">
-              {/* Formatos Verticais */}
-              <div className="border rounded-md overflow-hidden">
-                <div 
-                  className="flex items-center justify-between p-2 bg-gray-50 cursor-pointer"
-                  onClick={() => setShowVertical(!showVertical)}
+
+        <TabsContent value="all" className="flex-1 border rounded-md p-0">
+          <ScrollArea className="h-[calc(100vh-320px)]">
+            <div className="p-2 grid grid-cols-2 gap-2">
+              {filteredFormats.map((format, index) => (
+                <div
+                  key={`${format.name}-${format.width}-${format.height}`}
+                  className={`relative border rounded-md overflow-hidden cursor-pointer transition-all ${
+                    selectedFormat &&
+                    selectedFormat.width === format.width &&
+                    selectedFormat.height === format.height
+                      ? "border-2 border-blue-500"
+                      : "hover:border-gray-400"
+                  }`}
+                  onClick={() => handleSelectFormat(format)}
                 >
-                  <h4 className="text-sm font-medium text-gray-700 flex items-center">
-                    <LayoutGrid className="h-4 w-4 mr-2 text-green-500" />
-                    Formatos Verticais ({filteredVertical.length})
-                  </h4>
-                  {showVertical ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </div>
-                
-                {showVertical && (
-                  <div className="divide-y divide-gray-100">
-                    {filteredVertical.map((format) => 
-                      renderFormatItem(
-                        format, 
-                        "text-green-300", 
-                        "bg-green-50",
-                        <LayoutGrid className="h-4 w-4 text-green-300" />
-                      )
+                  <div
+                    className="relative w-full"
+                    style={{
+                      paddingBottom: `${(format.height / format.width) * 100}%`,
+                    }}
+                  >
+                    {format.thumbnail && (
+                      <div className="absolute inset-0 flex items-center justify-center overflow-hidden bg-gray-100">
+                        <img
+                          src={`/thumbnails/${format.thumbnail}`}
+                          alt={format.name}
+                          className="object-cover w-full h-full"
+                          onError={(e) => {
+                            e.currentTarget.src = "/placeholder.svg";
+                          }}
+                        />
+                      </div>
                     )}
-                    {filteredVertical.length === 0 && (
-                      <div className="p-3 text-sm text-gray-500 text-center">Nenhum formato encontrado</div>
-                    )}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-1">
+                      <div className="text-xs font-medium text-center line-clamp-1 bg-white/80 px-1 rounded">
+                        {format.name}
+                      </div>
+                      <div className="text-[10px] text-gray-500 bg-white/80 px-1 rounded mt-1">
+                        {format.width}×{format.height}
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
-              
-              {/* Formatos Horizontais */}
-              <div className="border rounded-md overflow-hidden">
-                <div 
-                  className="flex items-center justify-between p-2 bg-gray-50 cursor-pointer"
-                  onClick={() => setShowHorizontal(!showHorizontal)}
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="vertical" className="flex-1 border rounded-md p-0">
+          <ScrollArea className="h-[calc(100vh-320px)]">
+            <div className="p-2 grid grid-cols-2 gap-2">
+              {filteredFormats.map((format, index) => (
+                <div
+                  key={`${format.name}-${format.width}-${format.height}`}
+                  className={`relative border rounded-md overflow-hidden cursor-pointer transition-all ${
+                    selectedFormat &&
+                    selectedFormat.width === format.width &&
+                    selectedFormat.height === format.height
+                      ? "border-2 border-blue-500"
+                      : "hover:border-gray-400"
+                  }`}
+                  onClick={() => handleSelectFormat(format)}
                 >
-                  <h4 className="text-sm font-medium text-gray-700 flex items-center">
-                    <LayoutList className="h-4 w-4 mr-2 text-blue-500" />
-                    Formatos Horizontais ({filteredHorizontal.length})
-                  </h4>
-                  {showHorizontal ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </div>
-                
-                {showHorizontal && (
-                  <div className="divide-y divide-gray-100">
-                    {filteredHorizontal.map((format) => 
-                      renderFormatItem(
-                        format, 
-                        "text-blue-300", 
-                        "bg-blue-50",
-                        <LayoutList className="h-4 w-4 text-blue-300" />
-                      )
+                  <div
+                    className="relative w-full"
+                    style={{
+                      paddingBottom: `${(format.height / format.width) * 100}%`,
+                    }}
+                  >
+                    {format.thumbnail && (
+                      <div className="absolute inset-0 flex items-center justify-center overflow-hidden bg-gray-100">
+                        <img
+                          src={`/thumbnails/${format.thumbnail}`}
+                          alt={format.name}
+                          className="object-cover w-full h-full"
+                          onError={(e) => {
+                            e.currentTarget.src = "/placeholder.svg";
+                          }}
+                        />
+                      </div>
                     )}
-                    {filteredHorizontal.length === 0 && (
-                      <div className="p-3 text-sm text-gray-500 text-center">Nenhum formato encontrado</div>
-                    )}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-1">
+                      <div className="text-xs font-medium text-center line-clamp-1 bg-white/80 px-1 rounded">
+                        {format.name}
+                      </div>
+                      <div className="text-[10px] text-gray-500 bg-white/80 px-1 rounded mt-1">
+                        {format.width}×{format.height}
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
-              
-              {/* Formatos Quadrados */}
-              <div className="border rounded-md overflow-hidden">
-                <div 
-                  className="flex items-center justify-between p-2 bg-gray-50 cursor-pointer"
-                  onClick={() => setShowSquare(!showSquare)}
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="horizontal" className="flex-1 border rounded-md p-0">
+          <ScrollArea className="h-[calc(100vh-320px)]">
+            <div className="p-2 grid grid-cols-2 gap-2">
+              {filteredFormats.map((format, index) => (
+                <div
+                  key={`${format.name}-${format.width}-${format.height}`}
+                  className={`relative border rounded-md overflow-hidden cursor-pointer transition-all ${
+                    selectedFormat &&
+                    selectedFormat.width === format.width &&
+                    selectedFormat.height === format.height
+                      ? "border-2 border-blue-500"
+                      : "hover:border-gray-400"
+                  }`}
+                  onClick={() => handleSelectFormat(format)}
                 >
-                  <h4 className="text-sm font-medium text-gray-700 flex items-center">
-                    <Square className="h-4 w-4 mr-2 text-purple-500" />
-                    Formatos Quadrados ({filteredSquare.length})
-                  </h4>
-                  {showSquare ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </div>
-                
-                {showSquare && (
-                  <div className="divide-y divide-gray-100">
-                    {filteredSquare.map((format) => 
-                      renderFormatItem(
-                        format, 
-                        "text-purple-300", 
-                        "bg-purple-50",
-                        <Square className="h-4 w-4 text-purple-300" />
-                      )
+                  <div
+                    className="relative w-full"
+                    style={{
+                      paddingBottom: `${(format.height / format.width) * 100}%`,
+                    }}
+                  >
+                    {format.thumbnail && (
+                      <div className="absolute inset-0 flex items-center justify-center overflow-hidden bg-gray-100">
+                        <img
+                          src={`/thumbnails/${format.thumbnail}`}
+                          alt={format.name}
+                          className="object-cover w-full h-full"
+                          onError={(e) => {
+                            e.currentTarget.src = "/placeholder.svg";
+                          }}
+                        />
+                      </div>
                     )}
-                    {filteredSquare.length === 0 && (
-                      <div className="p-3 text-sm text-gray-500 text-center">Nenhum formato encontrado</div>
-                    )}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-1">
+                      <div className="text-xs font-medium text-center line-clamp-1 bg-white/80 px-1 rounded">
+                        {format.name}
+                      </div>
+                      <div className="text-[10px] text-gray-500 bg-white/80 px-1 rounded mt-1">
+                        {format.width}×{format.height}
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="vertical" className="m-0">
-              <div className="divide-y divide-gray-100 border rounded-md">
-                {filteredVertical.map((format) => 
-                  renderFormatItem(
-                    format, 
-                    "text-green-300", 
-                    "bg-green-50",
-                    <LayoutGrid className="h-4 w-4 text-green-300" />
-                  )
-                )}
-                {filteredVertical.length === 0 && (
-                  <div className="p-3 text-sm text-gray-500 text-center">Nenhum formato encontrado</div>
-                )}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="horizontal" className="m-0">
-              <div className="divide-y divide-gray-100 border rounded-md">
-                {filteredHorizontal.map((format) => 
-                  renderFormatItem(
-                    format, 
-                    "text-blue-300", 
-                    "bg-blue-50",
-                    <LayoutList className="h-4 w-4 text-blue-300" />
-                  )
-                )}
-                {filteredHorizontal.length === 0 && (
-                  <div className="p-3 text-sm text-gray-500 text-center">Nenhum formato encontrado</div>
-                )}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="square" className="m-0">
-              <div className="divide-y divide-gray-100 border rounded-md">
-                {filteredSquare.map((format) => 
-                  renderFormatItem(
-                    format, 
-                    "text-purple-300", 
-                    "bg-purple-50",
-                    <Square className="h-4 w-4 text-purple-300" />
-                  )
-                )}
-                {filteredSquare.length === 0 && (
-                  <div className="p-3 text-sm text-gray-500 text-center">Nenhum formato encontrado</div>
-                )}
-              </div>
-            </TabsContent>
-          </div>
-        </ScrollArea>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="square" className="flex-1 border rounded-md p-0">
+          <ScrollArea className="h-[calc(100vh-320px)]">
+            <div className="p-2 grid grid-cols-2 gap-2">
+              {filteredFormats.map((format, index) => (
+                <div
+                  key={`${format.name}-${format.width}-${format.height}`}
+                  className={`relative border rounded-md overflow-hidden cursor-pointer transition-all ${
+                    selectedFormat &&
+                    selectedFormat.width === format.width &&
+                    selectedFormat.height === format.height
+                      ? "border-2 border-blue-500"
+                      : "hover:border-gray-400"
+                  }`}
+                  onClick={() => handleSelectFormat(format)}
+                >
+                  <div
+                    className="relative w-full"
+                    style={{
+                      paddingBottom: `${(format.height / format.width) * 100}%`,
+                    }}
+                  >
+                    {format.thumbnail && (
+                      <div className="absolute inset-0 flex items-center justify-center overflow-hidden bg-gray-100">
+                        <img
+                          src={`/thumbnails/${format.thumbnail}`}
+                          alt={format.name}
+                          className="object-cover w-full h-full"
+                          onError={(e) => {
+                            e.currentTarget.src = "/placeholder.svg";
+                          }}
+                        />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-1">
+                      <div className="text-xs font-medium text-center line-clamp-1 bg-white/80 px-1 rounded">
+                        {format.name}
+                      </div>
+                      <div className="text-[10px] text-gray-500 bg-white/80 px-1 rounded mt-1">
+                        {format.width}×{format.height}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </TabsContent>
       </Tabs>
     </div>
   );

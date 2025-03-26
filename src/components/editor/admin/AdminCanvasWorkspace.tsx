@@ -1,4 +1,5 @@
-import React, { useRef, useEffect, useState } from "react";
+
+import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import { useCanvas } from "../CanvasContext";
 import { AdminDraggableElement } from "./AdminDraggableElement";
 import { ElementRender } from "../elements/ElementRender";
@@ -9,7 +10,7 @@ interface AdminCanvasWorkspaceProps {
   fixedSize: BannerSize;
 }
 
-export const AdminCanvasWorkspace = ({ fixedSize }: AdminCanvasWorkspaceProps) => {
+export const AdminCanvasWorkspace = forwardRef(({ fixedSize }: AdminCanvasWorkspaceProps, ref) => {
   const { 
     elements,
     selectedElement,
@@ -28,6 +29,11 @@ export const AdminCanvasWorkspace = ({ fixedSize }: AdminCanvasWorkspaceProps) =
     left: 0,
     top: 0
   });
+  
+  // Expose elements to parent components
+  useImperativeHandle(ref, () => ({
+    elements
+  }));
   
   // Observer para ajustar o canvas ao tamanho do container
   useResizeObserver(containerRef, (entry) => {
@@ -140,4 +146,6 @@ export const AdminCanvasWorkspace = ({ fixedSize }: AdminCanvasWorkspaceProps) =
       </div>
     </div>
   );
-};
+});
+
+AdminCanvasWorkspace.displayName = "AdminCanvasWorkspace";

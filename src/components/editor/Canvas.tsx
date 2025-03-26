@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, forwardRef, useImperativeHandle } from "react";
 import PropertyPanel from "./PropertyPanel";
 import { CanvasControls } from "./CanvasControls";
 import { CanvasWorkspace } from "./CanvasWorkspace";
@@ -7,13 +7,15 @@ import { useCanvas } from "./CanvasContext";
 import { LeftSidebar } from "./LeftSidebar";
 import { PSDImport } from "./PSDImport";
 import { BannerSize, EditorMode } from "./types";
+import { AdminCanvasWorkspace } from "./admin/AdminCanvasWorkspace";
 
 interface CanvasProps {
   editorMode: EditorMode; // Changed to use the EditorMode type
   fixedSize?: BannerSize;
+  className?: string;
 }
 
-const CanvasContent = ({ editorMode }: CanvasProps) => {
+const CanvasContent = forwardRef(({ editorMode, fixedSize, className }: CanvasProps, ref) => {
   const { 
     elements, 
     selectedElement, 
@@ -30,8 +32,16 @@ const CanvasContent = ({ editorMode }: CanvasProps) => {
     updateAnimations
   } = useCanvas();
 
+  // Pass the elements up to any component that needs them
+  useImperativeHandle(ref, () => ({
+    elements
+  }));
+
+  // Admin workspace ref
+  const adminWorkspaceRef = useRef(null);
+
   return (
-    <div className="flex flex-1 h-full">
+    <div className={`flex flex-1 h-full ${className || ''}`}>
       {/* Left Sidebar with Elements and Layers Panel */}
       <LeftSidebar editorMode={editorMode} />
 
@@ -41,7 +51,12 @@ const CanvasContent = ({ editorMode }: CanvasProps) => {
           <CanvasControls />
           <PSDImport />
         </div>
-        <CanvasWorkspace />
+        
+        {fixedSize ? (
+          <AdminCanvasWorkspace fixedSize={fixedSize} ref={adminWorkspaceRef} />
+        ) : (
+          <CanvasWorkspace />
+        )}
       </div>
 
       {/* Right Properties Panel */}
@@ -76,10 +91,14 @@ const CanvasContent = ({ editorMode }: CanvasProps) => {
       */}
     </div>
   );
-};
+});
 
-export const Canvas = ({ editorMode, fixedSize }: CanvasProps) => {
+CanvasContent.displayName = "CanvasContent";
+
+export const Canvas = forwardRef(({ editorMode, fixedSize, className }: CanvasProps, ref) => {
   return (
-    <CanvasContent editorMode={editorMode} />
+    <CanvasContent editorMode={editorMode} fixedSize={fixedSize} className={className} ref={ref} />
   );
-};
+});
+
+Canvas.displayName = "Canvas";
