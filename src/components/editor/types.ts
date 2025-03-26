@@ -1,4 +1,3 @@
-
 export type BannerSize = {
   name: string;
   width: number;
@@ -56,6 +55,8 @@ export type EditorElement = {
     gridColumn?: string;
     gridRow?: string;
     opacity?: number;
+    rotation?: number; // Adicionado rotation
+    zIndex?: number; // Adicionado zIndex
     // Valores para manter a proporção original da imagem
     originalWidth?: number;
     originalHeight?: number;
@@ -71,6 +72,10 @@ export type EditorElement = {
     minHeight?: number; // Minimum height constraint
     maxWidth?: number;  // Maximum width constraint
     maxHeight?: number; // Maximum height constraint
+    // For masks
+    hasMask?: boolean;  // Added for mask support
+    maskInfo?: any;     // Added for mask info
+    clipPath?: string;  // Support for clip path
   };
   columns?: number;
   childElements?: EditorElement[];
@@ -88,6 +93,7 @@ export type EditorElement = {
     effects?: any[];
     blendMode?: string;
     originalPath?: string;
+    name?: string;  // Added name property
   };
   // Responsiveness settings
   responsiveSettings?: {
@@ -98,7 +104,6 @@ export type EditorElement = {
   };
 };
 
-// Novo tipo para compartilhar entre componentes
 export type EditorMode = "email" | "banner" | "social" | "impressos";
 
 export type CanvasNavigationMode = 'edit' | 'pan';
@@ -160,7 +165,6 @@ export const PRESET_LAYOUTS: LayoutTemplate[] = [
   { id: "preset-text-text", name: "Texto e texto", columns: 2, preview: "TT", type: "preset" },
 ];
 
-// New type for constraint-based positioning
 export type ResponsiveConstraint = {
   horizontal: "left" | "right" | "center" | "scale";
   vertical: "top" | "bottom" | "center" | "scale";

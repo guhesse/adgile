@@ -1,3 +1,4 @@
+
 import { PSDFileData } from './types';
 
 /**
@@ -22,10 +23,12 @@ export const savePSDDataToStorage = (filename: string, data: PSDFileData): strin
       ...data,
       layers: data.layers.map(layer => ({
         ...layer,
-        // Limitar tamanho dos dados de imagem para evitar estouro de armazenamento
-        imageData: layer.imageData && layer.imageData.length > 1000 ?
-          layer.imageData.substring(0, 100) + '...[truncated]' :
-          layer.imageData
+        // Only process imageData if it exists on the layer
+        ...(layer.imageData && { 
+          imageData: layer.imageData.length > 1000 ?
+            layer.imageData.substring(0, 100) + '...[truncated]' :
+            layer.imageData 
+        })
       }))
     };
 
@@ -91,15 +94,7 @@ export const saveImageToStorage = (imageData: string, layerName: string): string
     console.log(`Image saved to localStorage with key: ${key}`);
   } catch (error) {
     // Silenciar erro, apenas registrar aviso no console 
-    // ATIVAR NOVAMENTE ESSE DAQUI PARA TESTAR COM O BANCO DE DADOS.
-    // AAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    // AAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    // AAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    // AAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    // AAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    // AAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    // AAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    // console.warn(`Não foi possível salvar imagem "${layerName}" no localStorage, cota excedida.`);
+    console.warn(`Não foi possível salvar imagem "${layerName}" no localStorage, cota excedida.`);
   }
 
   return key; // Retornar a chave mesmo em caso de erro

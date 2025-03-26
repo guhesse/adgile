@@ -5,9 +5,6 @@ export { parsePSDFile } from './psdParser';
 export {
   savePSDDataToStorage,
   getPSDDataFromStorage,
-  getPSDMetadata,
-  savePSDMetadata,
-  removePSDData
+  getPSDMetadata
 } from './storage';
 export type { PSDFileData, PSDLayerInfo } from './types';
-
