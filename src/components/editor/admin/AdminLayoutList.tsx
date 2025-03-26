@@ -1,4 +1,3 @@
-
 import React from "react";
 import { LayoutTemplate } from "@/components/editor/types/admin";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -28,7 +27,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ElementRender } from "../elements/ElementRender";
 
 export const AdminLayoutList: React.FC<AdminLayoutListProps> = ({ templates, onDeleteTemplate }) => {
   // Add a safe check for templates array to prevent runtime errors
