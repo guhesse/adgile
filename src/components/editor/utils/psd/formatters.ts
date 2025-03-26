@@ -55,3 +55,21 @@ export const formatColor = (color: any): string => {
   
   return '#000000';
 };
+
+// Convert PSD color to hex format
+export const convertPSDColorToHex = (color: any): string => {
+  if (!color) return '#000000';
+  
+  if (typeof color === 'string') {
+    return color;
+  }
+  
+  if (color.r !== undefined && color.g !== undefined && color.b !== undefined) {
+    const r = Math.round(color.r).toString(16).padStart(2, '0');
+    const g = Math.round(color.g).toString(16).padStart(2, '0');
+    const b = Math.round(color.b).toString(16).padStart(2, '0');
+    return `#${r}${g}${b}`;
+  }
+  
+  return '#000000';
+};

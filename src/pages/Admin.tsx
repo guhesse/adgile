@@ -16,8 +16,8 @@ import { BannerSize } from "@/components/editor/types";
 const createDemoFormats = () => {
   const formats: BannerSize[] = [];
   
-  // Create 20 vertical formats (reduced from 100)
-  for (let i = 0; i < 20; i++) {
+  // Create 5 vertical formats (reduced from 20)
+  for (let i = 0; i < 5; i++) {
     const width = Math.floor(Math.random() * 441) + 160;
     const height = Math.floor(Math.random() * 1321) + 600;
     
@@ -28,8 +28,8 @@ const createDemoFormats = () => {
     });
   }
   
-  // Create 20 horizontal formats (reduced from 100)
-  for (let i = 0; i < 20; i++) {
+  // Create 5 horizontal formats (reduced from 20)
+  for (let i = 0; i < 5; i++) {
     const width = Math.floor(Math.random() * 1321) + 600;
     const height = Math.floor(Math.random() * 441) + 160;
     
@@ -40,8 +40,8 @@ const createDemoFormats = () => {
     });
   }
   
-  // Create 10 square formats (reduced from 50)
-  for (let i = 0; i < 10; i++) {
+  // Create 5 square formats (reduced from 10)
+  for (let i = 0; i < 5; i++) {
     const size = Math.floor(Math.random() * 901) + 300;
     const variation = Math.floor(Math.random() * 21) - 10;
     
@@ -303,6 +303,7 @@ const Admin: React.FC = () => {
             
             <TabsContent value="training" className="h-full overflow-y-auto">
               <div className="max-w-4xl mx-auto bg-white rounded-lg shadow p-6">
+                {/* Wrap AIModelManager in a custom component that doesn't use useCanvas */}
                 <AIModelManager 
                   templates={savedTemplates}
                   isModelTrained={isModelTrained}
