@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { CanvasProvider } from "@/components/editor/CanvasContext";
 import { Canvas } from "@/components/editor/Canvas";
@@ -11,10 +12,12 @@ import { AIModelManager } from "@/components/editor/ai/AIModelManager";
 import { LayoutTemplate, AdminStats } from "@/components/editor/types/admin";
 import { BannerSize } from "@/components/editor/types";
 
+// Significantly reduce the number of formats to prevent localStorage quota issues
 const createDemoFormats = () => {
   const formats: BannerSize[] = [];
   
-  for (let i = 0; i < 100; i++) {
+  // Create 20 vertical formats (reduced from 100)
+  for (let i = 0; i < 20; i++) {
     const width = Math.floor(Math.random() * 441) + 160;
     const height = Math.floor(Math.random() * 1321) + 600;
     
@@ -25,7 +28,8 @@ const createDemoFormats = () => {
     });
   }
   
-  for (let i = 0; i < 100; i++) {
+  // Create 20 horizontal formats (reduced from 100)
+  for (let i = 0; i < 20; i++) {
     const width = Math.floor(Math.random() * 1321) + 600;
     const height = Math.floor(Math.random() * 441) + 160;
     
@@ -36,7 +40,8 @@ const createDemoFormats = () => {
     });
   }
   
-  for (let i = 0; i < 50; i++) {
+  // Create 10 square formats (reduced from 50)
+  for (let i = 0; i < 10; i++) {
     const size = Math.floor(Math.random() * 901) + 300;
     const variation = Math.floor(Math.random() * 21) - 10;
     
@@ -59,6 +64,18 @@ const determineOrientation = (width: number, height: number): 'vertical' | 'hori
 const STORAGE_KEY = 'admin-layout-templates';
 const FORMATS_KEY = 'admin-formats';
 
+// Add try-catch for localStorage operations to handle quota errors gracefully
+const safelyStoreData = (key: string, data: any) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+    return true;
+  } catch (error) {
+    console.error(`Failed to store data in ${key}:`, error);
+    toast.error(`Storage error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    return false;
+  }
+};
+
 const Admin: React.FC = () => {
   const [activeTab, setActiveTab] = useState("layouts");
   const [templates, setTemplates] = useState<LayoutTemplate[]>([]);
@@ -80,27 +97,35 @@ const Admin: React.FC = () => {
   });
 
   useEffect(() => {
-    const storedFormats = localStorage.getItem(FORMATS_KEY);
-    if (storedFormats) {
-      setFormats(JSON.parse(storedFormats));
-    } else {
+    try {
+      const storedFormats = localStorage.getItem(FORMATS_KEY);
+      if (storedFormats) {
+        setFormats(JSON.parse(storedFormats));
+      } else {
+        const demoFormats = createDemoFormats();
+        setFormats(demoFormats);
+        safelyStoreData(FORMATS_KEY, demoFormats);
+      }
+    } catch (error) {
+      console.error("Failed to initialize formats:", error);
+      // Fall back to in-memory formats without saving to localStorage
       const demoFormats = createDemoFormats();
       setFormats(demoFormats);
-      localStorage.setItem(FORMATS_KEY, JSON.stringify(demoFormats));
+      toast.error("Failed to store formats in browser storage. Using in-memory formats.");
     }
   }, []);
 
   useEffect(() => {
-    const savedTemplatesJson = localStorage.getItem(STORAGE_KEY);
-    if (savedTemplatesJson) {
-      try {
+    try {
+      const savedTemplatesJson = localStorage.getItem(STORAGE_KEY);
+      if (savedTemplatesJson) {
         const parsedTemplates = JSON.parse(savedTemplatesJson);
         setSavedTemplates(parsedTemplates);
         updateStats(parsedTemplates);
-      } catch (error) {
-        console.error("Failed to parse saved templates:", error);
-        toast.error("Failed to load saved templates");
       }
+    } catch (error) {
+      console.error("Failed to parse saved templates:", error);
+      toast.error("Failed to load saved templates");
     }
   }, []);
 
@@ -152,9 +177,10 @@ const Admin: React.FC = () => {
     setSavedTemplates(updatedTemplates);
     updateStats(updatedTemplates);
     
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTemplates));
-    
-    toast.success("Template saved successfully");
+    // Use the safe storage function
+    if (safelyStoreData(STORAGE_KEY, updatedTemplates)) {
+      toast.success("Template saved successfully");
+    }
   };
 
   const handleDeleteTemplate = (templateId: string) => {
@@ -162,9 +188,10 @@ const Admin: React.FC = () => {
     setSavedTemplates(updatedTemplates);
     updateStats(updatedTemplates);
     
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTemplates));
-    
-    toast.success("Template deleted");
+    // Use the safe storage function
+    if (safelyStoreData(STORAGE_KEY, updatedTemplates)) {
+      toast.success("Template deleted");
+    }
   };
 
   const handleTrainModel = async () => {

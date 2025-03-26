@@ -27,5 +27,5 @@ export interface AIModelManagerProps {
 
 export interface AdminLayoutStatsProps {
   stats: AdminStats;
-  layouts?: LayoutTemplate[];
+  layouts: LayoutTemplate[];
 }

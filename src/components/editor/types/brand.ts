@@ -3,6 +3,9 @@ export interface BrandItem {
   id: number;
   name: string;
   value: string;
+  type?: "color" | "textStyle";
+  color?: string;
+  textStyle?: TextStyle;
 }
 
 export interface TextStyle {

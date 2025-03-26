@@ -13,8 +13,8 @@ export const AdminFormatSelector: React.FC<AdminFormatSelectorProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<"horizontal" | "vertical" | "square">("horizontal");
 
-  // Group formats by orientation
-  const formatsByOrientation = formats.reduce((acc, format) => {
+  // Group formats by orientation with default empty arrays to prevent undefined access
+  const formatsByOrientation = formats?.reduce((acc, format) => {
     const ratio = format.width / format.height;
     
     // Determine orientation based on aspect ratio
@@ -35,7 +35,7 @@ export const AdminFormatSelector: React.FC<AdminFormatSelectorProps> = ({
     horizontal: [] as BannerSize[],
     vertical: [] as BannerSize[],
     square: [] as BannerSize[]
-  });
+  }) || { horizontal: [], vertical: [], square: [] };
 
   return (
     <Tabs
