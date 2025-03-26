@@ -1,4 +1,5 @@
-import { LayoutTemplate, TrainingData } from "../types/admin";
+
+import { LayoutTemplate, TrainingData, AdminStats } from "../types/admin";
 
 // Local storage keys
 const TEMPLATES_STORAGE_KEY = 'adgile_layout_templates';
@@ -103,9 +104,11 @@ export const clearTrainingData = async (): Promise<boolean> => {
 };
 
 // Get admin statistics
-export const getAdminStats = (): AdminStats => {
+export const getAdminStats = async (): Promise<AdminStats> => {
   const templates = getLayoutTemplates();
-  const trainingData = getTrainingData();
+  
+  // Use await for the async function
+  const trainingData = await getTrainingData();
   
   const verticalTemplates = templates.filter(t => t.orientation === 'vertical').length;
   const horizontalTemplates = templates.filter(t => t.orientation === 'horizontal').length;
@@ -158,5 +161,3 @@ export const generateFormatPresets = () => {
     square: squareFormats
   };
 };
-
-import { AdminStats } from "../types/admin";

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
+
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { CanvasProvider } from "@/components/editor/CanvasContext";
 import { Canvas } from "@/components/editor/Canvas";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { AdminLayoutStats } from "@/components/editor/admin/AdminLayoutStats";
 import { AdminFormatSelector } from "@/components/editor/admin/AdminFormatSelector";
 import { AIModelManager } from "@/components/editor/ai/AIModelManager";
 import { LayoutTemplate, AdminStats } from "@/components/editor/types/admin";
-import { BannerSize } from "@/components/editor/types";
+import { BannerSize, EditorElement } from "@/components/editor/types";
 import { AdminTrainingPanel } from "@/components/editor/panels/AdminTrainingPanel";
 import { saveToIndexedDB, getFromIndexedDB } from "@/utils/indexedDBUtils";
 import { getOptimizedFormats } from "@/utils/formatGenerator";
@@ -47,6 +48,7 @@ const Admin: React.FC = () => {
     loss: 0
   });
   const [aiModel, setAiModel] = useState<tf.LayersModel | null>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
 
   // Inicializar ou carregar formatos
   useEffect(() => {
@@ -140,8 +142,64 @@ const Admin: React.FC = () => {
     setActiveTab(value);
   };
 
+  // Extract elements from the canvas context
+  const getElementsFromCanvas = (): EditorElement[] => {
+    // Find the canvas element in the DOM
+    const canvasElement = canvasRef.current;
+    
+    if (!canvasElement) {
+      console.error("Canvas reference not found");
+      return [];
+    }
+    
+    // Look for a data attribute or context that might contain the elements
+    // This is a simplified example - the actual implementation would depend on how your Canvas exposes its elements
+    const canvasContext = (window as any).__CANVAS_CONTEXT__;
+    
+    if (canvasContext && Array.isArray(canvasContext.elements)) {
+      return canvasContext.elements;
+    }
+    
+    // Fallback method: try to extract elements from any exposed APIs
+    try {
+      const elementsContainer = canvasElement.querySelector('[data-elements-container]');
+      if (elementsContainer) {
+        const elementNodes = elementsContainer.querySelectorAll('[data-element-id]');
+        
+        // Convert DOM nodes to element objects (simplified example)
+        return Array.from(elementNodes).map(node => {
+          const elementId = node.getAttribute('data-element-id');
+          const elementType = node.getAttribute('data-element-type');
+          const elementContent = node.textContent || '';
+          
+          // Extract style information
+          const style = {
+            x: parseInt(node.getAttribute('data-x') || '0'),
+            y: parseInt(node.getAttribute('data-y') || '0'),
+            width: parseInt(node.getAttribute('data-width') || '0'),
+            height: parseInt(node.getAttribute('data-height') || '0'),
+            backgroundColor: node.getAttribute('data-bg-color') || 'transparent'
+          };
+          
+          return {
+            id: elementId || `element-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            type: elementType as any || 'unknown',
+            content: elementContent,
+            style,
+            sizeId: selectedFormat?.name || ''
+          };
+        });
+      }
+    } catch (error) {
+      console.error("Error extracting elements from DOM:", error);
+    }
+    
+    console.warn("Could not extract elements from canvas, using empty array");
+    return [];
+  };
+
   // Salvar um template
-  const handleSaveTemplate = async (elements: any[]) => {
+  const handleSaveTemplate = async (elements: EditorElement[]) => {
     if (!selectedFormat) {
       toast.error("Selecione um formato primeiro");
       return;
@@ -240,7 +298,13 @@ const Admin: React.FC = () => {
 
   // Capturar e salvar o template atual
   const captureAndSaveTemplate = () => {
-    handleSaveTemplate([]);
+    // Get the current elements from the canvas
+    const canvasElements = getElementsFromCanvas();
+    
+    // If we couldn't get elements from the canvas, try to get them from the canvas context
+    const elements = canvasElements.length > 0 ? canvasElements : [];
+    
+    handleSaveTemplate(elements);
     toast("Template capturado do canvas", {
       description: "Os elementos atuais do canvas foram salvos como um novo template."
     });
@@ -304,7 +368,7 @@ const Admin: React.FC = () => {
                       <Canvas
                         editorMode="banner"
                         fixedSize={selectedFormat}
-                        className="h-full w-full bg-gray-100"
+                        canvasRef={canvasRef}
                       />
                     </CanvasProvider>
                   </div>

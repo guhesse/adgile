@@ -67,10 +67,29 @@ export const AdminLayoutList: React.FC<AdminLayoutListProps> = ({ templates, onD
                     className="w-full"
                     style={{ 
                       paddingBottom: `${(layout.height / layout.width) * 100}%`,
-                      backgroundColor: "#f1f5f9"
+                      backgroundColor: "#f1f5f9",
+                      maxHeight: "120px" // Limiting the thumbnail height
                     }}
                   >
-                    {/* Layout preview would go here */}
+                    {layout.elements && layout.elements.length > 0 && (
+                      <div className="absolute inset-0 p-1 pointer-events-none">
+                        {/* This would render a simplified preview of elements */}
+                        {layout.elements.map((element, idx) => (
+                          <div 
+                            key={idx}
+                            className="absolute border border-gray-300 bg-white/70"
+                            style={{
+                              left: `${(element.style.x / layout.width) * 100}%`,
+                              top: `${(element.style.y / layout.height) * 100}%`,
+                              width: `${(element.style.width / layout.width) * 100}%`,
+                              height: `${(element.style.height / layout.height) * 100}%`,
+                              backgroundColor: element.style.backgroundColor || 'transparent',
+                              borderRadius: element.style.borderRadius ? `${element.style.borderRadius}px` : '0'
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>

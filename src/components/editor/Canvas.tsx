@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import PropertyPanel from "./PropertyPanel";
 import { CanvasControls } from "./CanvasControls";
 import { CanvasWorkspace } from "./CanvasWorkspace";
@@ -11,9 +11,10 @@ import { BannerSize, EditorMode } from "./types";
 interface CanvasProps {
   editorMode: EditorMode; // Changed to use the EditorMode type
   fixedSize?: BannerSize;
+  canvasRef?: React.RefObject<HTMLDivElement>;
 }
 
-const CanvasContent = ({ editorMode }: CanvasProps) => {
+const CanvasContent = ({ editorMode, canvasRef }: CanvasProps) => {
   const { 
     elements, 
     selectedElement, 
@@ -41,7 +42,7 @@ const CanvasContent = ({ editorMode }: CanvasProps) => {
           <CanvasControls />
           <PSDImport />
         </div>
-        <CanvasWorkspace />
+        <CanvasWorkspace ref={canvasRef} />
       </div>
 
       {/* Right Properties Panel */}
@@ -78,8 +79,8 @@ const CanvasContent = ({ editorMode }: CanvasProps) => {
   );
 };
 
-export const Canvas = ({ editorMode, fixedSize }: CanvasProps) => {
+export const Canvas = ({ editorMode, fixedSize, canvasRef }: CanvasProps) => {
   return (
-    <CanvasContent editorMode={editorMode} />
+    <CanvasContent editorMode={editorMode} canvasRef={canvasRef} />
   );
 };
