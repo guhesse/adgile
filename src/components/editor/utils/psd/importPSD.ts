@@ -1,3 +1,4 @@
+
 import { EditorElement, BannerSize } from '../../types';
 import { toast } from 'sonner';
 import { parsePSDFile } from './psdParser';
@@ -5,6 +6,7 @@ import { processLayer, calculatePercentageValues } from './elementProcessor';
 import { savePSDDataToStorage, getPSDMetadata } from './storage';
 import { PSDFileData } from './types';
 import { convertPSDColorToHex } from './formatters';
+import { analyzeAndOptimizeLayout } from '../ai/layoutAnalyzer';
 
 /**
  * Re-export the PSDFileData type for backward compatibility
@@ -276,7 +278,7 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
       const rawData = {
         header: psd.header,
         resources: psd.resources,
-        layersCount: psd.layers.length,
+        layersCount: psd.layers?.length || 0,
         dimensions: { width: psd.header.width, height: psd.header.height },
         extractedImages: Array.from(extractedImages.keys()),
         treeStructure: psd.tree && typeof psd.tree === 'function' ? psd.tree() : null
@@ -293,7 +295,7 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
     // Processar camadas de texto primeiro usando a nova abordagem
     const processedTextLayerNames = new Set<string>(); // Rastrear camadas de texto processadas
 
-    if (textLayers.size > 0) {
+    if (textLayers && textLayers.size > 0) {
       psdLogger.debug("=== PROCESSANDO CAMADAS DE TEXTO EXTRAÍDAS ===");
       for (const [layerName, textStyle] of textLayers.entries()) {
         psdLogger.debug(`Processando camada de texto: ${layerName}`);
@@ -309,10 +311,10 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
             _layerName: layerName,
             style: {
               ...textStyle, // Preserve os estilos extraídos do textExtractor
-              x: layerInfo.x,
-              y: layerInfo.y,
-              width: layerInfo.width,
-              height: layerInfo.height
+              x: layerInfo.x || 0,
+              y: layerInfo.y || 0,
+              width: layerInfo.width || 100,
+              height: layerInfo.height || 20
             },
             sizeId: 'global'
           };
@@ -336,35 +338,37 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
     }
 
     // Processar todas as camadas, ignorando as camadas de texto já processadas
-    for (const layer of psd.layers) {
-      if (layer.name && processedTextLayerNames.has(layer.name)) {
-        psdLogger.debug(`Pulando camada de texto já processada: ${layer.name}`);
-        continue; // Ignorar camadas de texto já processadas
-      }
+    if (psd.layers) {
+      for (const layer of psd.layers) {
+        if (layer.name && processedTextLayerNames.has(layer.name)) {
+          psdLogger.debug(`Pulando camada de texto já processada: ${layer.name}`);
+          continue; // Ignorar camadas de texto já processadas
+        }
 
-      // Verificar se a camada tem máscara antes de processar
-      const maskData = extractMaskData(layer);
-      
-      // Processar a camada normalmente
-      const element = await processLayer(layer, selectedSize, psdData, extractedImages);
-      
-      if (element) {
-        // Assign the sizeId as 'global' to ensure elements are visible in all artboards
-        element.sizeId = 'global';
+        // Verificar se a camada tem máscara antes de processar
+        const maskData = extractMaskData(layer);
         
-        // Se encontramos dados de máscara válidos, anexamos ao elemento
-        if (maskData && maskData.hasValidMask) {
-          element.psdLayerData = element.psdLayerData || {};
-          element.psdLayerData.mask = maskData;
+        // Processar a camada normalmente
+        const element = await processLayer(layer, selectedSize, psdData, extractedImages);
+        
+        if (element) {
+          // Assign the sizeId as 'global' to ensure elements are visible in all artboards
+          element.sizeId = 'global';
           
-          // Aplicar ajustes específicos para elementos com máscara
-          const adjustedElement = adjustElementWithMask(element, maskData, selectedSize);
-          maskedElementsCount.count++;
-          psdLogger.debug(`Aplicada máscara à camada "${layer.name || 'sem nome'}": ${maskData.width}×${maskData.height}`);
-          
-          elements.push(adjustedElement);
-        } else {
-          elements.push(element);
+          // Se encontramos dados de máscara válidos, anexamos ao elemento
+          if (maskData && maskData.hasValidMask) {
+            element.psdLayerData = element.psdLayerData || {};
+            element.psdLayerData.mask = maskData;
+            
+            // Aplicar ajustes específicos para elementos com máscara
+            const adjustedElement = adjustElementWithMask(element, maskData, selectedSize);
+            maskedElementsCount.count++;
+            psdLogger.debug(`Aplicada máscara à camada "${layer.name || 'sem nome'}": ${maskData.width}×${maskData.height}`);
+            
+            elements.push(adjustedElement);
+          } else {
+            elements.push(element);
+          }
         }
       }
     }
@@ -454,9 +458,12 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
     // Calculate percentage values - important for responsive behavior
     calculatePercentageValues(elements, selectedSize);
 
+    // Use AI to analyze layout and optimize element constraints
+    const optimizedElements = analyzeAndOptimizeLayout(elements, selectedSize);
+
     // Adicionar logs detalhados para posicionamento de todos os elementos
     psdLogger.debug("=== RESUMO DE POSICIONAMENTO DOS ELEMENTOS ===");
-    elements.forEach((element, index) => {
+    optimizedElements.forEach((element, index) => {
       psdLogger.debug(`Elemento #${index + 1}: ${element._layerName || element.type}`, {
         tipo: element.type,
         tem_máscara: element.style.hasMask || false,
@@ -471,13 +478,17 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
           altura: Math.round(element.style.height),
           percentualLargura: Math.round(element.style.widthPercent || 0),
           percentualAltura: Math.round(element.style.heightPercent || 0)
+        },
+        constraints: {
+          horizontal: element.style.constraintHorizontal || 'none',
+          vertical: element.style.constraintVertical || 'none'
         }
       });
     });
 
     // Allow elements to extend slightly beyond artboard boundaries
     // but still ensure they're connected to the artboard
-    elements.forEach(element => {
+    optimizedElements.forEach(element => {
       // Ensure all elements have the 'global' sizeId
       element.sizeId = 'global';
 
@@ -508,8 +519,6 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
       element.style.heightPercent = (element.style.height / selectedSize.height) * 100;
     });
 
-    // Don't create the artboard background element as it will be managed separately
-
     // Try to save PSD data to localStorage
     try {
       const storageKey = savePSDDataToStorage(file.name, psdData);
@@ -525,21 +534,21 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
     }
 
     // Log summary of imported elements
-    const textElements = elements.filter(el => el.type === 'text').length;
-    const imageElements = elements.filter(el => el.type === 'image').length;
-    const maskedElements = elements.filter(el => el.style && el.style.hasMask).length;
+    const textElements = optimizedElements.filter(el => el.type === 'text').length;
+    const imageElements = optimizedElements.filter(el => el.type === 'image').length;
+    const maskedElements = optimizedElements.filter(el => el.style && el.style.hasMask).length;
 
-    psdLogger.info(`Importação finalizada: ${elements.length} elementos (${textElements} textos, ${imageElements} imagens, ${maskedElements} com máscaras)`);
+    psdLogger.info(`Importação finalizada: ${optimizedElements.length} elementos (${textElements} textos, ${imageElements} imagens, ${maskedElements} com máscaras)`);
 
-    if (elements.length === 0) {
+    if (optimizedElements.length === 0) {
       toast.warning("Nenhuma camada visível encontrada no arquivo PSD.");
     } else {
-      toast.success(`Importados ${elements.length} elementos do arquivo PSD.`);
+      toast.success(`Importados ${optimizedElements.length} elementos do arquivo PSD com análise de layout inteligente.`);
     }
 
     // Invertendo a ordem dos elementos para corresponder à ordem de camadas do Photoshop
     // No Photoshop, as camadas superiores na lista são renderizadas por cima das inferiores
-    const reversedElements = [...elements].reverse();
+    const reversedElements = [...optimizedElements].reverse();
     psdLogger.info(`Ordem das camadas invertida para corresponder à ordem de renderização do Photoshop`);
 
     // Return just the elements - artboard background will be managed separately

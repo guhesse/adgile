@@ -55,7 +55,10 @@ export const updateAllLinkedElements = (
         style: {
           ...el.style,
           ...absoluteChanges,
-          ...calculatedPercentChanges,
+          xPercent: calculatedPercentChanges.xPercent !== undefined ? calculatedPercentChanges.xPercent : el.style.xPercent,
+          yPercent: calculatedPercentChanges.yPercent !== undefined ? calculatedPercentChanges.yPercent : el.style.yPercent,
+          widthPercent: calculatedPercentChanges.widthPercent !== undefined ? calculatedPercentChanges.widthPercent : el.style.widthPercent,
+          heightPercent: calculatedPercentChanges.heightPercent !== undefined ? calculatedPercentChanges.heightPercent : el.style.heightPercent,
           constraintHorizontal: horizontalConstraint,
           constraintVertical: verticalConstraint
         }
@@ -63,7 +66,7 @@ export const updateAllLinkedElements = (
     }
     
     // Update linked elements
-    if (el.linkedElementId === sourceElement.linkedElementId && !el.isIndividuallyPositioned) {
+    if (el.linkedElementId === sourceElement.linkedElementId && el.linkedElementId && !el.isIndividuallyPositioned) {
       const targetSize = activeSizes.find(size => size.name === el.sizeId);
       
       if (targetSize) {
@@ -73,7 +76,10 @@ export const updateAllLinkedElements = (
           style: {
             ...sourceElement.style,
             ...absoluteChanges,
-            ...calculatedPercentChanges,
+            xPercent: calculatedPercentChanges.xPercent !== undefined ? calculatedPercentChanges.xPercent : sourceElement.style.xPercent,
+            yPercent: calculatedPercentChanges.yPercent !== undefined ? calculatedPercentChanges.yPercent : sourceElement.style.yPercent,
+            widthPercent: calculatedPercentChanges.widthPercent !== undefined ? calculatedPercentChanges.widthPercent : sourceElement.style.widthPercent,
+            heightPercent: calculatedPercentChanges.heightPercent !== undefined ? calculatedPercentChanges.heightPercent : sourceElement.style.heightPercent,
             constraintHorizontal: horizontalConstraint,
             constraintVertical: verticalConstraint
           }

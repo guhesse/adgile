@@ -26,8 +26,11 @@ export const analyzeElementPosition = (
   let horizontalConstraint: "left" | "right" | "center" | "scale" = "left"; // Default
   if (centerXDistance < threshold) {
     horizontalConstraint = "center";
-  } else if (rightDistance < leftDistance) {
+  } else if (rightDistance < leftDistance || rightDistance < threshold * 2) {
     horizontalConstraint = "right";
+  } else if (element.style.width > canvasSize.width * 0.9) {
+    // If element takes up most of the width, use scale constraint
+    horizontalConstraint = "scale";
   }
   
   // Determine vertical constraint
@@ -37,6 +40,34 @@ export const analyzeElementPosition = (
   } else if (bottomDistance < topDistance || bottomDistance < threshold * 2) {
     // Enhanced detection for bottom-aligned elements
     verticalConstraint = "bottom";
+  } else if (element.style.height > canvasSize.height * 0.9) {
+    // If element takes up most of the height, use scale constraint
+    verticalConstraint = "scale";
+  }
+  
+  // Special case for images - check if it's likely to be a background or product image at bottom
+  if (element.type === 'image') {
+    // Large image taking most of the canvas - likely background
+    if (element.style.width > canvasSize.width * 0.8 && element.style.height > canvasSize.height * 0.5) {
+      // Check if it's at the bottom
+      if (element.style.y + element.style.height > canvasSize.height * 0.7) {
+        verticalConstraint = "bottom";
+      }
+    }
+    
+    // Check if it's a product image typically at bottom
+    if (bottomDistance < canvasSize.height * 0.2) {
+      verticalConstraint = "bottom";
+    }
+  }
+  
+  // Special case for CTA buttons - typically at bottom-right
+  if ((element.type === 'button' || (element.type === 'container' && element.style?.backgroundColor === '#2563eb')) && 
+      bottomDistance < canvasSize.height * 0.3) {
+    verticalConstraint = "bottom";
+    if (rightDistance < canvasSize.width * 0.3) {
+      horizontalConstraint = "right";
+    }
   }
   
   return { horizontalConstraint, verticalConstraint };
@@ -73,6 +104,9 @@ export const applyTransformationMatrix = (
     // Maintain center position
     const centerOffset = element.style.x + element.style.width / 2 - sourceSize.width / 2;
     x = targetSize.width / 2 + centerOffset * scaleX - element.style.width * scaleX / 2;
+  } else if (horizontalConstraint === "scale") {
+    // For elements that should scale relative to canvas width
+    x = (element.style.x / sourceSize.width) * targetSize.width;
   }
   
   // Handle vertical constraint
@@ -86,6 +120,9 @@ export const applyTransformationMatrix = (
     // Maintain center position
     const centerOffset = element.style.y + element.style.height / 2 - sourceSize.height / 2;
     y = targetSize.height / 2 + centerOffset * scaleY - element.style.height * scaleY / 2;
+  } else if (verticalConstraint === "scale") {
+    // For elements that should scale relative to canvas height
+    y = (element.style.y / sourceSize.height) * targetSize.height;
   }
   
   // Calculate dimensions based on scaling factors
@@ -140,7 +177,7 @@ export const applyTransformationMatrix = (
   
   // Ensure font sizes remain legible
   if (element.type === "text" && element.style.fontSize) {
-    // Scale font size based on width ratio but ensure minimum legibility
+    // Scale font size with width but ensure it remains legible
     const newFontSize = element.style.fontSize * Math.min(scaleX, scaleY);
     const minLegibleSize = 9; // Minimum legible font size in pixels
     element.style.fontSize = Math.max(newFontSize, minLegibleSize);

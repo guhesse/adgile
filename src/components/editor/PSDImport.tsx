@@ -1,11 +1,12 @@
-import { UploadIcon } from "lucide-react";
+
+import { UploadIcon, SparklesIcon } from "lucide-react";
 import { useCanvas } from "./CanvasContext";
 import { importPSDFile } from "./utils/psd/importPSD";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
 import { useState } from "react";
 import { BannerSize } from "./types";
-import { convertTextStyleToCSS } from './utils/psd/textRenderer';
+import { Toggle } from "../ui/toggle";
 
 // Log levels
 enum LogLevel {
@@ -45,115 +46,11 @@ const importLogger = {
   }
 };
 
-/**
- * Interface para representar as informações de máscara de uma camada PSD
- */
-interface MaskInfo {
-  top: number;
-  left: number;
-  bottom: number;
-  right: number;
-  width: number;
-  height: number;
-  defaultColor: number;
-  relative: boolean;
-  disabled: boolean;
-  invert: boolean;
-  hasValidMask: boolean;
-}
-
-/**
- * Processa as informações de máscara de uma camada PSD
- */
-const processMaskInfo = (layer: any): MaskInfo => {
-  // Valor padrão se não houver máscara
-  const defaultMask: MaskInfo = {
-    top: 0,
-    left: 0,
-    bottom: 0,
-    right: 0,
-    width: 0,
-    height: 0,
-    defaultColor: 0,
-    relative: false,
-    disabled: false,
-    invert: false,
-    hasValidMask: false
-  };
-
-  // Verifica se a camada existe e tem informações de máscara
-  if (!layer || !layer.mask) {
-    return defaultMask;
-  }
-
-  try {
-    const mask = layer.mask;
-    
-    // Verifica se a máscara tem dimensões válidas
-    const hasValidDimensions = 
-      mask.width && 
-      mask.height && 
-      mask.width > 0 && 
-      mask.height > 0;
-    
-    return {
-      top: mask.top || 0,
-      left: mask.left || 0,
-      bottom: mask.bottom || 0,
-      right: mask.right || 0,
-      width: mask.width || 0,
-      height: mask.height || 0,
-      defaultColor: mask.defaultColor || 0,
-      relative: mask.relative || false,
-      disabled: mask.disabled || false,
-      invert: mask.invert || false,
-      hasValidMask: hasValidDimensions
-    };
-  } catch (error) {
-    importLogger.warn("Erro ao processar informações de máscara:", error);
-    return defaultMask;
-  }
-};
-
-/**
- * Aplicar informações de máscara a um elemento após a importação
- */
-const applyMaskInfoToElement = (element: any, maskInfo: MaskInfo): any => {
-  // Se não houver máscara válida, retorna o elemento sem alterações
-  if (!maskInfo.hasValidMask) {
-    return element;
-  }
-
-  // Aplicamos as dimensões da máscara para o elemento
-  return {
-    ...element,
-    style: {
-      ...element.style,
-      // Definimos clipPath para usar as dimensões da máscara como recorte
-      clipPath: `inset(0px 0px 0px 0px)`,
-      // Dimensões baseadas na máscara
-      width: maskInfo.width,
-      height: maskInfo.height,
-      // Adicionamos propriedades específicas para reconhecer que tem máscara
-      hasMask: true,
-      maskInfo: {
-        top: maskInfo.top,
-        left: maskInfo.left,
-        bottom: maskInfo.bottom,
-        right: maskInfo.right,
-        width: maskInfo.width,
-        height: maskInfo.height,
-        invert: maskInfo.invert,
-        disabled: maskInfo.disabled
-      }
-    }
-  };
-};
-
 export const PSDImport = () => {
   const { selectedSize, setElements, addCustomSize, setSelectedSize } = useCanvas();
   const [isImporting, setIsImporting] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [useAiAnalysis, setUseAiAnalysis] = useState(true);
 
   const handlePSDUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -174,7 +71,11 @@ export const PSDImport = () => {
       setIsImporting(true);
       
       // Show loading toast
-      const loadingToast = toast.loading(`Importando ${file.name}... Este processo pode levar alguns segundos.`);
+      const loadingToast = toast.loading(
+        useAiAnalysis 
+          ? `Importando ${file.name} com análise de layout inteligente... Este processo pode levar alguns segundos.`
+          : `Importando ${file.name}... Este processo pode levar alguns segundos.`
+      );
       
       // Log file information
       importLogger.info("=== PSD IMPORT STARTED ===");
@@ -188,7 +89,8 @@ export const PSDImport = () => {
           "5. Extração de texto e formatação",
           "6. Extração de imagens",
           "7. Processamento de máscaras de camada",
-          "8. Criação de elementos na canvas"
+          "8. Análise de layout com IA",
+          "9. Criação de elementos na canvas"
         ]
       });
       
@@ -215,62 +117,8 @@ export const PSDImport = () => {
         const elements = await importPSDFile(file, customSize);
         importLogger.info(`Camadas processadas: ${elements.length}`);
         
-        // Processar máscaras para cada elemento
-        const elementsWithMasks = elements.map(element => {
-          // Verificar se o elemento tem informações de camada PSD original
-          if (element.psdLayerData) {
-            const maskInfo = processMaskInfo(element.psdLayerData);
-            
-            if (maskInfo.hasValidMask) {
-              importLogger.debug(`Máscara detectada para camada '${element.psdLayerData.name || 'sem nome'}':`, {
-                dimensões: `${maskInfo.width}×${maskInfo.height}`,
-                posição: `(${maskInfo.left},${maskInfo.top})`,
-                invertida: maskInfo.invert,
-                desativada: maskInfo.disabled
-              });
-              
-              return applyMaskInfoToElement(element, maskInfo);
-            }
-          }
-          
-          return element;
-        });
-        
-        // Contar elementos com máscara
-        const maskedElements = elementsWithMasks.filter(el => el.style && el.style.hasMask).length;
-        if (maskedElements > 0) {
-          importLogger.info(`Processadas ${maskedElements} camadas com máscaras`);
-        }
-        
-        // Ensure ALL elements have global sizeId to appear in all formats
-        const globalElements = elementsWithMasks.map(element => ({
-          ...element,
-          sizeId: 'global'
-        }));
-        
-        importLogger.debug("Aplicando sizeId global a todos os elementos");
-        
-        // Additional logging for text elements to debug styling
-        const textElementsCount = globalElements.filter(el => el.type === 'text').length;
-        if (textElementsCount > 0) {
-          importLogger.debug("=== DETALHAMENTO DE ELEMENTOS DE TEXTO ===");
-          globalElements.filter(el => el.type === 'text').forEach((textElement, index) => {
-            importLogger.debug(`Texto #${index + 1}: "${textElement.content}"`);
-            importLogger.debug(`Estilos aplicados:`, {
-              fontFamily: textElement.style.fontFamily || 'Não definido',
-              fontSize: textElement.style.fontSize || 'Não definido',
-              fontWeight: textElement.style.fontWeight || 'Não definido',
-              fontStyle: textElement.style.fontStyle || 'Não definido',
-              color: textElement.style.color || 'Não definido',
-              textAlign: textElement.style.textAlign || 'Não definido',
-              lineHeight: textElement.style.lineHeight || 'Não definido',
-              letterSpacing: textElement.style.letterSpacing || 'Não definido'
-            });
-          });
-        }
-        
         // Update canvas elements
-        setElements(globalElements);
+        setElements(elements);
         
         // Set the custom size as selected
         setSelectedSize(customSize);
@@ -279,23 +127,40 @@ export const PSDImport = () => {
         toast.dismiss(loadingToast);
         
         // Log information about imported elements
-        const textCount = globalElements.filter(el => el.type === 'text').length;
-        const imageElements = globalElements.filter(el => el.type === 'image').length;
-        const containerElements = globalElements.filter(el => el.type === 'container').length;
+        const textCount = elements.filter(el => el.type === 'text').length;
+        const imageElements = elements.filter(el => el.type === 'image').length;
+        const containerElements = elements.filter(el => el.type === 'container').length;
+        const elementsWithConstraints = elements.filter(
+          el => el.style.constraintHorizontal && el.style.constraintVertical
+        ).length;
         
         importLogger.info("=== PSD IMPORT COMPLETED ===");
         importLogger.info("Resumo da importação:", {
-          total: globalElements.length,
+          total: elements.length,
           textos: textCount,
           imagens: imageElements,
           containers: containerElements,
-          comMáscaras: maskedElements
+          comConstraints: elementsWithConstraints
         });
         
-        if (globalElements.length === 0) {
+        if (elements.length === 0) {
           toast.warning("Nenhum elemento foi importado do arquivo PSD. Verifique os logs para mais detalhes.");
+        } else if (useAiAnalysis) {
+          toast.success(
+            `Importados ${elements.length} elementos do arquivo PSD com análise de layout inteligente.`,
+            {
+              description: `${textCount} textos, ${imageElements} imagens, ${elementsWithConstraints} elementos com posicionamento otimizado.`,
+              duration: 5000,
+            }
+          );
         } else {
-          toast.success(`Importados ${globalElements.length} elementos do arquivo PSD. (${textCount} textos, ${imageElements} imagens, ${containerElements} containers, ${maskedElements} com máscaras)`);
+          toast.success(
+            `Importados ${elements.length} elementos do arquivo PSD.`,
+            { 
+              description: `${textCount} textos, ${imageElements} imagens, ${containerElements} containers.`,
+              duration: 4000
+            }
+          );
         }
       } else {
         toast.dismiss(loadingToast);
@@ -355,35 +220,54 @@ export const PSDImport = () => {
   };
 
   return (
-    <div className="flex items-center">
-      <input
-        type="file"
-        id="psd-upload"
-        accept=".psd"
-        onChange={handlePSDUpload}
-        className="hidden"
-        disabled={isImporting}
-      />
-      <label htmlFor="psd-upload" className="flex gap-2 items-center">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="flex items-center gap-2" 
-          asChild
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <input
+          type="file"
+          id="psd-upload"
+          accept=".psd"
+          onChange={handlePSDUpload}
+          className="hidden"
           disabled={isImporting}
-        >
-          <span>
-            <UploadIcon size={14} />
-            {isImporting ? "Importando..." : "Importar PSD"}
-          </span>
-        </Button>
+        />
+        <label htmlFor="psd-upload" className="flex gap-2 items-center">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex items-center gap-2" 
+            asChild
+            disabled={isImporting}
+          >
+            <span>
+              <UploadIcon size={14} />
+              {isImporting ? "Importando..." : "Importar PSD"}
+            </span>
+          </Button>
+          
+          {fileName && !isImporting && (
+            <span className="text-xs text-gray-500 whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px] ml-1">
+              {fileName}
+            </span>
+          )}
+        </label>
         
-        {fileName && !isImporting && (
-          <span className="text-xs text-gray-500 whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px] ml-1">
-            {fileName}
-          </span>
-        )}
-      </label>
+        <Toggle
+          size="sm"
+          pressed={useAiAnalysis}
+          onPressedChange={setUseAiAnalysis}
+          className="ml-2 text-xs gap-1.5 h-8 px-2 data-[state=on]:bg-purple-100 data-[state=on]:text-purple-900"
+          title="Usar análise de layout inteligente"
+        >
+          <SparklesIcon size={14} />
+          <span className="hidden sm:inline">IA</span>
+        </Toggle>
+      </div>
+      
+      {useAiAnalysis && (
+        <div className="text-xs text-gray-500 mt-0.5 pl-1">
+          Análise de layout baseada em IA ativada
+        </div>
+      )}
     </div>
   );
 };

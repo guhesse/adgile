@@ -1,3 +1,4 @@
+
 import { EditorElement, BannerSize } from '../../types';
 import { PSDFileData, TextLayerStyle } from './types';
 import { addFontImportToDocument } from './fontMapper';
@@ -153,7 +154,6 @@ const createImageElement = async (
         y,
         width,
         height,
-        rotation: 0,
         opacity: 1,
         zIndex: 0,
         xPercent: 0,
@@ -261,7 +261,6 @@ export const processLayer = async (
           y,
           width,
           height,
-          rotation: 0,
           fontFamily: textStyle.fontFamily || 'Roboto', // Mudar para Roboto como fallback em vez de Arial
           fontSize: textStyle.fontSize || 16,
           fontWeight: textStyle.fontWeight || 'normal',
@@ -316,12 +315,11 @@ export const processLayer = async (
           const layerInfo = {
             id: element.id,
             name: layer.name || 'Image Layer',
-            type: 'image',
+            type: 'image' as 'image' | 'text' | 'group',
             x: element.style.x,
             y: element.style.y,
             width: element.style.width,
             height: element.style.height,
-            imageData: element.content as string,
           };
           
           // Só adiciona se não existir ainda
@@ -335,12 +333,11 @@ export const processLayer = async (
           const layerInfo = {
             id: element.id,
             name: layer.name || 'Image Layer',
-            type: 'image',
+            type: 'image' as 'image' | 'text' | 'group',
             x: element.style.x,
             y: element.style.y,
             width: element.style.width,
             height: element.style.height,
-            imageData: element.content as string
           };
           
           // Só adiciona se não existir ainda
@@ -375,7 +372,7 @@ export const processLayer = async (
         const layerInfo = {
           id: element.id,
           name: layer.name || 'Generic Layer',
-          type: element.type as 'image' | 'text' | 'shape' | 'group',
+          type: element.type === 'image' ? 'image' as 'image' | 'text' | 'group' : 'group' as 'image' | 'text' | 'group',
           x: element.style.x,
           y: element.style.y,
           width: element.style.width,
@@ -384,28 +381,18 @@ export const processLayer = async (
         
         if (element.type === 'image' && element.content) {
           try {
-            const imageInfo = {
-              ...layerInfo,
-              imageData: element.content as string
-            };
-            
             // Só adiciona se não existir ainda
             if (!psdData.layers.some(l => l.name === layerInfo.name)) {
-              psdData.layers.push(imageInfo);
+              psdData.layers.push(layerInfo);
             }
             
             logger.image(layer.name, 'Imagem de camada genérica salva');
           } catch (storageError) {
             logger.error('Erro ao salvar imagem de camada genérica', storageError);
             
-            const imageInfo = {
-              ...layerInfo,
-              imageData: element.content as string
-            };
-            
             // Só adiciona se não existir ainda
             if (!psdData.layers.some(l => l.name === layerInfo.name)) {
-              psdData.layers.push(imageInfo);
+              psdData.layers.push(layerInfo);
             }
           }
         } else {
