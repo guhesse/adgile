@@ -115,7 +115,7 @@ export const AIModelManager: React.FC<AIModelManagerProps> = ({
       
       addTrainingLog("Modelo compilado com sucesso");
       
-      // Dados de treinamento simulados
+      // Dados de treinamento baseados nos templates reais
       const inputData = templates.map(template => {
         return [
           template.width / 1000, // Normalizar dimensões 
@@ -150,6 +150,21 @@ export const AIModelManager: React.FC<AIModelManagerProps> = ({
         
         return [x, y, width, height];
       });
+      
+      // Se não houver dados de treinamento suficientes, criar alguns dados simulados
+      if (inputData.length < 5) {
+        // Adicionar dados para formato vertical
+        inputData.push([0.3, 1.5, 0, 1, 0]);
+        outputData.push([0.1, 0.1, 0.8, 0.3]);
+        
+        // Adicionar dados para formato horizontal
+        inputData.push([1.5, 0.6, 1, 0, 0]);
+        outputData.push([0.1, 0.2, 0.6, 0.4]);
+        
+        // Adicionar dados para formato quadrado
+        inputData.push([1.0, 1.0, 0, 0, 1]);
+        outputData.push([0.2, 0.2, 0.6, 0.6]);
+      }
       
       const xs = tf.tensor2d(inputData);
       const ys = tf.tensor2d(outputData);

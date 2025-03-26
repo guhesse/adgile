@@ -16,15 +16,15 @@ export interface AdminLayoutListProps {
 
 export interface AIModelManagerProps {
   templates: LayoutTemplate[];
-  isModelTrained: boolean;
-  modelMetadata: {
-    trainedAt: any;
+  isModelTrained?: boolean;
+  modelMetadata?: {
+    trainedAt: string | null;
     iterations: number;
     accuracy: number;
     loss: number;
   };
-  onTrainModel: () => Promise<void>;
-  onModelReady?: (trainedModel: LayersModel) => void; // Added this prop
+  onTrainModel?: () => Promise<void>;
+  onModelReady?: (model: LayersModel) => void;
 }
 
 export interface AdminLayoutStatsProps {

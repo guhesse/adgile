@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { CanvasProvider } from "@/components/editor/CanvasContext";
 import { Canvas } from "@/components/editor/Canvas";
@@ -13,6 +12,7 @@ import { LayoutTemplate, AdminStats } from "@/components/editor/types/admin";
 import { BannerSize } from "@/components/editor/types";
 import { AdminTrainingPanel } from "@/components/editor/panels/AdminTrainingPanel";
 import { saveToIndexedDB, getFromIndexedDB } from "@/utils/indexedDBUtils";
+import { getOptimizedFormats } from "@/utils/formatGenerator";
 import * as tf from '@tensorflow/tfjs';
 
 // Chaves de armazenamento
@@ -25,33 +25,6 @@ const determineOrientation = (width: number, height: number): 'vertical' | 'hori
   const ratio = width / height;
   if (ratio >= 0.95 && ratio <= 1.05) return 'square';
   return width > height ? 'horizontal' : 'vertical';
-};
-
-// Número menor de formatos para evitar problemas de quota
-const createDemoFormats = () => {
-  const formats: BannerSize[] = [];
-  
-  // Criar 3 formatos verticais (reduzido de 5)
-  formats.push(
-    { name: 'Instagram Story', width: 1080, height: 1920, thumbnail: 'instagram-story.png' },
-    { name: 'Pinterest Pin', width: 1000, height: 1500, thumbnail: 'pinterest-pin.png' },
-    { name: 'Mobile Banner', width: 320, height: 480, thumbnail: 'mobile-banner.png' }
-  );
-  
-  // Criar 3 formatos horizontais (reduzido de 5)
-  formats.push(
-    { name: 'Facebook Ad', width: 1200, height: 628, thumbnail: 'facebook-ad.png' },
-    { name: 'LinkedIn Banner', width: 1584, height: 396, thumbnail: 'linkedin-banner.png' },
-    { name: 'Twitter Post', width: 1200, height: 675, thumbnail: 'twitter-post.png' }
-  );
-  
-  // Criar 2 formatos quadrados (reduzido de 5)
-  formats.push(
-    { name: 'Instagram Post', width: 1080, height: 1080, thumbnail: 'instagram-post.png' },
-    { name: 'Facebook Profile', width: 360, height: 360, thumbnail: 'facebook-profile.png' }
-  );
-  
-  return formats;
 };
 
 const Admin: React.FC = () => {
@@ -86,13 +59,13 @@ const Admin: React.FC = () => {
           console.log("Formatos carregados com sucesso:", storedFormats);
           setFormats(storedFormats);
         } else {
-          console.log("Nenhum formato encontrado, criando demos");
-          const demoFormats = createDemoFormats();
-          setFormats(demoFormats);
+          console.log("Nenhum formato encontrado, criando formatos otimizados");
+          const optimizedFormats = getOptimizedFormats();
+          setFormats(optimizedFormats);
           
           // Salvar no IndexedDB com tratamento de erro
           try {
-            const saved = await saveToIndexedDB(FORMATS_KEY, demoFormats);
+            const saved = await saveToIndexedDB(FORMATS_KEY, optimizedFormats);
             console.log("Formatos salvos com sucesso no IndexedDB:", saved);
           } catch (storageError) {
             console.error("Falha ao salvar formatos:", storageError);
@@ -103,8 +76,8 @@ const Admin: React.FC = () => {
         console.error("Falha ao inicializar formatos:", error);
         
         // Recorrer a formatos em memória sem tentar salvar
-        const demoFormats = createDemoFormats();
-        setFormats(demoFormats);
+        const optimizedFormats = getOptimizedFormats();
+        setFormats(optimizedFormats);
         toast.error("Falha ao acessar o armazenamento. Usando formatos temporários.");
       }
     };

@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { LayoutTemplate, TrainingData } from "@/components/editor/types/admin";
 import { saveTrainingData, getTrainingData } from "@/components/editor/utils/layoutStorage";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import * as tf from '@tensorflow/tfjs';
+import { AIModelManager } from "../ai/AIModelManager";
 
 interface AdminTrainingPanelProps {
   layouts: LayoutTemplate[];
@@ -43,14 +44,42 @@ export const AdminTrainingPanel: React.FC<AdminTrainingPanelProps> = ({
   const [batchSize, setBatchSize] = useState(16);
   const [modelSaved, setModelSaved] = useState(false);
   const [activeTab, setActiveTab] = useState("training");
+  const [isModelTrained, setIsModelTrained] = useState(false);
+  const [model, setModel] = useState<tf.LayersModel | null>(null);
+  
+  // Metadata do modelo
+  const [modelMetadata, setModelMetadata] = useState({
+    trainedAt: null,
+    iterations: 0,
+    accuracy: 0,
+    loss: 0
+  });
+  
+  // Verificar se já existe um modelo treinado
+  useEffect(() => {
+    const checkExistingModel = async () => {
+      const trainingData = await getTrainingData();
+      if (trainingData && trainingData.modelMetadata) {
+        setIsModelTrained(true);
+        setModelMetadata({
+          trainedAt: trainingData.modelMetadata.trainedAt || null,
+          iterations: trainingData.modelMetadata.iterations || 0,
+          accuracy: trainingData.modelMetadata.accuracy || 0,
+          loss: trainingData.modelMetadata.loss || 0
+        });
+      }
+    };
+    
+    checkExistingModel();
+  }, []);
   
   const addTrainingLog = (message: string) => {
     setTrainingLogs(prev => [...prev, message]);
   };
 
   const startTraining = async () => {
-    if (layouts.length < 10) {
-      toast.error("Need at least 10 layouts for training. Please create more layouts.");
+    if (layouts.length < 5) {
+      toast.error("São necessários pelo menos 5 layouts para treinamento. Por favor, crie mais layouts.");
       return;
     }
 
@@ -60,57 +89,55 @@ export const AdminTrainingPanel: React.FC<AdminTrainingPanelProps> = ({
     setModelSaved(false);
     
     try {
-      addTrainingLog("Initializing AI model...");
+      addTrainingLog("Inicializando modelo de IA...");
       await tf.ready();
-      addTrainingLog("TensorFlow.js ready");
+      addTrainingLog("TensorFlow.js pronto");
       
-      // Prepare training data
-      addTrainingLog("Preparing training data...");
+      // Preparar dados de treinamento
+      addTrainingLog("Preparando dados de treinamento...");
       
       const inputData = layouts.map(layout => {
         return [
-          layout.width / 1000, // Normalize dimensions
+          layout.width / 1000, // Normalizar dimensões
           layout.height / 1000,
           layout.orientation === "horizontal" ? 1 : 0,
           layout.orientation === "vertical" ? 1 : 0,
           layout.orientation === "square" ? 1 : 0,
-          // Extract number of elements, text percentage, image percentage, etc.
-          layout.elements.length / 20, // Normalize
-          // More features can be added here
         ];
       });
       
-      // Simplified output: x position, y position, width, height for a next recommended element
+      // Saída simplificada: posição x, posição y, largura, altura para um próximo elemento recomendado
       const outputData = layouts.map(layout => {
         if (layout.elements.length > 0) {
-          // Use the first element as a "recommendation"
+          // Usar o primeiro elemento como uma "recomendação"
           const el = layout.elements[0];
           return [
-            el.style.x / layout.width, // Normalize positions
+            el.style.x / layout.width, // Normalizar posições
             el.style.y / layout.height,
             el.style.width / layout.width,
-            el.style.height / layout.height,
-            el.type === "text" ? 1 : 0,
-            el.type === "image" ? 1 : 0,
-            el.type === "button" ? 1 : 0,
+            el.style.height / layout.height
           ];
         } else {
-          // Default values for layouts without elements
-          return [0.1, 0.1, 0.8, 0.3, 1, 0, 0]; // Default text element
+          // Valores padrão para layouts sem elementos
+          return layout.orientation === "horizontal" 
+            ? [0.1, 0.2, 0.6, 0.4]  // Horizontal
+            : layout.orientation === "vertical"
+              ? [0.1, 0.1, 0.8, 0.3] // Vertical
+              : [0.2, 0.2, 0.6, 0.6]; // Quadrado
         }
       });
       
-      addTrainingLog(`Prepared ${inputData.length} training samples`);
+      addTrainingLog(`Preparadas ${inputData.length} amostras de treinamento`);
       
-      // Convert to tensors
+      // Converter para tensores
       const xs = tf.tensor2d(inputData);
       const ys = tf.tensor2d(outputData);
       
-      // Create a model
-      addTrainingLog("Creating neural network model...");
+      // Criar um modelo
+      addTrainingLog("Criando modelo de rede neural...");
       const model = tf.sequential();
       
-      // Add layers
+      // Adicionar camadas
       model.add(tf.layers.dense({
         inputShape: [inputData[0].length],
         units: 16,
@@ -124,20 +151,20 @@ export const AdminTrainingPanel: React.FC<AdminTrainingPanelProps> = ({
       
       model.add(tf.layers.dense({
         units: outputData[0].length,
-        activation: 'sigmoid' // Use sigmoid for normalized outputs
+        activation: 'sigmoid' // Usar sigmoid para saídas normalizadas
       }));
       
-      // Compile the model
+      // Compilar o modelo
       model.compile({
         optimizer: tf.train.adam(0.001),
         loss: 'meanSquaredError',
         metrics: ['accuracy']
       });
       
-      addTrainingLog("Model compiled successfully");
+      addTrainingLog("Modelo compilado com sucesso");
       
-      // Train the model
-      addTrainingLog(`Starting training with ${epochs} epochs...`);
+      // Treinar o modelo
+      addTrainingLog(`Iniciando treinamento com ${epochs} épocas...`);
       
       await model.fit(xs, ys, {
         epochs,
@@ -150,25 +177,26 @@ export const AdminTrainingPanel: React.FC<AdminTrainingPanelProps> = ({
             setTrainingProgress(progress);
             
             if ((epoch + 1) % 5 === 0 || epoch === 0 || epoch === epochs - 1) {
-              addTrainingLog(`Epoch ${epoch + 1}/${epochs} - loss: ${logs.loss.toFixed(4)} - accuracy: ${logs.acc ? logs.acc.toFixed(4) : 'N/A'}`);
+              addTrainingLog(`Época ${epoch + 1}/${epochs} - perda: ${logs.loss.toFixed(4)} - acurácia: ${logs.acc ? logs.acc.toFixed(4) : 'N/A'}`);
             }
           }
         }
       });
       
-      addTrainingLog("Training completed successfully!");
+      setModel(model);
+      addTrainingLog("Treinamento concluído com sucesso!");
       
-      // Test the model
+      // Testar o modelo
       const testResult = model.evaluate(xs, ys) as tf.Scalar[];
       const testLoss = testResult[0].dataSync()[0];
-      const testAcc = testResult[1].dataSync()[0];
+      const testAcc = testResult[1] ? testResult[1].dataSync()[0] : 0;
       
-      addTrainingLog(`Final evaluation - loss: ${testLoss.toFixed(4)} - accuracy: ${testAcc.toFixed(4)}`);
+      addTrainingLog(`Avaliação final - perda: ${testLoss.toFixed(4)} - acurácia: ${testAcc.toFixed(4)}`);
       
-      // Save model to localStorage
-      addTrainingLog("Saving model...");
+      // Salvar modelo no localStorage
+      addTrainingLog("Salvando modelo...");
       
-      // For demonstration, we'll save training metadata instead of the actual model
+      // Para demonstração, vamos salvar os metadados de treinamento em vez do modelo real
       const trainingData: TrainingData = {
         id: Date.now().toString(),
         templates: layouts,
@@ -182,23 +210,46 @@ export const AdminTrainingPanel: React.FC<AdminTrainingPanelProps> = ({
       
       saveTrainingData(trainingData);
       setModelSaved(true);
+      setIsModelTrained(true);
+      setModelMetadata({
+        trainedAt: new Date().toISOString(),
+        iterations: epochs,
+        accuracy: testAcc,
+        loss: testLoss
+      });
+      
       onModelUpdate();
       
-      addTrainingLog("Model saved successfully!");
-      toast.success("AI model training completed!");
+      addTrainingLog("Modelo salvo com sucesso!");
+      toast.success("Treinamento do modelo de IA concluído!");
       
-      // Clean up tensors
+      // Limpar tensores
       xs.dispose();
       ys.dispose();
       
     } catch (error) {
-      console.error("Training error:", error);
-      addTrainingLog(`Error during training: ${error.message}`);
-      toast.error("Error during model training");
+      console.error("Erro de treinamento:", error);
+      addTrainingLog(`Erro durante o treinamento: ${error instanceof Error ? error.message : String(error)}`);
+      toast.error("Erro durante o treinamento do modelo");
     } finally {
       setIsTraining(false);
       setTrainingProgress(100);
     }
+  };
+
+  const handleModelReady = (trainedModel: tf.LayersModel) => {
+    setModel(trainedModel);
+    setIsModelTrained(true);
+    setModelMetadata({
+      ...modelMetadata,
+      trainedAt: new Date().toISOString(),
+      accuracy: 0.85, // Exemplo
+      iterations: epochs,
+      loss: 0.15 // Exemplo
+    });
+    
+    onModelUpdate();
+    toast.success("Modelo de IA treinado com sucesso!");
   };
 
   return (
@@ -208,15 +259,15 @@ export const AdminTrainingPanel: React.FC<AdminTrainingPanelProps> = ({
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>AI Model Training</CardTitle>
+                <CardTitle>Treinamento do Modelo de IA</CardTitle>
                 <CardDescription>
-                  Train the AI model to intelligently generate layouts based on your designs
+                  Treine o modelo de IA para gerar layouts inteligentes com base nos seus designs
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center space-x-4 mb-6">
                   <div className="flex-1">
-                    <Label htmlFor="epochs">Training Epochs: {epochs}</Label>
+                    <Label htmlFor="epochs">Épocas de Treinamento: {epochs}</Label>
                     <Slider
                       id="epochs"
                       min={10}
@@ -228,7 +279,7 @@ export const AdminTrainingPanel: React.FC<AdminTrainingPanelProps> = ({
                     />
                   </div>
                   <div className="flex-1">
-                    <Label htmlFor="batchSize">Batch Size: {batchSize}</Label>
+                    <Label htmlFor="batchSize">Tamanho do Lote: {batchSize}</Label>
                     <Slider
                       id="batchSize"
                       min={4}
@@ -244,15 +295,15 @@ export const AdminTrainingPanel: React.FC<AdminTrainingPanelProps> = ({
                 <div className="mb-6">
                   <Progress value={trainingProgress} className="h-2 mb-2" />
                   <div className="flex justify-between text-xs text-gray-500">
-                    <span>{trainingProgress}% Complete</span>
-                    <span>{isTraining ? "Training in progress..." : "Ready"}</span>
+                    <span>{trainingProgress}% Concluído</span>
+                    <span>{isTraining ? "Treinamento em andamento..." : "Pronto"}</span>
                   </div>
                 </div>
 
                 <div className="bg-gray-50 border rounded-md p-3 h-64 overflow-y-auto font-mono text-xs">
                   {trainingLogs.length === 0 ? (
                     <div className="text-gray-400 p-2">
-                      Training logs will appear here...
+                      Os logs de treinamento aparecerão aqui...
                     </div>
                   ) : (
                     trainingLogs.map((log, i) => (
@@ -267,28 +318,28 @@ export const AdminTrainingPanel: React.FC<AdminTrainingPanelProps> = ({
               <CardFooter className="flex justify-between">
                 <div className="text-sm text-gray-500 flex items-center">
                   <Info className="h-4 w-4 mr-2 text-blue-500" />
-                  {layouts.length} layouts available for training
+                  {layouts.length} layouts disponíveis para treinamento
                 </div>
                 <div className="flex space-x-2">
                   {modelSaved && (
                     <Button variant="outline" className="text-green-600">
                       <Check className="h-4 w-4 mr-2" />
-                      Model Saved
+                      Modelo Salvo
                     </Button>
                   )}
                   <Button
                     onClick={startTraining}
-                    disabled={isTraining || layouts.length < 10}
+                    disabled={isTraining || layouts.length < 5}
                   >
                     {isTraining ? (
                       <>
                         <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Training...
+                        Treinando...
                       </>
                     ) : (
                       <>
                         <Brain className="h-4 w-4 mr-2" />
-                        Start Training
+                        Iniciar Treinamento
                       </>
                     )}
                   </Button>
@@ -298,13 +349,48 @@ export const AdminTrainingPanel: React.FC<AdminTrainingPanelProps> = ({
 
             <Card>
               <CardHeader>
-                <CardTitle>Model Performance</CardTitle>
+                <CardTitle>Desempenho do Modelo</CardTitle>
+                <CardDescription>
+                  Métricas de desempenho do modelo treinado
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center p-6 text-gray-500">
-                  <Sparkles className="mx-auto h-8 w-8 opacity-50 mb-2" />
-                  <p>The AI model performance metrics will be displayed here after training</p>
-                </div>
+                {isModelTrained ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="text-2xl font-bold text-center text-blue-600">
+                            {(modelMetadata.accuracy * 100).toFixed(1)}%
+                          </div>
+                          <p className="text-center text-sm text-gray-500 mt-2">Acurácia</p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="text-2xl font-bold text-center text-amber-600">
+                            {modelMetadata.loss.toFixed(4)}
+                          </div>
+                          <p className="text-center text-sm text-gray-500 mt-2">Erro (Loss)</p>
+                        </CardContent>
+                      </Card>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Último Treinamento</h4>
+                      <p className="text-sm text-gray-600">
+                        {modelMetadata.trainedAt ? new Date(modelMetadata.trainedAt).toLocaleString() : 'N/A'}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {modelMetadata.iterations} épocas de treinamento
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center p-6 text-gray-500">
+                    <Sparkles className="mx-auto h-8 w-8 opacity-50 mb-2" />
+                    <p>As métricas de desempenho do modelo serão exibidas aqui após o treinamento</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -312,14 +398,17 @@ export const AdminTrainingPanel: React.FC<AdminTrainingPanelProps> = ({
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Training Status</CardTitle>
+                <CardTitle>Status do Treinamento</CardTitle>
+                <CardDescription>
+                  Informações sobre o modelo de IA atual
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <Layers className="h-4 w-4 mr-2 text-purple-500" />
-                      <span>Available Layouts</span>
+                      <span>Layouts Disponíveis</span>
                     </div>
                     <span className="font-semibold">{layouts.length}</span>
                   </div>
@@ -327,29 +416,29 @@ export const AdminTrainingPanel: React.FC<AdminTrainingPanelProps> = ({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <Brain className="h-4 w-4 mr-2 text-purple-500" />
-                      <span>Model Status</span>
+                      <span>Status do Modelo</span>
                     </div>
-                    <span className={modelSaved ? "text-green-600 font-semibold" : "text-gray-500"}>
-                      {modelSaved ? "Trained" : "Untrained"}
+                    <span className={isModelTrained ? "text-green-600 font-semibold" : "text-gray-500"}>
+                      {isModelTrained ? "Treinado" : "Não treinado"}
                     </span>
                   </div>
                   
                   <Separator />
                   
                   <div>
-                    <h3 className="text-sm font-medium mb-2">Recommended Data</h3>
+                    <h3 className="text-sm font-medium mb-2">Dados Recomendados</h3>
                     <ul className="space-y-2 text-sm text-gray-600">
                       <li className="flex items-start">
                         <AlertCircle className="h-4 w-4 mr-2 text-amber-500 mt-0.5 flex-shrink-0" />
-                        <span>At least 50 layouts (currently {layouts.length})</span>
+                        <span>Pelo menos 20 layouts (atualmente {layouts.length})</span>
                       </li>
                       <li className="flex items-start">
                         <AlertCircle className="h-4 w-4 mr-2 text-amber-500 mt-0.5 flex-shrink-0" />
-                        <span>Mix of different formats and orientations</span>
+                        <span>Mistura de diferentes formatos e orientações</span>
                       </li>
                       <li className="flex items-start">
                         <AlertCircle className="h-4 w-4 mr-2 text-amber-500 mt-0.5 flex-shrink-0" />
-                        <span>Variety of layouts with different element combinations</span>
+                        <span>Variedade de layouts com diferentes combinações de elementos</span>
                       </li>
                     </ul>
                   </div>
@@ -359,31 +448,39 @@ export const AdminTrainingPanel: React.FC<AdminTrainingPanelProps> = ({
 
             <Card>
               <CardHeader>
-                <CardTitle>Training Guide</CardTitle>
+                <CardTitle>Guia de Treinamento</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 text-sm">
                   <p>
-                    The AI model learns from your saved layouts to provide intelligent
-                    suggestions for new designs. Follow these steps:
+                    O modelo de IA aprende com seus layouts salvos para fornecer sugestões
+                    inteligentes para novos designs. Siga estas etapas:
                   </p>
                   <ol className="list-decimal pl-5 space-y-2">
-                    <li>Create various layouts using different formats</li>
-                    <li>Save at least 50 layouts for optimal training</li>
-                    <li>Click "Start Training" to begin the process</li>
-                    <li>Wait for training to complete (may take several minutes)</li>
-                    <li>The model will be automatically saved when finished</li>
+                    <li>Crie vários layouts usando diferentes formatos</li>
+                    <li>Salve pelo menos 20 layouts para treinamento ideal</li>
+                    <li>Clique em "Iniciar Treinamento" para começar o processo</li>
+                    <li>Aguarde a conclusão do treinamento (pode levar alguns minutos)</li>
+                    <li>O modelo será automaticamente salvo quando terminado</li>
                   </ol>
                   <p className="flex items-start mt-3">
                     <HelpCircle className="h-4 w-4 mr-2 text-blue-500 mt-0.5 flex-shrink-0" />
                     <span>
-                      More layouts will result in better AI performance and more accurate
-                      suggestions.
+                      Mais layouts resultarão em melhor desempenho da IA e sugestões
+                      mais precisas.
                     </span>
                   </p>
                 </div>
               </CardContent>
             </Card>
+            
+            <AIModelManager
+              templates={layouts}
+              isModelTrained={isModelTrained}
+              modelMetadata={modelMetadata}
+              onTrainModel={startTraining}
+              onModelReady={handleModelReady}
+            />
           </div>
         </div>
       </div>

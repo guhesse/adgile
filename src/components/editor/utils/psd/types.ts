@@ -24,7 +24,7 @@ export interface PSDFileData {
 export interface LayerData {
   id: string;
   name: string;
-  type: 'text' | 'image' | 'group' | 'shape';
+  type: 'text' | 'image' | 'group' | 'shape' | string;
   x: number;
   y: number;
   width: number;

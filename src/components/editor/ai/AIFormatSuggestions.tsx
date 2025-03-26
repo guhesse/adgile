@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import { Button } from '../../ui/button';
@@ -66,7 +67,7 @@ export const AIFormatSuggestions: React.FC = () => {
         
         // Create input tensor
         const input = tf.tensor2d([
-          [canvasWidth, canvasHeight, isText, isImage, isButton, isContainer, isBackground]
+          [canvasWidth / 1000, canvasHeight / 1000, isText, isImage, isButton]
         ]);
         
         // Make prediction
@@ -153,15 +154,13 @@ export const AIFormatSuggestions: React.FC = () => {
     }
     
     try {
-      // Create input tensor
+      // Create input tensor with simplified features
       const isText = elementType === 'text' ? 1 : 0;
       const isImage = (elementType === 'image' || elementType === 'logo') ? 1 : 0;
       const isButton = elementType === 'button' ? 1 : 0;
-      const isContainer = (elementType === 'container' || elementType === 'layout') ? 1 : 0;
-      const isBackground = elementType === 'artboard-background' ? 1 : 0;
       
       const input = tf.tensor2d([
-        [selectedSize.width, selectedSize.height, isText, isImage, isButton, isContainer, isBackground]
+        [selectedSize.width / 1000, selectedSize.height / 1000, isText, isImage, isButton]
       ]);
       
       // Make prediction
@@ -190,7 +189,7 @@ export const AIFormatSuggestions: React.FC = () => {
   
   // Analyze existing elements and suggest improvements
   const analyzeExistingElements = useCallback(() => {
-    if (!model || elements.length === 0) {
+    if (!model || elements.length === 0 || !selectedSize) {
       toast.error("Model not ready or no elements to analyze");
       return;
     }
