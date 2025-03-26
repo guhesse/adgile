@@ -13,36 +13,14 @@ export const createLinkedVersions = (
   const linkedElements: EditorElement[] = [];
   const linkedId = `linked-${Date.now()}`;
   
-  // Analyze element position to determine constraints
-  const { horizontalConstraint, verticalConstraint } = analyzeElementPosition(element, selectedSize);
-  
   // Calculate percentage values for the source element
   const xPercent = (element.style.x / selectedSize.width) * 100;
   const yPercent = (element.style.y / selectedSize.height) * 100;
   const widthPercent = (element.style.width / selectedSize.width) * 100;
   const heightPercent = (element.style.height / selectedSize.height) * 100;
   
-  // Special handling for elements that should be aligned to bottom/right
-  const isNearBottom = Math.abs((element.style.y + element.style.height) - selectedSize.height) < 20;
-  const isNearRight = Math.abs((element.style.x + element.style.width) - selectedSize.width) < 20;
-  const isNearBottomRight = isNearBottom && isNearRight;
-  
-  // Check if element is probably a bottom-anchored image or a footer
-  const isBottomImage = element.type === 'image' && isNearBottom;
-  const isBottomRightButton = element.type === 'button' && isNearBottomRight;
-  
-  // Force specific constraints for special elements
-  let finalHorizontalConstraint = horizontalConstraint;
-  let finalVerticalConstraint = verticalConstraint;
-  
-  if (isBottomImage) {
-    finalVerticalConstraint = 'bottom';
-  }
-  
-  if (isBottomRightButton) {
-    finalHorizontalConstraint = 'right';
-    finalVerticalConstraint = 'bottom';
-  }
+  // Analyze element position to determine constraints
+  const { horizontalConstraint, verticalConstraint } = analyzeElementPosition(element, selectedSize);
   
   // Update the original element with the linked ID, percentage values, and constraints
   const updatedElement = {
@@ -54,8 +32,8 @@ export const createLinkedVersions = (
       yPercent,
       widthPercent,
       heightPercent,
-      constraintHorizontal: finalHorizontalConstraint,
-      constraintVertical: finalVerticalConstraint
+      constraintHorizontal: horizontalConstraint,
+      constraintVertical: verticalConstraint
     }
   };
   
@@ -76,8 +54,8 @@ export const createLinkedVersions = (
           yPercent,
           widthPercent,
           heightPercent,
-          constraintHorizontal: finalHorizontalConstraint,
-          constraintVertical: finalVerticalConstraint
+          constraintHorizontal: horizontalConstraint,
+          constraintVertical: verticalConstraint
         }
       },
       selectedSize,
@@ -102,8 +80,8 @@ export const createLinkedVersions = (
           yPercent,
           widthPercent,
           heightPercent,
-          constraintHorizontal: finalHorizontalConstraint,
-          constraintVertical: finalVerticalConstraint
+          constraintHorizontal: horizontalConstraint,
+          constraintVertical: verticalConstraint
         },
         childElements: element.childElements?.map(child => ({
           ...child,
@@ -128,8 +106,8 @@ export const createLinkedVersions = (
           yPercent,
           widthPercent,
           heightPercent,
-          constraintHorizontal: finalHorizontalConstraint,
-          constraintVertical: finalVerticalConstraint
+          constraintHorizontal: horizontalConstraint,
+          constraintVertical: verticalConstraint
         }
       };
     }

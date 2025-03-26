@@ -1,4 +1,3 @@
-
 import { EditorElement, BannerSize } from "../../types";
 import { applyResponsiveTransformation } from "./constraintOperations";
 
@@ -37,38 +36,15 @@ export const updateAllLinkedElements = (
   }
   
   // Analyze element position to determine constraints if they're not already set
-  let { constraintHorizontal, constraintVertical } = 
-    { constraintHorizontal: sourceElement.style.constraintHorizontal, 
-      constraintVertical: sourceElement.style.constraintVertical };
+  let { horizontalConstraint, verticalConstraint } = 
+    { horizontalConstraint: sourceElement.style.constraintHorizontal, 
+      verticalConstraint: sourceElement.style.constraintVertical };
   
-  if (!constraintHorizontal || !constraintVertical) {
+  if (!horizontalConstraint || !verticalConstraint) {
     const { analyzeElementPosition } = require('../../utils/grid/responsivePosition');
     const constraints = analyzeElementPosition(sourceElement, sourceSize);
-    constraintHorizontal = constraintHorizontal || constraints.horizontalConstraint;
-    constraintVertical = constraintVertical || constraints.verticalConstraint;
-  }
-  
-  // Special considerations for different element types
-  if (sourceElement.type === 'image' && !constraintVertical) {
-    // Check if image is at the bottom
-    const bottomDistance = sourceSize.height - (sourceElement.style.y + sourceElement.style.height);
-    if (bottomDistance < 20) {
-      constraintVertical = 'bottom';
-    }
-  }
-  
-  if (sourceElement.type === 'button' && !constraintHorizontal && !constraintVertical) {
-    // Check if button is at bottom-right
-    const rightDistance = sourceSize.width - (sourceElement.style.x + sourceElement.style.width);
-    const bottomDistance = sourceSize.height - (sourceElement.style.y + sourceElement.style.height);
-    
-    if (rightDistance < 20) {
-      constraintHorizontal = 'right';
-    }
-    
-    if (bottomDistance < 20) {
-      constraintVertical = 'bottom';
-    }
+    horizontalConstraint = horizontalConstraint || constraints.horizontalConstraint;
+    verticalConstraint = verticalConstraint || constraints.verticalConstraint;
   }
   
   return elements.map(el => {
@@ -80,8 +56,8 @@ export const updateAllLinkedElements = (
           ...el.style,
           ...absoluteChanges,
           ...calculatedPercentChanges,
-          constraintHorizontal: constraintHorizontal,
-          constraintVertical: constraintVertical
+          constraintHorizontal: horizontalConstraint,
+          constraintVertical: verticalConstraint
         }
       };
     }
@@ -97,8 +73,8 @@ export const updateAllLinkedElements = (
           style: {
             ...sourceElement.style,
             ...absoluteChanges,
-            constraintHorizontal: constraintHorizontal,
-            constraintVertical: constraintVertical
+            constraintHorizontal: horizontalConstraint,
+            constraintVertical: verticalConstraint
           }
         };
         
