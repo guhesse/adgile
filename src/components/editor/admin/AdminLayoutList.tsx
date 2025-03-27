@@ -17,13 +17,21 @@ import {
   Terminal,
   Square, 
   TrendingUp,
-  X
+  X,
+  Download,
+  Upload
 } from "lucide-react";
 import { AdminLayoutListProps } from "@/types/admin";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { ElementRenderer } from "../ElementRenderer";
+import { AdminLayoutImport } from "./AdminLayoutImport";
+import { toast } from "sonner";
 
-export const AdminLayoutList: React.FC<AdminLayoutListProps> = ({ templates, onDeleteTemplate }) => {
+export const AdminLayoutList: React.FC<AdminLayoutListProps> = ({ 
+  templates, 
+  onDeleteTemplate,
+  onImportTemplates 
+}) => {
   // Add a safe check for templates array to prevent runtime errors
   const layoutTemplates = templates || [];
   const [viewingTemplate, setViewingTemplate] = useState<LayoutTemplate | null>(null);
@@ -36,11 +44,60 @@ export const AdminLayoutList: React.FC<AdminLayoutListProps> = ({ templates, onD
   const closePreview = () => {
     setViewingTemplate(null);
   };
+
+  // Adicionar função para exportar todos os templates como JSON
+  const handleExportAllTemplates = () => {
+    if (layoutTemplates.length === 0) {
+      toast.error("Não há templates para exportar");
+      return;
+    }
+
+    try {
+      const dataStr = JSON.stringify(layoutTemplates, null, 2);
+      const dataUri = "data:application/json;charset=utf-8," + encodeURIComponent(dataStr);
+      
+      const exportFileDefaultName = `adgile-layouts-${new Date().toISOString().slice(0,10)}.json`;
+      
+      const linkElement = document.createElement('a');
+      linkElement.setAttribute('href', dataUri);
+      linkElement.setAttribute('download', exportFileDefaultName);
+      linkElement.click();
+      
+      toast.success(`${layoutTemplates.length} templates exportados com sucesso`);
+    } catch (error) {
+      console.error("Erro ao exportar templates:", error);
+      toast.error("Erro ao exportar templates");
+    }
+  };
   
   return (
     <>
       <ScrollArea className="h-[calc(100vh-170px)]">
         <div className="p-4 space-y-4">
+          <div className="flex flex-col space-y-2 mb-4">
+            <AdminLayoutImport 
+              onImportLayouts={(importedTemplates) => {
+                if (onImportTemplates) {
+                  onImportTemplates(importedTemplates);
+                } else {
+                  toast.info(`${importedTemplates.length} templates seriam importados`);
+                }
+              }} 
+            />
+            
+            <Button 
+              variant="outline" 
+              className="w-full justify-between"
+              onClick={handleExportAllTemplates}
+              disabled={layoutTemplates.length === 0}
+            >
+              <div className="flex items-center">
+                <Download className="mr-2 h-4 w-4" />
+                <span>Exportar Todos ({layoutTemplates.length})</span>
+              </div>
+            </Button>
+          </div>
+
           {layoutTemplates.length === 0 ? (
             <div className="text-center p-6 text-gray-500">
               <Terminal className="mx-auto h-8 w-8 opacity-50 mb-2" />

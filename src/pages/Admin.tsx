@@ -248,6 +248,38 @@ const Admin: React.FC = () => {
     }
   };
 
+  // Import multiple templates
+  const handleImportTemplates = async (importedTemplates: LayoutTemplate[]) => {
+    try {
+      // Verificar se os templates já existem pelo ID
+      const existingIds = new Set(savedTemplates.map(t => t.id));
+      const newTemplates = importedTemplates.filter(t => !existingIds.has(t.id));
+      
+      // Se não houver novos templates, mostrar mensagem
+      if (newTemplates.length === 0) {
+        toast.warning("Todos os templates importados já existem na lista");
+        return;
+      }
+      
+      // Adicionar os novos templates à lista existente
+      const updatedTemplates = [...savedTemplates, ...newTemplates];
+      setSavedTemplates(updatedTemplates);
+      updateStats(updatedTemplates);
+      
+      // Salvar no IndexedDB
+      const success = await saveToIndexedDB(STORAGE_KEY, updatedTemplates);
+      
+      if (success) {
+        toast.success(`${newTemplates.length} novos templates importados com sucesso`);
+      } else {
+        toast.error("Erro ao salvar templates importados");
+      }
+    } catch (error) {
+      console.error("Erro ao importar templates:", error);
+      toast.error("Erro ao processar templates importados");
+    }
+  };
+
   // Train AI model
   const handleTrainModel = async () => {
     if (savedTemplates.length < 5) {
@@ -384,6 +416,7 @@ const Admin: React.FC = () => {
                 <AdminLayoutList
                   templates={savedTemplates}
                   onDeleteTemplate={handleDeleteTemplate}
+                  onImportTemplates={handleImportTemplates}
                 />
               </div>
             </TabsContent>
