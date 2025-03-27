@@ -1,3 +1,4 @@
+
 export type BannerSize = {
   name: string;
   width: number;
@@ -100,6 +101,61 @@ export const BANNER_SIZES: BannerSize[] = [
   { name: "Display Ad - Large Rectangle", width: 336, height: 280 },
   { name: "Display Ad - Skyscraper", width: 160, height: 600 },
   { name: "Display Ad - Half Page", width: 300, height: 600 },
+  
+  // Email Additional
+  { name: "Email Newsletter", width: 600, height: 1000 },
+  { name: "Email Announcement", width: 600, height: 900 },
+  { name: "Email Receipt", width: 600, height: 800 },
+  
+  // Additional Social Media
+  { name: "Pinterest Pin", width: 1000, height: 1500 },
+  { name: "TikTok Video", width: 1080, height: 1920 },
+  { name: "YouTube Channel Art", width: 2560, height: 1440 },
+  { name: "WhatsApp Status", width: 1080, height: 1920 },
+  { name: "Discord Banner", width: 1920, height: 480 },
+  
+  // Web Banners
+  { name: "Desktop Banner", width: 1920, height: 500 },
+  { name: "Blog Header", width: 2240, height: 1260 },
+  { name: "Website Hero", width: 1440, height: 600 },
+  { name: "Mobile App Banner", width: 750, height: 1334 },
+  
+  // Google Ads
+  { name: "Google Display Small", width: 300, height: 250 },
+  { name: "Google Display Medium", width: 336, height: 280 },
+  { name: "Google Display Large", width: 728, height: 90 },
+  { name: "Google Display Square", width: 250, height: 250 },
+  
+  // Print Formats
+  { name: "Business Card", width: 1050, height: 600 },
+  { name: "Postcard", width: 1200, height: 900 },
+  { name: "Flyer", width: 1080, height: 1920 },
+  { name: "Brochure", width: 1980, height: 1400 },
+];
+
+// Adicionando novos formatos exportados de allFormats
+export const EXTENDED_BANNER_SIZES: BannerSize[] = [
+  ...BANNER_SIZES,
+  // Horizontal Formats
+  { name: "Facebook Ad", width: 1200, height: 628 },
+  { name: "Twitter Post Advanced", width: 1200, height: 675 },
+  { name: "YouTube Channel Art Plus", width: 2560, height: 1440 },
+  { name: "Blog Banner Large", width: 2240, height: 1260 },
+  { name: "Header Banner Wide", width: 1920, height: 1080 },
+  
+  // Vertical Formats
+  { name: "Snapchat", width: 1080, height: 1920 },
+  { name: "Mobile Banner", width: 320, height: 480 },
+  { name: "Smartphone Portrait", width: 750, height: 1334 },
+  { name: "Smartphone Portrait Large", width: 1080, height: 2340 },
+  { name: "Vertical Banner Medium", width: 300, height: 600 },
+  
+  // Square Formats
+  { name: "Medium Square Banner", width: 300, height: 300 },
+  { name: "Large Square Banner", width: 600, height: 600 },
+  { name: "Twitter Profile Pic", width: 400, height: 400 },
+  { name: "Instagram Profile Pic", width: 320, height: 320 },
+  { name: "App Icon", width: 512, height: 512 },
 ];
 
 export const ANIMATION_PRESETS = [

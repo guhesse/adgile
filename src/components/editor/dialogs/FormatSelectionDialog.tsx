@@ -5,16 +5,19 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogTrigger,
-  DialogClose,
-  DialogFooter
+  DialogFooter,
+  DialogDescription
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, PanelRight } from "lucide-react";
-import { generateBannerSizes, generateSquareSizes, generateRectangleSizes } from "@/utils/formatGenerator";
-import { BannerSize } from "@/components/editor/types";
+import { Upload, FileText } from "lucide-react";
+import { BannerSize, EXTENDED_BANNER_SIZES } from "../types";
 import { PSDImport } from "@/components/editor/PSDImport";
+import { 
+  verticalFormats, 
+  horizontalFormats, 
+  squareFormats 
+} from "@/data/formats";
 
 interface FormatSelectionDialogProps {
   onSelectFormat: (format: BannerSize) => void;
@@ -29,12 +32,7 @@ export const FormatSelectionDialog = ({
   open,
   onOpenChange
 }: FormatSelectionDialogProps) => {
-  const [activeTab, setActiveTab] = useState("inicio");
-  const [selectedMode, setSelectedMode] = useState<"psd" | "format" | null>(null);
-  
-  const socialMediaSizes = generateBannerSizes();
-  const squareSizes = generateSquareSizes();
-  const rectangleSizes = generateRectangleSizes();
+  const [activeTab, setActiveTab] = useState("formatos");
   
   const handleSelectFormat = (format: BannerSize) => {
     onSelectFormat(format);
@@ -89,75 +87,75 @@ export const FormatSelectionDialog = ({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Começar um novo projeto</DialogTitle>
+          <DialogTitle>Escolher um formato</DialogTitle>
+          <DialogDescription>
+            Selecione um formato para começar seu design
+          </DialogDescription>
         </DialogHeader>
         
-        <Tabs defaultValue="inicio" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="inicio">Início</TabsTrigger>
-            <TabsTrigger value="formatos" disabled={activeTab === "inicio" && !selectedMode}>Formatos</TabsTrigger>
-            <TabsTrigger value="psd" disabled={activeTab === "inicio" && !selectedMode}>Upload PSD</TabsTrigger>
+        <Tabs defaultValue="formatos" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="formatos">Formatos</TabsTrigger>
+            <TabsTrigger value="psd">Upload PSD</TabsTrigger>
           </TabsList>
           
           <div className="flex-1 overflow-y-auto py-4">
-            <TabsContent value="inicio" className="h-full space-y-4 flex flex-col items-center justify-center">
-              <h3 className="text-lg font-medium text-center">Como deseja começar?</h3>
-              
-              <div className="grid grid-cols-2 gap-8 max-w-md mt-8">
-                <div 
-                  className="flex flex-col items-center p-6 border rounded-xl hover:border-primary hover:bg-primary/5 cursor-pointer transition-all"
-                  onClick={() => {
-                    setSelectedMode("format");
-                    setActiveTab("formatos");
-                  }}
-                >
-                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                    <FileText className="w-8 h-8 text-primary" />
-                  </div>
-                  <h4 className="font-medium">Escolher um formato</h4>
-                  <p className="text-sm text-gray-500 text-center mt-2">
-                    Comece com um formato pré-definido para redes sociais ou personalizado
-                  </p>
-                </div>
-                
-                <div 
-                  className="flex flex-col items-center p-6 border rounded-xl hover:border-primary hover:bg-primary/5 cursor-pointer transition-all"
-                  onClick={() => {
-                    setSelectedMode("psd");
-                    setActiveTab("psd");
-                  }}
-                >
-                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                    <Upload className="w-8 h-8 text-primary" />
-                  </div>
-                  <h4 className="font-medium">Importar PSD</h4>
-                  <p className="text-sm text-gray-500 text-center mt-2">
-                    Comece importando um arquivo PSD existente do Photoshop
-                  </p>
-                </div>
-              </div>
-            </TabsContent>
-            
             <TabsContent value="formatos" className="mt-0">
               <div className="space-y-6">
                 <div>
                   <h3 className="text-base font-medium mb-3">Redes Sociais</h3>
                   <div className="grid grid-cols-3 gap-4">
-                    {renderSizeGridItems(socialMediaSizes)}
+                    {renderSizeGridItems(EXTENDED_BANNER_SIZES.filter(size => 
+                      size.name.includes("Facebook") || 
+                      size.name.includes("Instagram") || 
+                      size.name.includes("Twitter") || 
+                      size.name.includes("LinkedIn") ||
+                      size.name.includes("TikTok") ||
+                      size.name.includes("YouTube") ||
+                      size.name.includes("WhatsApp") ||
+                      size.name.includes("Pinterest")
+                    ).slice(0, 9))}
                   </div>
                 </div>
                 
                 <div>
                   <h3 className="text-base font-medium mb-3">Quadrados</h3>
                   <div className="grid grid-cols-3 gap-4">
-                    {renderSizeGridItems(squareSizes)}
+                    {renderSizeGridItems(squareFormats.slice(0, 6))}
                   </div>
                 </div>
                 
                 <div>
-                  <h3 className="text-base font-medium mb-3">Retângulos</h3>
+                  <h3 className="text-base font-medium mb-3">Horizontais</h3>
                   <div className="grid grid-cols-3 gap-4">
-                    {renderSizeGridItems(rectangleSizes)}
+                    {renderSizeGridItems(horizontalFormats.slice(0, 9))}
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-base font-medium mb-3">Verticais</h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    {renderSizeGridItems(verticalFormats.slice(0, 9))}
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-base font-medium mb-3">Email</h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    {renderSizeGridItems(EXTENDED_BANNER_SIZES.filter(size => 
+                      size.name.includes("Email")
+                    ))}
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-base font-medium mb-3">Anúncios</h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    {renderSizeGridItems(EXTENDED_BANNER_SIZES.filter(size => 
+                      size.name.includes("Ad") || 
+                      size.name.includes("Display") ||
+                      size.name.includes("Google")
+                    ).slice(0, 9))}
                   </div>
                 </div>
               </div>
@@ -177,10 +175,10 @@ export const FormatSelectionDialog = ({
         </Tabs>
         
         <DialogFooter>
-          {activeTab !== "inicio" && (
+          {activeTab !== "formatos" && (
             <Button 
               variant="outline" 
-              onClick={() => setActiveTab("inicio")}
+              onClick={() => setActiveTab("formatos")}
             >
               Voltar
             </Button>

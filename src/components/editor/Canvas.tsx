@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import PropertyPanel from "./PropertyPanel";
 import { CanvasControls } from "./CanvasControls";
@@ -9,9 +10,10 @@ import { BannerSize, EditorMode } from "./types";
 import { FormatSelectionDialog } from "./dialogs/FormatSelectionDialog";
 import { AIFormatConversionDialog } from "./dialogs/AIFormatConversionDialog";
 import { Button } from "@/components/ui/button";
-import { Split, Cpu, Maximize } from "lucide-react";
+import { Split, Cpu, Maximize, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { StartProjectDialog } from "./dialogs/StartProjectDialog";
+import { JsonUploader } from "./JsonUploader";
 
 interface CanvasProps {
   editorMode: EditorMode;
@@ -78,7 +80,8 @@ const CanvasContent = ({ editorMode, canvasRef, hideImportPSD, onPSDImport }: Ca
     toast.success(`Layouts adaptados para ${targetFormats.length} formatos adicionais`);
   };
 
-  // If the start project dialog should be shown
+  // If the start project dialog should be shown, 
+  // we only show it and bypass any other dialogs
   if (showStartProjectDialog) {
     return (
       <StartProjectDialog
@@ -119,6 +122,9 @@ const CanvasContent = ({ editorMode, canvasRef, hideImportPSD, onPSDImport }: Ca
           <div className="flex items-center gap-2">
             {/* Show PSD import for non-admin mode */}
             {!hideImportPSD && <PSDImport />}
+            
+            {/* Add JSON uploader */}
+            <JsonUploader />
             
             {/* Show format conversion button */}
             <AIFormatConversionDialog 

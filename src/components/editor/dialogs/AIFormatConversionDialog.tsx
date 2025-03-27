@@ -1,434 +1,283 @@
-
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
   DialogTrigger,
-  DialogClose,
-  DialogFooter
+  DialogFooter,
+  DialogDescription
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Cpu, Maximize, Check, ArrowRight, Brain } from "lucide-react";
-import { getSimilarFormats } from "@/utils/formatGenerator";
-import { BannerSize, EditorElement } from "@/components/editor/types";
-import { toast } from "sonner";
+import { BannerSize, EXTENDED_BANNER_SIZES } from "../types";
 import { Separator } from "@/components/ui/separator";
-import { Card, CardContent } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useCanvas } from "@/components/editor/CanvasContext";
-import { generateRandomId } from "@/components/editor/utils/idGenerator";
+import { Check, Maximize } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  verticalFormats, 
+  horizontalFormats, 
+  squareFormats 
+} from "@/data/formats";
 
 interface AIFormatConversionDialogProps {
+  children: React.ReactNode;
   currentFormat: BannerSize;
-  onConvert: (targetFormats: BannerSize[]) => void;
-  isAITrained?: boolean;
-  children?: React.ReactNode;
+  onConvert: (formats: BannerSize[]) => void;
+  isAITrained: boolean;
 }
 
-export const AIFormatConversionDialog = ({
+export function AIFormatConversionDialog({
+  children,
   currentFormat,
   onConvert,
-  isAITrained = false,
-  children
-}: AIFormatConversionDialogProps) => {
-  const [open, setOpen] = useState(false);
+  isAITrained
+}: AIFormatConversionDialogProps) {
   const [selectedFormats, setSelectedFormats] = useState<BannerSize[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
   const [recommendedFormats, setRecommendedFormats] = useState<BannerSize[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
   
-  const { 
-    elements, 
-    setElements, 
-    addCustomSize, 
-    selectedSize 
-  } = useCanvas();
+  // Function to determine if format is vertical, horizontal, or square
+  const getFormatType = (format: BannerSize): "vertical" | "horizontal" | "square" => {
+    const aspectRatio = format.width / format.height;
+    if (aspectRatio > 1.1) return "horizontal";
+    if (aspectRatio < 0.9) return "vertical";
+    return "square";
+  };
   
+  // Determine current format type
+  const currentFormatType = getFormatType(currentFormat);
+  
+  // Group formats by similarity
   useEffect(() => {
     if (currentFormat) {
-      // Get more recommended formats based on the current format dimensions
-      const similarFormats = getSimilarFormats(currentFormat.width, currentFormat.height);
+      // Generate recommendations based on format type
+      let recommended: BannerSize[] = [];
       
-      // Add more format options for testing
-      const additionalFormats: BannerSize[] = [
-        { name: "Facebook Story", width: 1080, height: 1920 },
-        { name: "LinkedIn Post", width: 1200, height: 627 },
-        { name: "Pinterest Pin", width: 1000, height: 1500 },
-        { name: "YouTube Thumbnail", width: 1280, height: 720 },
-        { name: "Twitter Header", width: 1500, height: 500 },
-        { name: "Email Banner", width: 600, height: 200 },
-        { name: "Billboard", width: 970, height: 250 },
-        { name: "Medium Rectangle", width: 300, height: 250 }
-      ];
-      
-      // Filter out formats that might be duplicates
-      const allFormats = [...similarFormats];
-      
-      additionalFormats.forEach(format => {
-        const isDuplicate = allFormats.some(f => 
-          f.name === format.name || 
-          (f.width === format.width && f.height === format.height)
-        );
-        
-        if (!isDuplicate) {
-          allFormats.push(format);
-        }
-      });
-      
-      setRecommendedFormats(allFormats);
-    }
-  }, [currentFormat]);
-  
-  const handleToggleFormat = (format: BannerSize) => {
-    setSelectedFormats(prev => {
-      // Check if the format is already selected
-      const isSelected = prev.some(f => 
-        f.name === format.name && f.width === format.width && f.height === format.height
-      );
-      
-      if (isSelected) {
-        // Remove the format
-        return prev.filter(f => 
-          !(f.name === format.name && f.width === format.width && f.height === format.height)
-        );
+      // Get formats that match the aspect ratio type, but exclude exact current format
+      if (currentFormatType === "vertical") {
+        recommended = verticalFormats.filter(
+          format => format.name !== currentFormat.name
+        ).slice(0, 6);
+      } else if (currentFormatType === "horizontal") {
+        recommended = horizontalFormats.filter(
+          format => format.name !== currentFormat.name
+        ).slice(0, 6);
       } else {
-        // Add the format
-        return [...prev, format];
+        recommended = squareFormats.filter(
+          format => format.name !== currentFormat.name
+        ).slice(0, 6);
       }
+      
+      // Add some contrasting formats 
+      const otherFormats = EXTENDED_BANNER_SIZES.filter(
+        format => getFormatType(format) !== currentFormatType && 
+                 format.name !== currentFormat.name
+      ).slice(0, 4);
+      
+      setRecommendedFormats([...recommended, ...otherFormats]);
+    }
+  }, [currentFormat, currentFormatType]);
+  
+  const toggleFormatSelection = (format: BannerSize) => {
+    setSelectedFormats(prev => {
+      // Check if format is already selected
+      const isSelected = prev.some(f => f.name === format.name);
+      
+      // If already selected, remove it
+      if (isSelected) {
+        return prev.filter(f => f.name !== format.name);
+      }
+      
+      // Otherwise add it
+      return [...prev, format];
     });
   };
   
-  const handleSelectAll = () => {
-    setSelectedFormats([...recommendedFormats]);
-  };
-  
-  const handleUnselectAll = () => {
-    setSelectedFormats([]);
-  };
-  
-  const generateNewElementForFormat = (originalElement: EditorElement, targetFormat: BannerSize): EditorElement => {
-    // Generate a new unique ID for each new element
-    const newId = `${originalElement.type}-${targetFormat.name.toLowerCase().replace(/\s+/g, '-')}-${generateRandomId()}`;
-    
-    // For this example, we'll use a simple algorithm to position elements based on format dimensions
-    // In a real implementation, this would use AI predictions from a trained model
-    
-    // Clone the original element but generate new position and size
-    const widthRatio = targetFormat.width / currentFormat.width;
-    const heightRatio = targetFormat.height / currentFormat.height;
-    
-    // Base positioning categories
-    const isHeaderElement = originalElement.style.y < currentFormat.height * 0.2;
-    const isFooterElement = originalElement.style.y > currentFormat.height * 0.7;
-    const isCenterElement = !isHeaderElement && !isFooterElement;
-    
-    // Base sizing (use different scaling for different format types)
-    let newWidth = originalElement.style.width;
-    let newHeight = originalElement.style.height;
-    let newX = originalElement.style.x;
-    let newY = originalElement.style.y;
-    
-    // Different rules for different element types
-    if (originalElement.type === 'text') {
-      // Text elements should maintain reasonable size for readability
-      newWidth = Math.min(targetFormat.width * 0.8, originalElement.style.width * widthRatio);
-      
-      // Position differently based on original location
-      if (isHeaderElement) {
-        // Keep header text at the top
-        newY = originalElement.style.y * heightRatio;
-      } else if (isFooterElement) {
-        // Keep footer text at the bottom
-        newY = targetFormat.height - (currentFormat.height - originalElement.style.y) * heightRatio;
-      } else {
-        // Center content vertically with relative positioning
-        const relativeY = originalElement.style.y / currentFormat.height;
-        newY = relativeY * targetFormat.height;
-      }
-      
-      // Horizontal positioning
-      if (originalElement.style.x < currentFormat.width * 0.3) {
-        // Keep left alignment
-        newX = originalElement.style.x * widthRatio;
-      } else if (originalElement.style.x > currentFormat.width * 0.7) {
-        // Keep right alignment
-        newX = targetFormat.width - (currentFormat.width - originalElement.style.x) * widthRatio;
-      } else {
-        // Center horizontally
-        newX = (targetFormat.width - newWidth) / 2;
-      }
-    } else if (originalElement.type === 'image') {
-      // Images should maintain aspect ratio
-      const aspectRatio = originalElement.style.width / originalElement.style.height;
-      
-      // Size differently based on format change
-      if (widthRatio < heightRatio) {
-        // Width constraint
-        newWidth = Math.min(targetFormat.width * 0.9, originalElement.style.width * widthRatio);
-        newHeight = newWidth / aspectRatio;
-      } else {
-        // Height constraint
-        newHeight = Math.min(targetFormat.height * 0.9, originalElement.style.height * heightRatio);
-        newWidth = newHeight * aspectRatio;
-      }
-      
-      // Images taking up the entire width should stay that way
-      if (originalElement.style.width > currentFormat.width * 0.9) {
-        newWidth = targetFormat.width;
-        newHeight = newWidth / aspectRatio;
-        newX = 0;
-      } else {
-        // Default position centers the image
-        newX = (targetFormat.width - newWidth) / 2;
-      }
-      
-      // Background images or banners should stay at the top
-      if (isHeaderElement && originalElement.style.width > currentFormat.width * 0.7) {
-        newY = 0;
-      } else {
-        // Default position is based on relative positioning
-        const relativeY = originalElement.style.y / currentFormat.height;
-        newY = relativeY * targetFormat.height;
-      }
-    } else if (originalElement.type === 'button') {
-      // Buttons should have reasonable sizes
-      newWidth = Math.min(
-        Math.max(originalElement.style.width * widthRatio, 120), 
-        targetFormat.width * 0.6
-      );
-      newHeight = Math.min(
-        Math.max(originalElement.style.height * heightRatio, 40),
-        targetFormat.height * 0.1
-      );
-      
-      // Buttons often at the bottom
-      if (isFooterElement) {
-        newY = targetFormat.height - (currentFormat.height - originalElement.style.y) * heightRatio;
-      } else {
-        const relativeY = originalElement.style.y / currentFormat.height;
-        newY = relativeY * targetFormat.height;
-      }
-      
-      // Center buttons horizontally
-      newX = (targetFormat.width - newWidth) / 2;
-    } else {
-      // Default scaling for other element types
-      newWidth = originalElement.style.width * widthRatio;
-      newHeight = originalElement.style.height * heightRatio;
-      
-      // Maintain relative positioning
-      const relativeX = originalElement.style.x / currentFormat.width;
-      const relativeY = originalElement.style.y / currentFormat.height;
-      
-      newX = relativeX * targetFormat.width;
-      newY = relativeY * targetFormat.height;
-    }
-    
-    // Ensure elements don't go outside the canvas
-    newX = Math.max(0, Math.min(newX, targetFormat.width - newWidth));
-    newY = Math.max(0, Math.min(newY, targetFormat.height - newHeight));
-    
-    // Create a new element with the calculated dimensions for this format
-    // Important: We're creating a completely NEW element, not linked to the original
-    return {
-      ...originalElement,
-      id: newId,
-      sizeId: targetFormat.name,
-      linkedElementId: null, // No linking to other elements
-      style: {
-        ...originalElement.style,
-        x: newX,
-        y: newY,
-        width: newWidth,
-        height: newHeight,
-        // Remove percentage values so elements stay fixed in their own format
-        xPercent: undefined,
-        yPercent: undefined,
-        widthPercent: undefined,
-        heightPercent: undefined
-      }
-    };
-  };
-  
-  const handleConvert = async () => {
-    if (selectedFormats.length === 0) {
-      toast.error("Selecione pelo menos um formato para converter");
-      return;
-    }
-    
-    if (!currentFormat || !isAITrained) {
-      toast.error("Modelo de IA não treinado ou formato atual não definido");
-      return;
-    }
-    
-    setIsProcessing(true);
-    
-    try {
-      // Get elements for the current format
-      const currentElements = elements.filter(el => 
-        el.sizeId === currentFormat.name || el.sizeId === 'global'
-      );
-      
-      if (currentElements.length === 0) {
-        toast.error("Não há elementos no formato atual para converter");
-        setIsProcessing(false);
-        return;
-      }
-      
-      // Create new elements for each selected format
-      const newElements: EditorElement[] = [];
-      
-      selectedFormats.forEach(targetFormat => {
-        // Add the format to active sizes
-        addCustomSize(targetFormat);
-        
-        // Create new elements for this format based on the current elements
-        currentElements.forEach(element => {
-          // Generate a completely new independent element for this format
-          const newElement = generateNewElementForFormat(element, targetFormat);
-          newElements.push(newElement);
-        });
-        
-        toast.info(`Criando layout para ${targetFormat.name}`);
-      });
-      
-      // Add all new elements to the canvas
-      setElements(prev => [...prev, ...newElements]);
-      
-      setOpen(false);
-      toast.success(`${newElements.length} elementos criados em ${selectedFormats.length} novos formatos`);
-    } catch (error) {
-      console.error("Error converting formats:", error);
-      toast.error("Ocorreu um erro ao converter os formatos");
-    } finally {
-      setIsProcessing(false);
+  const handleConvert = () => {
+    if (selectedFormats.length > 0) {
+      onConvert(selectedFormats);
+      setSelectedFormats([]);
+      setIsOpen(false);
     }
   };
   
-  const isFormatSelected = (format: BannerSize) => {
-    return selectedFormats.some(f => 
-      f.name === format.name && f.width === format.width && f.height === format.height
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) {
+      setSelectedFormats([]);
+    }
+  };
+  
+  // Filter formats by type
+  const verticalBanners = verticalFormats.filter(format => format.name !== currentFormat.name);
+  const horizontalBanners = horizontalFormats.filter(format => format.name !== currentFormat.name);
+  const squareBanners = squareFormats.filter(format => format.name !== currentFormat.name);
+
+  const renderFormatGrid = (formats: BannerSize[]) => {
+    return (
+      <div className="grid grid-cols-3 gap-4 mt-4">
+        {formats.map((format, index) => {
+          const isSelected = selectedFormats.some(f => f.name === format.name);
+          
+          return (
+            <div 
+              key={`${format.name}-${index}`}
+              className={`
+                p-3 border rounded-md cursor-pointer transition-all flex flex-col items-center
+                ${isSelected ? 'border-primary bg-primary/5' : 'hover:bg-gray-50'}
+              `}
+              onClick={() => toggleFormatSelection(format)}
+            >
+              {isSelected && (
+                <div className="self-end mb-1">
+                  <Check className="h-4 w-4 text-primary" />
+                </div>
+              )}
+              
+              <div className="relative mb-2">
+                <div 
+                  className="border border-gray-300 bg-gray-50"
+                  style={{
+                    width: '100px',
+                    height: '80px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${Math.min(100, (format.width / format.height) * 80)}px`,
+                      height: `${Math.min(80, (format.height / format.width) * 100)}px`,
+                      backgroundColor: 'rgba(59, 130, 246, 0.3)',
+                      border: '1px solid rgba(59, 130, 246, 0.5)'
+                    }}
+                  ></div>
+                </div>
+              </div>
+              
+              <span className="text-sm font-medium text-center">{format.name}</span>
+              <span className="text-xs text-gray-500">{format.width} × {format.height}</span>
+            </div>
+          );
+        })}
+      </div>
     );
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        {children || (
-          <Button className="gap-2" disabled={!isAITrained}>
-            <Maximize className="h-4 w-4" />
-            Desdobrar Formatos
-          </Button>
-        )}
+        {children}
       </DialogTrigger>
-      
-      <DialogContent className="sm:max-w-[700px]">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5" />
-            Adaptar layout para outros formatos com IA
+            <Maximize className="h-5 w-5" />
+            Desdobrar para outros formatos usando IA
           </DialogTitle>
+          <DialogDescription>
+            A IA irá adaptar seu design para outros formatos automaticamente. O layout atual é {currentFormat.name} ({currentFormat.width} × {currentFormat.height}).
+          </DialogDescription>
         </DialogHeader>
         
-        <div className="py-4">
-          <div className="flex justify-between items-center mb-4">
+        <div className="flex-1 overflow-y-auto mt-4">
+          <div className="space-y-4">
             <div>
-              <h3 className="text-sm font-medium">Formato atual</h3>
-              <p className="text-xs text-gray-500">
-                {currentFormat.name} ({currentFormat.width} × {currentFormat.height}px)
-              </p>
+              <h3 className="text-sm font-medium mb-2">Formatos recomendados</h3>
+              <div className="grid grid-cols-3 gap-4">
+                {recommendedFormats.map((format, index) => {
+                  const isSelected = selectedFormats.some(f => f.name === format.name);
+                  
+                  return (
+                    <div 
+                      key={`rec-${format.name}-${index}`}
+                      className={`
+                        p-3 border rounded-md cursor-pointer transition-all flex flex-col items-center
+                        ${isSelected ? 'border-primary bg-primary/5' : 'hover:bg-gray-50'}
+                      `}
+                      onClick={() => toggleFormatSelection(format)}
+                    >
+                      {isSelected && (
+                        <div className="self-end mb-1">
+                          <Check className="h-4 w-4 text-primary" />
+                        </div>
+                      )}
+                      
+                      <div className="relative mb-2">
+                        <div 
+                          className="border border-gray-300 bg-gray-50"
+                          style={{
+                            width: '100px',
+                            height: '80px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: `${Math.min(100, (format.width / format.height) * 80)}px`,
+                              height: `${Math.min(80, (format.height / format.width) * 100)}px`,
+                              backgroundColor: 'rgba(59, 130, 246, 0.3)',
+                              border: '1px solid rgba(59, 130, 246, 0.5)'
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                      
+                      <span className="text-sm font-medium text-center">{format.name}</span>
+                      <span className="text-xs text-gray-500">{format.width} × {format.height}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
             
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleUnselectAll}>
-                Limpar seleção
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleSelectAll}>
-                Selecionar todos
-              </Button>
-            </div>
+            <Separator className="my-6" />
+            
+            <Tabs defaultValue="vertical">
+              <TabsList className="grid grid-cols-3 mb-4">
+                <TabsTrigger value="vertical">Vertical</TabsTrigger>
+                <TabsTrigger value="horizontal">Horizontal</TabsTrigger>
+                <TabsTrigger value="square">Quadrado</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="vertical">
+                {renderFormatGrid(verticalBanners.slice(0, 12))}
+              </TabsContent>
+              
+              <TabsContent value="horizontal">
+                {renderFormatGrid(horizontalBanners.slice(0, 12))}
+              </TabsContent>
+              
+              <TabsContent value="square">
+                {renderFormatGrid(squareBanners)}
+              </TabsContent>
+            </Tabs>
           </div>
-          
-          <Separator className="my-4" />
-          
-          <div className="grid grid-cols-3 gap-4">
-            {recommendedFormats.map((format, index) => (
-              <Card 
-                key={`${format.name}-${index}`}
-                className={`cursor-pointer transition-all ${
-                  isFormatSelected(format) ? 'border-primary ring-1 ring-primary' : ''
-                }`}
-                onClick={() => handleToggleFormat(format)}
-              >
-                <CardContent className="p-4 flex items-start gap-3">
-                  <Checkbox
-                    checked={isFormatSelected(format)}
-                    onCheckedChange={() => handleToggleFormat(format)}
-                    className="mt-1"
-                  />
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="text-sm font-medium">{format.name}</h4>
-                        <p className="text-xs text-gray-500">
-                          {format.width} × {format.height}px
-                        </p>
-                      </div>
-                      {isFormatSelected(format) && (
-                        <Check className="h-4 w-4 text-primary" />
-                      )}
-                    </div>
-                    
-                    <div className="mt-3 aspect-[4/3] bg-gray-50 rounded border flex items-center justify-center relative">
-                      <div 
-                        className="bg-gray-200 rounded"
-                        style={{
-                          width: '70%',
-                          height: '70%',
-                          aspectRatio: `${format.width}/${format.height}`
-                        }}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          
-          {(!isAITrained || recommendedFormats.length === 0) && (
-            <div className="mt-4 bg-amber-50 p-4 rounded-md">
-              <p className="text-amber-800 text-sm">
-                {!isAITrained ? (
-                  'O modelo de IA precisa ser treinado antes de usar esta funcionalidade. Vá para o painel de administração para treinar o modelo.'
-                ) : (
-                  'Não foi possível encontrar formatos recomendados para o layout atual.'
-                )}
-              </p>
-            </div>
-          )}
         </div>
         
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline">Cancelar</Button>
-          </DialogClose>
+        <DialogFooter className="flex items-center justify-between mt-4 pt-4 border-t">
+          <div>
+            {selectedFormats.length > 0 && (
+              <Badge variant="outline" className="mr-2">
+                {selectedFormats.length} formato{selectedFormats.length !== 1 ? 's' : ''} selecionado{selectedFormats.length !== 1 ? 's' : ''}
+              </Badge>
+            )}
+          </div>
           <Button 
             onClick={handleConvert} 
-            disabled={selectedFormats.length === 0 || isProcessing || !isAITrained}
-            className="gap-2"
+            disabled={selectedFormats.length === 0 || !isAITrained}
+            className="ml-auto"
           >
-            {isProcessing ? (
-              'Processando...'
-            ) : (
-              <>
-                <ArrowRight className="h-4 w-4" />
-                Adaptar para {selectedFormats.length} formato{selectedFormats.length !== 1 ? 's' : ''}
-              </>
-            )}
+            Desdobrar Formatos
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
-};
+}
