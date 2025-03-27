@@ -22,3 +22,8 @@ export interface AdminLayoutStatsProps {
   stats: any;
   layouts: LayoutTemplate[];
 }
+
+export interface ImportedLayoutData {
+  key: string;
+  data: LayoutTemplate[];
+}
