@@ -12,6 +12,7 @@ import { AIFormatConversionDialog } from "./dialogs/AIFormatConversionDialog";
 import { Button } from "@/components/ui/button";
 import { Split, Cpu, Maximize } from "lucide-react";
 import { toast } from "sonner";
+import { StartProjectDialog } from "./dialogs/StartProjectDialog";
 
 interface CanvasProps {
   editorMode: EditorMode;
@@ -43,18 +44,25 @@ const CanvasContent = ({ editorMode, canvasRef, hideImportPSD, onPSDImport }: Ca
     modelState
   } = useCanvas();
 
-  const [showFormatDialog, setShowFormatDialog] = useState(true);
+  const [showFormatDialog, setShowFormatDialog] = useState(false);
+  const [showStartProjectDialog, setShowStartProjectDialog] = useState(true);
   
-  // Effect to show format dialog initially
-  useEffect(() => {
-    if (!selectedSize || selectedSize.name === 'All') {
-      setShowFormatDialog(true);
-    }
-  }, [selectedSize]);
-  
+  // Function to handle format selection
   const handleSelectFormat = (format: BannerSize) => {
     setSelectedSize(format);
     setShowFormatDialog(false);
+  };
+  
+  // Function to handle PSD import
+  const handlePSDImportSelection = () => {
+    setShowStartProjectDialog(false);
+    // The PSD import component will handle the actual import
+  };
+  
+  // Function to handle format selection from start dialog
+  const handleFormatSelectionFromStart = () => {
+    setShowStartProjectDialog(false);
+    setShowFormatDialog(true);
   };
   
   const handleFormatConversion = (targetFormats: BannerSize[]) => {
@@ -71,8 +79,26 @@ const CanvasContent = ({ editorMode, canvasRef, hideImportPSD, onPSDImport }: Ca
     toast.success(`Layouts adaptados para ${targetFormats.length} formatos adicionais`);
   };
 
-  // If there is no selected size, render just the dialog
-  if (!selectedSize && showFormatDialog) {
+  // If there is no selected size and neither dialog is showing, show the start project dialog
+  if (!selectedSize && !showFormatDialog && !showStartProjectDialog) {
+    setShowStartProjectDialog(true);
+    return null;
+  }
+
+  // If the start project dialog should be shown
+  if (showStartProjectDialog) {
+    return (
+      <StartProjectDialog
+        open={showStartProjectDialog}
+        onOpenChange={setShowStartProjectDialog}
+        onSelectFormat={handleFormatSelectionFromStart}
+        onImportPSD={handlePSDImportSelection}
+      />
+    );
+  }
+
+  // If the format selection dialog should be shown
+  if (showFormatDialog) {
     return (
       <FormatSelectionDialog
         open={showFormatDialog}
@@ -80,6 +106,11 @@ const CanvasContent = ({ editorMode, canvasRef, hideImportPSD, onPSDImport }: Ca
         onSelectFormat={handleSelectFormat}
       />
     );
+  }
+
+  // If there is still no selected size, return null to prevent rendering
+  if (!selectedSize) {
+    return null;
   }
 
   return (
@@ -100,7 +131,7 @@ const CanvasContent = ({ editorMode, canvasRef, hideImportPSD, onPSDImport }: Ca
             <AIFormatConversionDialog 
               currentFormat={selectedSize} 
               onConvert={handleFormatConversion}
-              isAITrained={modelState?.trained}
+              isAITrained={modelState?.trained || false}
             >
               <Button 
                 variant="outline" 
@@ -145,13 +176,6 @@ const CanvasContent = ({ editorMode, canvasRef, hideImportPSD, onPSDImport }: Ca
           <PropertyPanel />
         </div>
       </div>
-
-      {/* Format Selection Dialog */}
-      <FormatSelectionDialog
-        open={showFormatDialog}
-        onOpenChange={setShowFormatDialog}
-        onSelectFormat={handleSelectFormat}
-      />
     </div>
   );
 };

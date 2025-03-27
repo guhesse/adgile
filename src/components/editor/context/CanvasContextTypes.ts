@@ -1,13 +1,20 @@
 
 import { EditorElement, BannerSize, CanvasNavigationMode, EditingMode } from "../types";
 
+// Add model state interface
+interface ModelState {
+  trained: boolean;
+  accuracy?: number;
+  lastTrained?: string;
+}
+
 export interface CanvasContextType {
   elements: EditorElement[];
   setElements: React.Dispatch<React.SetStateAction<EditorElement[]>>;
   selectedElement: EditorElement | null;
   setSelectedElement: React.Dispatch<React.SetStateAction<EditorElement | null>>;
-  selectedSize: BannerSize;
-  setSelectedSize: React.Dispatch<React.SetStateAction<BannerSize>>;
+  selectedSize: BannerSize | null;
+  setSelectedSize: React.Dispatch<React.SetStateAction<BannerSize | null>>;
   isDragging: boolean;
   setIsDragging: React.Dispatch<React.SetStateAction<boolean>>;
   isResizing: boolean;
@@ -24,14 +31,15 @@ export interface CanvasContextType {
   setIsPlaying: React.Dispatch<React.SetStateAction<boolean>>;
   zoomLevel: number;
   setZoomLevel: React.Dispatch<React.SetStateAction<number>>;
-  activeSizes: BannerSize[];
-  setActiveSizes: React.Dispatch<React.SetStateAction<BannerSize[]>>;
   canvasNavMode: CanvasNavigationMode;
   setCanvasNavMode: React.Dispatch<React.SetStateAction<CanvasNavigationMode>>;
+  activeSizes: BannerSize[];
+  setActiveSizes: React.Dispatch<React.SetStateAction<BannerSize[]>>;
   editingMode: EditingMode;
   setEditingMode: React.Dispatch<React.SetStateAction<EditingMode>>;
-  gridLayout?: boolean;
-  toggleGridLayout?: () => void;
+  gridLayout: boolean;
+  toggleGridLayout: () => void;
+  organizeElements: () => void;
   removeElement: (elementId: string) => void;
   updateElementStyle: (property: string, value: any) => void;
   updateElementContent: (content: string) => void;
@@ -40,7 +48,6 @@ export interface CanvasContextType {
   handlePreviewAnimation: () => void;
   togglePlayPause: () => void;
   updateAnimations: (time: number) => void;
-  organizeElements: () => void;
   handleImageUpload: (file: File) => Promise<string>;
   updateAllLinkedElements: (
     elements: EditorElement[],
@@ -55,4 +62,6 @@ export interface CanvasContextType {
   undo: () => void;
   artboardBackgroundColor: string;
   updateArtboardBackground: (color: string) => void;
+  // Add model state to context type
+  modelState?: ModelState;
 }

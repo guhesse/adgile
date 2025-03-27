@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useRef, useEffect } from "react";
 import { 
   BannerSize, 
@@ -17,6 +18,13 @@ interface CanvasProviderProps {
   fixedSize?: BannerSize;
 }
 
+// Add model state interface
+interface ModelState {
+  trained: boolean;
+  accuracy?: number;
+  lastTrained?: string;
+}
+
 const defaultSize = BANNER_SIZES[0];
 
 export const CanvasContext = createContext<CanvasContextType | undefined>(undefined);
@@ -24,7 +32,7 @@ export const CanvasContext = createContext<CanvasContextType | undefined>(undefi
 export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedSize }) => {
   const [elements, setElements] = useState<EditorElement[]>([]);
   const [selectedElement, setSelectedElement] = useState<EditorElement | null>(null);
-  const [selectedSize, setSelectedSize] = useState<BannerSize>(fixedSize || defaultSize);
+  const [selectedSize, setSelectedSize] = useState<BannerSize | null>(null); // Changed to null to start with no format
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [resizeDirection, setResizeDirection] = useState("");
@@ -34,10 +42,12 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
   const [isPlaying, setIsPlaying] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [canvasNavMode, setCanvasNavMode] = useState<CanvasNavigationMode>('edit');
-  const [activeSizes, setActiveSizes] = useState<BannerSize[]>([fixedSize || defaultSize]);
+  const [activeSizes, setActiveSizes] = useState<BannerSize[]>(fixedSize ? [fixedSize] : []);
   const [editingMode, setEditingMode] = useState<EditingMode>('global');
   const [gridLayout, setGridLayout] = useState(false);
   const [artboardBackgroundColor, setArtboardBackgroundColor] = useState<string>('#ffffff');
+  // Add model state
+  const [modelState, setModelState] = useState<ModelState>({ trained: false });
   
   const historyRef = useRef<{elements: EditorElement[], selectedElement: EditorElement | null}[]>([]);
   const currentHistoryIndexRef = useRef<number>(-1);
@@ -48,6 +58,23 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
       setSelectedSize(fixedSize);
       setActiveSizes([fixedSize]);
     }
+    
+    // Mock fetch of AI model state (in a real app, this would come from an API or localStorage)
+    const fetchModelState = async () => {
+      try {
+        // This is just a mock - in a real app this would be an API call or localStorage check
+        // For testing, we'll set trained to true to enable the "Desdobrar Formatos" button
+        setModelState({ 
+          trained: true, 
+          accuracy: 0.87, 
+          lastTrained: new Date().toISOString() 
+        });
+      } catch (error) {
+        console.error("Error fetching model state:", error);
+      }
+    };
+    
+    fetchModelState();
   }, [fixedSize]);
 
   const organizeElements = () => {
@@ -391,7 +418,9 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
     removeCustomSize,
     undo,
     artboardBackgroundColor,
-    updateArtboardBackground
+    updateArtboardBackground,
+    // Add model state to context
+    modelState
   };
 
   return (

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { 
   Dialog, 
@@ -78,139 +77,140 @@ export const AIFormatConversionDialog = ({
     setSelectedFormats([]);
   };
   
-  const createConvertedElement = (element: EditorElement, targetFormat: BannerSize, sourceFormat: BannerSize): EditorElement => {
-    // Create a new ID for the converted element
-    const newId = `${element.id}-${targetFormat.name.replace(/\s+/g, '-').toLowerCase()}`;
+  const generateNewElementForFormat = (originalElement: EditorElement, targetFormat: BannerSize): EditorElement => {
+    const newId = `${originalElement.id}-${targetFormat.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
     
-    // Calculate new dimensions and positions based on aspect ratio and scale
-    const widthScale = targetFormat.width / sourceFormat.width;
-    const heightScale = targetFormat.height / sourceFormat.height;
+    // For this example, we'll use a simple algorithm to position elements based on format dimensions
+    // In a real implementation, this would use AI predictions from a trained model
     
-    // Use AI to determine best position (simplified example)
-    // In a real implementation, this would use AI model predictions
-    let newX, newY, newWidth, newHeight;
+    // Clone the original element but generate new position and size
+    const widthRatio = targetFormat.width / currentFormat.width;
+    const heightRatio = targetFormat.height / currentFormat.height;
     
-    // For different element types, handle conversion differently
-    if (element.type === 'image') {
-      // Images often need to maintain aspect ratio
-      const aspectRatio = element.style.width / element.style.height;
+    // Base positioning categories
+    const isHeaderElement = originalElement.style.y < currentFormat.height * 0.2;
+    const isFooterElement = originalElement.style.y > currentFormat.height * 0.7;
+    const isCenterElement = !isHeaderElement && !isFooterElement;
+    
+    // Base sizing (use different scaling for different format types)
+    let newWidth = originalElement.style.width;
+    let newHeight = originalElement.style.height;
+    let newX = originalElement.style.x;
+    let newY = originalElement.style.y;
+    
+    // Different rules for different element types
+    if (originalElement.type === 'text') {
+      // Text elements should maintain reasonable size for readability
+      newWidth = Math.min(targetFormat.width * 0.8, originalElement.style.width * widthRatio);
       
-      // Determine if the image should be centered or positioned relative to edges
-      if (element.style.x < sourceFormat.width * 0.2) {
-        // Left-aligned element
-        newX = element.style.x * widthScale;
-      } else if (element.style.x + element.style.width > sourceFormat.width * 0.8) {
-        // Right-aligned element
-        newX = targetFormat.width - (sourceFormat.width - element.style.x) * widthScale - element.style.width * widthScale;
+      // Position differently based on original location
+      if (isHeaderElement) {
+        // Keep header text at the top
+        newY = originalElement.style.y * heightRatio;
+      } else if (isFooterElement) {
+        // Keep footer text at the bottom
+        newY = targetFormat.height - (currentFormat.height - originalElement.style.y) * heightRatio;
       } else {
-        // Center-aligned horizontally
-        newX = (targetFormat.width - element.style.width * widthScale) / 2;
-      }
-      
-      if (element.style.y < sourceFormat.height * 0.2) {
-        // Top-aligned element
-        newY = element.style.y * heightScale;
-      } else if (element.style.y + element.style.height > sourceFormat.height * 0.8) {
-        // Bottom-aligned element
-        newY = targetFormat.height - (sourceFormat.height - element.style.y) * heightScale - element.style.height * heightScale;
-      } else {
-        // Center-aligned vertically
-        newY = (targetFormat.height - element.style.height * heightScale) / 2;
-      }
-      
-      // Maintain aspect ratio while scaling
-      newWidth = element.style.width * Math.min(widthScale, heightScale);
-      newHeight = element.style.height * Math.min(widthScale, heightScale);
-    } else if (element.type === 'text') {
-      // Text elements often need to be adjusted for readability
-      if (element.style.x < sourceFormat.width * 0.2) {
-        // Left-aligned text
-        newX = element.style.x * widthScale;
-      } else if (element.style.x + element.style.width > sourceFormat.width * 0.8) {
-        // Right-aligned text
-        newX = targetFormat.width - (sourceFormat.width - element.style.x) * widthScale - element.style.width * widthScale;
-      } else {
-        // Center-aligned horizontally
-        newX = (targetFormat.width - element.style.width * widthScale) / 2;
-      }
-      
-      // Vertical positioning
-      newY = element.style.y * heightScale;
-      
-      // Adjust width based on content
-      newWidth = Math.min(element.style.width * widthScale, targetFormat.width * 0.9);
-      newHeight = element.style.height * heightScale;
-      
-      // Adjust font size for readability in new format
-      const fontScaleFactor = Math.min(widthScale, heightScale);
-      const newFontSize = element.style.fontSize ? Math.max(12, Math.round(element.style.fontSize * fontScaleFactor)) : undefined;
-      
-      return {
-        ...element,
-        id: newId,
-        sizeId: targetFormat.name,
-        style: {
-          ...element.style,
-          x: newX,
-          y: newY,
-          width: newWidth,
-          height: newHeight,
-          fontSize: newFontSize,
-          // Use percentage values for future reference but not for direct positioning
-          xPercent: (newX / targetFormat.width) * 100,
-          yPercent: (newY / targetFormat.height) * 100,
-          widthPercent: (newWidth / targetFormat.width) * 100,
-          heightPercent: (newHeight / targetFormat.height) * 100
-        }
-      };
-    } else if (element.type === 'button') {
-      // Buttons often need to be properly sized and positioned
-      // Bottom area is common for buttons
-      if (element.style.y > sourceFormat.height * 0.7) {
-        newY = targetFormat.height - (sourceFormat.height - element.style.y) * heightScale - element.style.height * heightScale;
-      } else {
-        newY = element.style.y * heightScale;
+        // Center content vertically with relative positioning
+        const relativeY = originalElement.style.y / currentFormat.height;
+        newY = relativeY * targetFormat.height;
       }
       
       // Horizontal positioning
-      if (element.style.x < sourceFormat.width * 0.2) {
-        newX = element.style.x * widthScale;
-      } else if (element.style.x + element.style.width > sourceFormat.width * 0.8) {
-        newX = targetFormat.width - (sourceFormat.width - element.style.x) * widthScale - element.style.width * widthScale;
+      if (originalElement.style.x < currentFormat.width * 0.3) {
+        // Keep left alignment
+        newX = originalElement.style.x * widthRatio;
+      } else if (originalElement.style.x > currentFormat.width * 0.7) {
+        // Keep right alignment
+        newX = targetFormat.width - (currentFormat.width - originalElement.style.x) * widthRatio;
       } else {
-        newX = (targetFormat.width - element.style.width * widthScale) / 2;
+        // Center horizontally
+        newX = (targetFormat.width - newWidth) / 2;
+      }
+    } else if (originalElement.type === 'image') {
+      // Images should maintain aspect ratio
+      const aspectRatio = originalElement.style.width / originalElement.style.height;
+      
+      // Size differently based on format change
+      if (widthRatio < heightRatio) {
+        // Width constraint
+        newWidth = Math.min(targetFormat.width * 0.9, originalElement.style.width * widthRatio);
+        newHeight = newWidth / aspectRatio;
+      } else {
+        // Height constraint
+        newHeight = Math.min(targetFormat.height * 0.9, originalElement.style.height * heightRatio);
+        newWidth = newHeight * aspectRatio;
       }
       
-      // Buttons shouldn't be too small or too large
-      newWidth = Math.min(Math.max(element.style.width * widthScale, 100), targetFormat.width * 0.5);
-      newHeight = Math.min(Math.max(element.style.height * heightScale, 40), targetFormat.height * 0.2);
+      // Images taking up the entire width should stay that way
+      if (originalElement.style.width > currentFormat.width * 0.9) {
+        newWidth = targetFormat.width;
+        newHeight = newWidth / aspectRatio;
+        newX = 0;
+      } else {
+        // Default position centers the image
+        newX = (targetFormat.width - newWidth) / 2;
+      }
+      
+      // Background images or banners should stay at the top
+      if (isHeaderElement && originalElement.style.width > currentFormat.width * 0.7) {
+        newY = 0;
+      } else {
+        // Default position is based on relative positioning
+        const relativeY = originalElement.style.y / currentFormat.height;
+        newY = relativeY * targetFormat.height;
+      }
+    } else if (originalElement.type === 'button') {
+      // Buttons should have reasonable sizes
+      newWidth = Math.min(
+        Math.max(originalElement.style.width * widthRatio, 120), 
+        targetFormat.width * 0.6
+      );
+      newHeight = Math.min(
+        Math.max(originalElement.style.height * heightRatio, 40),
+        targetFormat.height * 0.1
+      );
+      
+      // Buttons often at the bottom
+      if (isFooterElement) {
+        newY = targetFormat.height - (currentFormat.height - originalElement.style.y) * heightRatio;
+      } else {
+        const relativeY = originalElement.style.y / currentFormat.height;
+        newY = relativeY * targetFormat.height;
+      }
+      
+      // Center buttons horizontally
+      newX = (targetFormat.width - newWidth) / 2;
     } else {
       // Default scaling for other element types
-      newX = element.style.x * widthScale;
-      newY = element.style.y * heightScale;
-      newWidth = element.style.width * widthScale;
-      newHeight = element.style.height * heightScale;
+      newWidth = originalElement.style.width * widthRatio;
+      newHeight = originalElement.style.height * heightRatio;
+      
+      // Maintain relative positioning
+      const relativeX = originalElement.style.x / currentFormat.width;
+      const relativeY = originalElement.style.y / currentFormat.height;
+      
+      newX = relativeX * targetFormat.width;
+      newY = relativeY * targetFormat.height;
     }
     
     // Ensure elements don't go outside the canvas
     newX = Math.max(0, Math.min(newX, targetFormat.width - newWidth));
     newY = Math.max(0, Math.min(newY, targetFormat.height - newHeight));
     
+    // Create a new element with the calculated dimensions for this format
     return {
-      ...element,
+      ...originalElement,
       id: newId,
       sizeId: targetFormat.name,
+      linkedElementId: null, // Important: don't link elements across formats
       style: {
-        ...element.style,
+        ...originalElement.style,
         x: newX,
         y: newY,
         width: newWidth,
         height: newHeight,
-        // Store percentage values for reference
-        xPercent: (newX / targetFormat.width) * 100,
-        yPercent: (newY / targetFormat.height) * 100,
-        widthPercent: (newWidth / targetFormat.width) * 100,
-        heightPercent: (newHeight / targetFormat.height) * 100
+        // We're creating independent elements, so we don't need percentage values
       }
     };
   };
@@ -230,7 +230,15 @@ export const AIFormatConversionDialog = ({
     
     try {
       // Get elements for the current format
-      const currentElements = elements.filter(el => el.sizeId === currentFormat.name);
+      const currentElements = elements.filter(el => 
+        el.sizeId === currentFormat.name || el.sizeId === 'global'
+      );
+      
+      if (currentElements.length === 0) {
+        toast.error("Não há elementos no formato atual para converter");
+        setIsProcessing(false);
+        return;
+      }
       
       // Create new elements for each selected format
       const newElements: EditorElement[] = [];
@@ -239,18 +247,21 @@ export const AIFormatConversionDialog = ({
         // Add the format to active sizes
         addCustomSize(targetFormat);
         
-        // Create converted elements for this format
+        // Create new elements for this format based on the current elements
         currentElements.forEach(element => {
-          const convertedElement = createConvertedElement(element, targetFormat, currentFormat);
-          newElements.push(convertedElement);
+          // Generate a new element with AI-informed positioning for this format
+          const newElement = generateNewElementForFormat(element, targetFormat);
+          newElements.push(newElement);
         });
+        
+        toast.info(`Criando layout para ${targetFormat.name}`);
       });
       
-      // Add all converted elements to the canvas
+      // Add all new elements to the canvas
       setElements(prev => [...prev, ...newElements]);
       
       setOpen(false);
-      toast.success(`Layout adaptado para ${selectedFormats.length} formatos com IA`);
+      toast.success(`${newElements.length} elementos criados em ${selectedFormats.length} novos formatos`);
     } catch (error) {
       console.error("Error converting formats:", error);
       toast.error("Ocorreu um erro ao converter os formatos");
@@ -368,7 +379,7 @@ export const AIFormatConversionDialog = ({
           </DialogClose>
           <Button 
             onClick={handleConvert} 
-            disabled={selectedFormats.length === 0 || isProcessing}
+            disabled={selectedFormats.length === 0 || isProcessing || !isAITrained}
             className="gap-2"
           >
             {isProcessing ? (
