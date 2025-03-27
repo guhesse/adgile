@@ -1,244 +1,434 @@
 
-import React, { useState, PropsWithChildren } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { BannerSize } from "../types";
+import { useState, useEffect } from "react";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger,
+  DialogClose,
+  DialogFooter
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Check, AlertCircle } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Cpu, Maximize, Check, ArrowRight, Brain } from "lucide-react";
+import { getSimilarFormats } from "@/utils/formatGenerator";
+import { BannerSize, EditorElement } from "@/components/editor/types";
+import { toast } from "sonner";
+import { Separator } from "@/components/ui/separator";
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useCanvas } from "@/components/editor/CanvasContext";
+import { generateRandomId } from "@/components/editor/utils/idGenerator";
 
-// Format categories
-const SOCIAL_MEDIA_FORMATS: BannerSize[] = [
-  { name: "Instagram Post", width: 1080, height: 1080 },
-  { name: "Instagram Story", width: 1080, height: 1920 },
-  { name: "Facebook Post", width: 1200, height: 630 },
-  { name: "Facebook Cover", width: 820, height: 312 },
-  { name: "Twitter Post", width: 1024, height: 512 },
-  { name: "Twitter Header", width: 1500, height: 500 },
-  { name: "LinkedIn Post", width: 1200, height: 627 },
-  { name: "LinkedIn Banner", width: 1584, height: 396 }
-];
-
-const EMAIL_FORMATS: BannerSize[] = [
-  { name: "Email Template", width: 600, height: 800 },
-  { name: "Email Header", width: 600, height: 200 },
-  { name: "Email Newsletter", width: 600, height: 1200 }
-];
-
-const AD_FORMATS: BannerSize[] = [
-  { name: "Display Ad - Medium Rectangle", width: 300, height: 250 },
-  { name: "Display Ad - Leaderboard", width: 728, height: 90 },
-  { name: "Display Ad - Large Rectangle", width: 336, height: 280 },
-  { name: "Display Ad - Skyscraper", width: 160, height: 600 },
-  { name: "Display Ad - Half Page", width: 300, height: 600 },
-  { name: "YouTube Thumbnail", width: 1280, height: 720 }
-];
-
-// Combined all formats
-const ALL_FORMATS = [
-  ...SOCIAL_MEDIA_FORMATS,
-  ...EMAIL_FORMATS,
-  ...AD_FORMATS
-];
-
-interface AIFormatConversionDialogProps extends PropsWithChildren {
+interface AIFormatConversionDialogProps {
   currentFormat: BannerSize;
   onConvert: (targetFormats: BannerSize[]) => void;
-  isAITrained: boolean;
+  isAITrained?: boolean;
+  children?: React.ReactNode;
 }
 
-export const AIFormatConversionDialog: React.FC<AIFormatConversionDialogProps> = ({
-  children,
+export const AIFormatConversionDialog = ({
   currentFormat,
   onConvert,
-  isAITrained
-}) => {
+  isAITrained = false,
+  children
+}: AIFormatConversionDialogProps) => {
   const [open, setOpen] = useState(false);
   const [selectedFormats, setSelectedFormats] = useState<BannerSize[]>([]);
-  const [isConverting, setIsConverting] = useState(false);
+  const [recommendedFormats, setRecommendedFormats] = useState<BannerSize[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
   
-  // Filter out the current format
-  const availableFormats = ALL_FORMATS.filter(format => 
-    format.name !== currentFormat.name && 
-    !(format.width === currentFormat.width && format.height === currentFormat.height)
-  );
-
-  const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen);
-    if (!newOpen) {
-      // Reset selection when closing
-      setSelectedFormats([]);
-    }
-  };
-
-  const handleToggleFormat = (format: BannerSize) => {
-    const isSelected = selectedFormats.some(f => f.name === format.name);
-    
-    if (isSelected) {
-      setSelectedFormats(selectedFormats.filter(f => f.name !== format.name));
-    } else {
-      setSelectedFormats([...selectedFormats, format]);
-    }
-  };
-
-  const handleSelectAll = (formats: BannerSize[]) => {
-    const allSelected = formats.every(format => 
-      selectedFormats.some(f => f.name === format.name)
-    );
-    
-    if (allSelected) {
-      // Deselect all formats in this category
-      setSelectedFormats(selectedFormats.filter(selected => 
-        !formats.some(f => f.name === selected.name)
-      ));
-    } else {
-      // Select all formats in this category
-      const newSelection = [
-        ...selectedFormats.filter(selected => 
-          !formats.some(f => f.name === selected.name)
-        ),
-        ...formats
+  const { 
+    elements, 
+    setElements, 
+    addCustomSize, 
+    selectedSize 
+  } = useCanvas();
+  
+  useEffect(() => {
+    if (currentFormat) {
+      // Get more recommended formats based on the current format dimensions
+      const similarFormats = getSimilarFormats(currentFormat.width, currentFormat.height);
+      
+      // Add more format options for testing
+      const additionalFormats: BannerSize[] = [
+        { name: "Facebook Story", width: 1080, height: 1920 },
+        { name: "LinkedIn Post", width: 1200, height: 627 },
+        { name: "Pinterest Pin", width: 1000, height: 1500 },
+        { name: "YouTube Thumbnail", width: 1280, height: 720 },
+        { name: "Twitter Header", width: 1500, height: 500 },
+        { name: "Email Banner", width: 600, height: 200 },
+        { name: "Billboard", width: 970, height: 250 },
+        { name: "Medium Rectangle", width: 300, height: 250 }
       ];
-      setSelectedFormats(newSelection);
+      
+      // Filter out formats that might be duplicates
+      const allFormats = [...similarFormats];
+      
+      additionalFormats.forEach(format => {
+        const isDuplicate = allFormats.some(f => 
+          f.name === format.name || 
+          (f.width === format.width && f.height === format.height)
+        );
+        
+        if (!isDuplicate) {
+          allFormats.push(format);
+        }
+      });
+      
+      setRecommendedFormats(allFormats);
     }
+  }, [currentFormat]);
+  
+  const handleToggleFormat = (format: BannerSize) => {
+    setSelectedFormats(prev => {
+      // Check if the format is already selected
+      const isSelected = prev.some(f => 
+        f.name === format.name && f.width === format.width && f.height === format.height
+      );
+      
+      if (isSelected) {
+        // Remove the format
+        return prev.filter(f => 
+          !(f.name === format.name && f.width === format.width && f.height === format.height)
+        );
+      } else {
+        // Add the format
+        return [...prev, format];
+      }
+    });
   };
-
-  const handleConvert = async () => {
-    if (selectedFormats.length === 0) return;
+  
+  const handleSelectAll = () => {
+    setSelectedFormats([...recommendedFormats]);
+  };
+  
+  const handleUnselectAll = () => {
+    setSelectedFormats([]);
+  };
+  
+  const generateNewElementForFormat = (originalElement: EditorElement, targetFormat: BannerSize): EditorElement => {
+    // Generate a new unique ID for each new element
+    const newId = `${originalElement.type}-${targetFormat.name.toLowerCase().replace(/\s+/g, '-')}-${generateRandomId()}`;
     
-    setIsConverting(true);
+    // For this example, we'll use a simple algorithm to position elements based on format dimensions
+    // In a real implementation, this would use AI predictions from a trained model
+    
+    // Clone the original element but generate new position and size
+    const widthRatio = targetFormat.width / currentFormat.width;
+    const heightRatio = targetFormat.height / currentFormat.height;
+    
+    // Base positioning categories
+    const isHeaderElement = originalElement.style.y < currentFormat.height * 0.2;
+    const isFooterElement = originalElement.style.y > currentFormat.height * 0.7;
+    const isCenterElement = !isHeaderElement && !isFooterElement;
+    
+    // Base sizing (use different scaling for different format types)
+    let newWidth = originalElement.style.width;
+    let newHeight = originalElement.style.height;
+    let newX = originalElement.style.x;
+    let newY = originalElement.style.y;
+    
+    // Different rules for different element types
+    if (originalElement.type === 'text') {
+      // Text elements should maintain reasonable size for readability
+      newWidth = Math.min(targetFormat.width * 0.8, originalElement.style.width * widthRatio);
+      
+      // Position differently based on original location
+      if (isHeaderElement) {
+        // Keep header text at the top
+        newY = originalElement.style.y * heightRatio;
+      } else if (isFooterElement) {
+        // Keep footer text at the bottom
+        newY = targetFormat.height - (currentFormat.height - originalElement.style.y) * heightRatio;
+      } else {
+        // Center content vertically with relative positioning
+        const relativeY = originalElement.style.y / currentFormat.height;
+        newY = relativeY * targetFormat.height;
+      }
+      
+      // Horizontal positioning
+      if (originalElement.style.x < currentFormat.width * 0.3) {
+        // Keep left alignment
+        newX = originalElement.style.x * widthRatio;
+      } else if (originalElement.style.x > currentFormat.width * 0.7) {
+        // Keep right alignment
+        newX = targetFormat.width - (currentFormat.width - originalElement.style.x) * widthRatio;
+      } else {
+        // Center horizontally
+        newX = (targetFormat.width - newWidth) / 2;
+      }
+    } else if (originalElement.type === 'image') {
+      // Images should maintain aspect ratio
+      const aspectRatio = originalElement.style.width / originalElement.style.height;
+      
+      // Size differently based on format change
+      if (widthRatio < heightRatio) {
+        // Width constraint
+        newWidth = Math.min(targetFormat.width * 0.9, originalElement.style.width * widthRatio);
+        newHeight = newWidth / aspectRatio;
+      } else {
+        // Height constraint
+        newHeight = Math.min(targetFormat.height * 0.9, originalElement.style.height * heightRatio);
+        newWidth = newHeight * aspectRatio;
+      }
+      
+      // Images taking up the entire width should stay that way
+      if (originalElement.style.width > currentFormat.width * 0.9) {
+        newWidth = targetFormat.width;
+        newHeight = newWidth / aspectRatio;
+        newX = 0;
+      } else {
+        // Default position centers the image
+        newX = (targetFormat.width - newWidth) / 2;
+      }
+      
+      // Background images or banners should stay at the top
+      if (isHeaderElement && originalElement.style.width > currentFormat.width * 0.7) {
+        newY = 0;
+      } else {
+        // Default position is based on relative positioning
+        const relativeY = originalElement.style.y / currentFormat.height;
+        newY = relativeY * targetFormat.height;
+      }
+    } else if (originalElement.type === 'button') {
+      // Buttons should have reasonable sizes
+      newWidth = Math.min(
+        Math.max(originalElement.style.width * widthRatio, 120), 
+        targetFormat.width * 0.6
+      );
+      newHeight = Math.min(
+        Math.max(originalElement.style.height * heightRatio, 40),
+        targetFormat.height * 0.1
+      );
+      
+      // Buttons often at the bottom
+      if (isFooterElement) {
+        newY = targetFormat.height - (currentFormat.height - originalElement.style.y) * heightRatio;
+      } else {
+        const relativeY = originalElement.style.y / currentFormat.height;
+        newY = relativeY * targetFormat.height;
+      }
+      
+      // Center buttons horizontally
+      newX = (targetFormat.width - newWidth) / 2;
+    } else {
+      // Default scaling for other element types
+      newWidth = originalElement.style.width * widthRatio;
+      newHeight = originalElement.style.height * heightRatio;
+      
+      // Maintain relative positioning
+      const relativeX = originalElement.style.x / currentFormat.width;
+      const relativeY = originalElement.style.y / currentFormat.height;
+      
+      newX = relativeX * targetFormat.width;
+      newY = relativeY * targetFormat.height;
+    }
+    
+    // Ensure elements don't go outside the canvas
+    newX = Math.max(0, Math.min(newX, targetFormat.width - newWidth));
+    newY = Math.max(0, Math.min(newY, targetFormat.height - newHeight));
+    
+    // Create a new element with the calculated dimensions for this format
+    // Important: We're creating a completely NEW element, not linked to the original
+    return {
+      ...originalElement,
+      id: newId,
+      sizeId: targetFormat.name,
+      linkedElementId: null, // No linking to other elements
+      style: {
+        ...originalElement.style,
+        x: newX,
+        y: newY,
+        width: newWidth,
+        height: newHeight,
+        // Remove percentage values so elements stay fixed in their own format
+        xPercent: undefined,
+        yPercent: undefined,
+        widthPercent: undefined,
+        heightPercent: undefined
+      }
+    };
+  };
+  
+  const handleConvert = async () => {
+    if (selectedFormats.length === 0) {
+      toast.error("Selecione pelo menos um formato para converter");
+      return;
+    }
+    
+    if (!currentFormat || !isAITrained) {
+      toast.error("Modelo de IA não treinado ou formato atual não definido");
+      return;
+    }
+    
+    setIsProcessing(true);
     
     try {
-      // Call the onConvert callback with the selected formats
-      onConvert(selectedFormats);
+      // Get elements for the current format
+      const currentElements = elements.filter(el => 
+        el.sizeId === currentFormat.name || el.sizeId === 'global'
+      );
       
-      // Close the dialog after a small delay
-      setTimeout(() => {
-        setOpen(false);
-        setIsConverting(false);
-        setSelectedFormats([]);
-      }, 500);
+      if (currentElements.length === 0) {
+        toast.error("Não há elementos no formato atual para converter");
+        setIsProcessing(false);
+        return;
+      }
+      
+      // Create new elements for each selected format
+      const newElements: EditorElement[] = [];
+      
+      selectedFormats.forEach(targetFormat => {
+        // Add the format to active sizes
+        addCustomSize(targetFormat);
+        
+        // Create new elements for this format based on the current elements
+        currentElements.forEach(element => {
+          // Generate a completely new independent element for this format
+          const newElement = generateNewElementForFormat(element, targetFormat);
+          newElements.push(newElement);
+        });
+        
+        toast.info(`Criando layout para ${targetFormat.name}`);
+      });
+      
+      // Add all new elements to the canvas
+      setElements(prev => [...prev, ...newElements]);
+      
+      setOpen(false);
+      toast.success(`${newElements.length} elementos criados em ${selectedFormats.length} novos formatos`);
     } catch (error) {
-      console.error("Error during conversion:", error);
-      setIsConverting(false);
+      console.error("Error converting formats:", error);
+      toast.error("Ocorreu um erro ao converter os formatos");
+    } finally {
+      setIsProcessing(false);
     }
   };
   
-  const formatCategories = [
-    { name: "Redes Sociais", formats: SOCIAL_MEDIA_FORMATS.filter(f => 
-      f.name !== currentFormat.name && 
-      !(f.width === currentFormat.width && f.height === currentFormat.height)
-    )},
-    { name: "Email", formats: EMAIL_FORMATS.filter(f => 
-      f.name !== currentFormat.name && 
-      !(f.width === currentFormat.width && f.height === currentFormat.height)
-    )},
-    { name: "Anúncios", formats: AD_FORMATS.filter(f => 
-      f.name !== currentFormat.name && 
-      !(f.width === currentFormat.width && f.height === currentFormat.height)
-    )}
-  ];
+  const isFormatSelected = (format: BannerSize) => {
+    return selectedFormats.some(f => 
+      f.name === format.name && f.width === format.width && f.height === format.height
+    );
+  };
 
   return (
-    <>
-      <div onClick={() => setOpen(true)}>
-        {children}
-      </div>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {children || (
+          <Button className="gap-2" disabled={!isAITrained}>
+            <Maximize className="h-4 w-4" />
+            Desdobrar Formatos
+          </Button>
+        )}
+      </DialogTrigger>
       
-      <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-[700px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl">Adaptar para outros formatos</DialogTitle>
-            <DialogDescription>
-              Selecione os formatos para os quais você deseja adaptar seu design usando IA
-            </DialogDescription>
-          </DialogHeader>
-          
-          {!isAITrained ? (
-            <div className="py-6 text-center">
-              <div className="mb-4 flex justify-center">
-                <AlertCircle size={40} className="text-amber-500" />
-              </div>
-              <h3 className="text-lg font-medium mb-2">Modelo de IA não treinado</h3>
-              <p className="text-gray-600 mb-4">
-                O modelo de IA precisa ser treinado antes de poder adaptar designs para outros formatos.
-                Acesse o painel Admin para treinar o modelo.
+      <DialogContent className="sm:max-w-[700px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Brain className="h-5 w-5" />
+            Adaptar layout para outros formatos com IA
+          </DialogTitle>
+        </DialogHeader>
+        
+        <div className="py-4">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h3 className="text-sm font-medium">Formato atual</h3>
+              <p className="text-xs text-gray-500">
+                {currentFormat.name} ({currentFormat.width} × {currentFormat.height}px)
               </p>
             </div>
-          ) : (
-            <>
-              <ScrollArea className="max-h-[400px] mt-4 pr-4">
-                <div className="space-y-6">
-                  {formatCategories.map(category => (
-                    <div key={category.name} className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-medium">{category.name}</h3>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="h-8 text-xs"
-                          onClick={() => handleSelectAll(category.formats)}
-                        >
-                          {category.formats.every(format => 
-                            selectedFormats.some(f => f.name === format.name)
-                          ) ? "Desmarcar todos" : "Selecionar todos"}
-                        </Button>
+            
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleUnselectAll}>
+                Limpar seleção
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleSelectAll}>
+                Selecionar todos
+              </Button>
+            </div>
+          </div>
+          
+          <Separator className="my-4" />
+          
+          <div className="grid grid-cols-3 gap-4">
+            {recommendedFormats.map((format, index) => (
+              <Card 
+                key={`${format.name}-${index}`}
+                className={`cursor-pointer transition-all ${
+                  isFormatSelected(format) ? 'border-primary ring-1 ring-primary' : ''
+                }`}
+                onClick={() => handleToggleFormat(format)}
+              >
+                <CardContent className="p-4 flex items-start gap-3">
+                  <Checkbox
+                    checked={isFormatSelected(format)}
+                    onCheckedChange={() => handleToggleFormat(format)}
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="text-sm font-medium">{format.name}</h4>
+                        <p className="text-xs text-gray-500">
+                          {format.width} × {format.height}px
+                        </p>
                       </div>
-                      
-                      <div className="grid grid-cols-2 gap-3">
-                        {category.formats.map((format) => {
-                          const isSelected = selectedFormats.some(f => f.name === format.name);
-                          return (
-                            <div 
-                              key={format.name}
-                              className={`
-                                flex items-center space-x-3 border rounded-lg p-3 cursor-pointer
-                                ${isSelected ? 'border-primary bg-primary/5' : 'border-gray-200'}
-                              `}
-                              onClick={() => handleToggleFormat(format)}
-                            >
-                              <div className={`
-                                w-5 h-5 rounded-full flex items-center justify-center
-                                ${isSelected ? 'bg-primary text-white' : 'border border-gray-300'}
-                              `}>
-                                {isSelected && <Check size={12} />}
-                              </div>
-                              <div>
-                                <div className="font-medium text-sm">{format.name}</div>
-                                <div className="text-xs text-gray-500">
-                                  {format.width} × {format.height} px
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                      {isFormatSelected(format) && (
+                        <Check className="h-4 w-4 text-primary" />
+                      )}
                     </div>
-                  ))}
-                </div>
-              </ScrollArea>
-              
-              <DialogFooter className="mt-6">
-                <div className="flex justify-between items-center w-full">
-                  <div className="text-sm text-gray-500">
-                    {selectedFormats.length} formatos selecionados
+                    
+                    <div className="mt-3 aspect-[4/3] bg-gray-50 rounded border flex items-center justify-center relative">
+                      <div 
+                        className="bg-gray-200 rounded"
+                        style={{
+                          width: '70%',
+                          height: '70%',
+                          aspectRatio: `${format.width}/${format.height}`
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div className="flex space-x-2">
-                    <Button variant="outline" onClick={() => setOpen(false)}>
-                      Cancelar
-                    </Button>
-                    <Button 
-                      onClick={handleConvert} 
-                      disabled={selectedFormats.length === 0 || isConverting}
-                    >
-                      {isConverting ? "Processando..." : "Adaptar designs"}
-                    </Button>
-                  </div>
-                </div>
-              </DialogFooter>
-            </>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          
+          {(!isAITrained || recommendedFormats.length === 0) && (
+            <div className="mt-4 bg-amber-50 p-4 rounded-md">
+              <p className="text-amber-800 text-sm">
+                {!isAITrained ? (
+                  'O modelo de IA precisa ser treinado antes de usar esta funcionalidade. Vá para o painel de administração para treinar o modelo.'
+                ) : (
+                  'Não foi possível encontrar formatos recomendados para o layout atual.'
+                )}
+              </p>
+            </div>
           )}
-        </DialogContent>
-      </Dialog>
-    </>
+        </div>
+        
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">Cancelar</Button>
+          </DialogClose>
+          <Button 
+            onClick={handleConvert} 
+            disabled={selectedFormats.length === 0 || isProcessing || !isAITrained}
+            className="gap-2"
+          >
+            {isProcessing ? (
+              'Processando...'
+            ) : (
+              <>
+                <ArrowRight className="h-4 w-4" />
+                Adaptar para {selectedFormats.length} formato{selectedFormats.length !== 1 ? 's' : ''}
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
