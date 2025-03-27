@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import PropertyPanel from "./PropertyPanel";
 import { CanvasControls } from "./CanvasControls";
@@ -45,7 +44,7 @@ const CanvasContent = ({ editorMode, canvasRef, hideImportPSD, onPSDImport }: Ca
   } = useCanvas();
 
   const [showFormatDialog, setShowFormatDialog] = useState(false);
-  const [showStartProjectDialog, setShowStartProjectDialog] = useState(true);
+  const [showStartProjectDialog, setShowStartProjectDialog] = useState(!selectedSize);
   
   // Function to handle format selection
   const handleSelectFormat = (format: BannerSize) => {
@@ -78,12 +77,6 @@ const CanvasContent = ({ editorMode, canvasRef, hideImportPSD, onPSDImport }: Ca
     
     toast.success(`Layouts adaptados para ${targetFormats.length} formatos adicionais`);
   };
-
-  // If there is no selected size and neither dialog is showing, show the start project dialog
-  if (!selectedSize && !showFormatDialog && !showStartProjectDialog) {
-    setShowStartProjectDialog(true);
-    return null;
-  }
 
   // If the start project dialog should be shown
   if (showStartProjectDialog) {

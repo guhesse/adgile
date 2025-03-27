@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useRef, useEffect } from "react";
 import { 
   BannerSize, 
@@ -47,7 +46,11 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
   const [gridLayout, setGridLayout] = useState(false);
   const [artboardBackgroundColor, setArtboardBackgroundColor] = useState<string>('#ffffff');
   // Add model state
-  const [modelState, setModelState] = useState<ModelState>({ trained: false });
+  const [modelState, setModelState] = useState<ModelState>({ 
+    trained: true,
+    accuracy: 0.92,
+    lastTrained: new Date().toISOString()
+  });
   
   const historyRef = useRef<{elements: EditorElement[], selectedElement: EditorElement | null}[]>([]);
   const currentHistoryIndexRef = useRef<number>(-1);
@@ -59,22 +62,7 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
       setActiveSizes([fixedSize]);
     }
     
-    // Mock fetch of AI model state (in a real app, this would come from an API or localStorage)
-    const fetchModelState = async () => {
-      try {
-        // This is just a mock - in a real app this would be an API call or localStorage check
-        // For testing, we'll set trained to true to enable the "Desdobrar Formatos" button
-        setModelState({ 
-          trained: true, 
-          accuracy: 0.87, 
-          lastTrained: new Date().toISOString() 
-        });
-      } catch (error) {
-        console.error("Error fetching model state:", error);
-      }
-    };
-    
-    fetchModelState();
+    // No need to fetch model state as we're always setting it to trained=true by default
   }, [fixedSize]);
 
   const organizeElements = () => {
@@ -419,7 +407,6 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
     undo,
     artboardBackgroundColor,
     updateArtboardBackground,
-    // Add model state to context
     modelState
   };
 

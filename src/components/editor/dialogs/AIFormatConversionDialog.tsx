@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { 
   Dialog, 
@@ -17,6 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useCanvas } from "@/components/editor/CanvasContext";
+import { generateRandomId } from "@/components/editor/utils/idGenerator";
 
 interface AIFormatConversionDialogProps {
   currentFormat: BannerSize;
@@ -45,8 +47,36 @@ export const AIFormatConversionDialog = ({
   
   useEffect(() => {
     if (currentFormat) {
-      // Get recommended formats based on the current format dimensions
-      setRecommendedFormats(getSimilarFormats(currentFormat.width, currentFormat.height));
+      // Get more recommended formats based on the current format dimensions
+      const similarFormats = getSimilarFormats(currentFormat.width, currentFormat.height);
+      
+      // Add more format options for testing
+      const additionalFormats: BannerSize[] = [
+        { name: "Facebook Story", width: 1080, height: 1920 },
+        { name: "LinkedIn Post", width: 1200, height: 627 },
+        { name: "Pinterest Pin", width: 1000, height: 1500 },
+        { name: "YouTube Thumbnail", width: 1280, height: 720 },
+        { name: "Twitter Header", width: 1500, height: 500 },
+        { name: "Email Banner", width: 600, height: 200 },
+        { name: "Billboard", width: 970, height: 250 },
+        { name: "Medium Rectangle", width: 300, height: 250 }
+      ];
+      
+      // Filter out formats that might be duplicates
+      const allFormats = [...similarFormats];
+      
+      additionalFormats.forEach(format => {
+        const isDuplicate = allFormats.some(f => 
+          f.name === format.name || 
+          (f.width === format.width && f.height === format.height)
+        );
+        
+        if (!isDuplicate) {
+          allFormats.push(format);
+        }
+      });
+      
+      setRecommendedFormats(allFormats);
     }
   }, [currentFormat]);
   
@@ -78,7 +108,8 @@ export const AIFormatConversionDialog = ({
   };
   
   const generateNewElementForFormat = (originalElement: EditorElement, targetFormat: BannerSize): EditorElement => {
-    const newId = `${originalElement.id}-${targetFormat.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+    // Generate a new unique ID for each new element
+    const newId = `${originalElement.type}-${targetFormat.name.toLowerCase().replace(/\s+/g, '-')}-${generateRandomId()}`;
     
     // For this example, we'll use a simple algorithm to position elements based on format dimensions
     // In a real implementation, this would use AI predictions from a trained model
@@ -199,18 +230,23 @@ export const AIFormatConversionDialog = ({
     newY = Math.max(0, Math.min(newY, targetFormat.height - newHeight));
     
     // Create a new element with the calculated dimensions for this format
+    // Important: We're creating a completely NEW element, not linked to the original
     return {
       ...originalElement,
       id: newId,
       sizeId: targetFormat.name,
-      linkedElementId: null, // Important: don't link elements across formats
+      linkedElementId: null, // No linking to other elements
       style: {
         ...originalElement.style,
         x: newX,
         y: newY,
         width: newWidth,
         height: newHeight,
-        // We're creating independent elements, so we don't need percentage values
+        // Remove percentage values so elements stay fixed in their own format
+        xPercent: undefined,
+        yPercent: undefined,
+        widthPercent: undefined,
+        heightPercent: undefined
       }
     };
   };
@@ -249,7 +285,7 @@ export const AIFormatConversionDialog = ({
         
         // Create new elements for this format based on the current elements
         currentElements.forEach(element => {
-          // Generate a new element with AI-informed positioning for this format
+          // Generate a completely new independent element for this format
           const newElement = generateNewElementForFormat(element, targetFormat);
           newElements.push(newElement);
         });
