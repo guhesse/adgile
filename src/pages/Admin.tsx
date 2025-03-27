@@ -8,6 +8,7 @@ import { AdminLayoutList } from "@/components/editor/admin/AdminLayoutList";
 import { AdminLayoutStats } from "@/components/editor/admin/AdminLayoutStats";
 import { AdminFormatSelector } from "@/components/editor/admin/AdminFormatSelector";
 import { AdminPSDImport } from "@/components/editor/admin/AdminPSDImport";
+import { AdminJsonImporter } from "@/components/editor/admin/AdminJsonImporter";
 import { AIModelManager } from "@/components/editor/ai/AIModelManager";
 import { LayoutTemplate, AdminStats } from "@/components/editor/types/admin";
 import { BannerSize, EditorElement } from "@/components/editor/types";
@@ -16,12 +17,10 @@ import { saveToIndexedDB, getFromIndexedDB } from "@/utils/indexedDBUtils";
 import { getOptimizedFormats } from "@/utils/formatGenerator";
 import * as tf from '@tensorflow/tfjs';
 
-// Storage keys
 const STORAGE_KEY = 'admin-layout-templates';
 const FORMATS_KEY = 'admin-formats';
 const MODEL_KEY = 'ai-layout-model';
 
-// Function to determine orientation based on dimensions
 const determineOrientation = (width: number, height: number): 'vertical' | 'horizontal' | 'square' => {
   const ratio = width / height;
   if (ratio >= 0.95 && ratio <= 1.05) return 'square';
@@ -53,7 +52,6 @@ const Admin: React.FC = () => {
   const [canvasElements, setCanvasElements] = useState<EditorElement[]>([]);
   const canvasContextRef = useRef<any>(null);
 
-  // Initialize or load formats
   useEffect(() => {
     const loadFormats = async () => {
       try {
@@ -88,7 +86,6 @@ const Admin: React.FC = () => {
     loadFormats();
   }, []);
 
-  // Load saved templates
   useEffect(() => {
     const loadTemplates = async () => {
       try {
@@ -116,7 +113,6 @@ const Admin: React.FC = () => {
     loadTemplates();
   }, []);
 
-  // Update statistics
   const updateStats = useCallback((templatesData: LayoutTemplate[]) => {
     const newStats: AdminStats = {
       totalTemplates: templatesData.length,
@@ -133,17 +129,14 @@ const Admin: React.FC = () => {
     setStats(newStats);
   }, [isModelTrained, modelMetadata]);
 
-  // Handle format selection
   const handleFormatSelect = (format: BannerSize) => {
     setSelectedFormat(format);
     setImportMode('format');
   };
 
-  // Handle PSD import
   const handlePSDImport = (elements: EditorElement[], psdSize: BannerSize) => {
     console.log("PSD imported with", elements.length, "elements");
     
-    // Add the PSD size to available formats
     const existingFormat = formats.find(f => 
       f.name === psdSize.name || 
       (f.width === psdSize.width && f.height === psdSize.height)
@@ -153,11 +146,9 @@ const Admin: React.FC = () => {
       setFormats(prev => [...prev, psdSize]);
     }
     
-    // Set the PSD size as selected
     setSelectedFormat(psdSize);
     setImportMode('psd');
     
-    // Update the canvas with imported elements
     if (canvasContextRef.current) {
       canvasContextRef.current.setElements(elements);
     }
@@ -165,12 +156,17 @@ const Admin: React.FC = () => {
     toast.success(`PSD importado com ${elements.length} elementos.`);
   };
 
-  // Handle tab change
+  const handleJSONImport = (importedTemplates: LayoutTemplate[]) => {
+    console.log("JSON import: Added", importedTemplates.length, "templates");
+    const newTemplates = [...savedTemplates, ...importedTemplates];
+    setSavedTemplates(newTemplates);
+    updateStats(newTemplates);
+  };
+
   const handleTabChange = (value: string) => {
     setActiveTab(value);
   };
 
-  // Function to access canvas elements through context
   const updateCanvasElements = (context: any) => {
     if (context && Array.isArray(context.elements)) {
       console.log("Updating canvas elements:", context.elements);
@@ -181,7 +177,6 @@ const Admin: React.FC = () => {
     return [];
   };
 
-  // Save a template
   const handleSaveTemplate = async () => {
     if (!selectedFormat) {
       toast.error("Select a format first");
@@ -227,7 +222,6 @@ const Admin: React.FC = () => {
     }
   };
 
-  // Delete a template
   const handleDeleteTemplate = async (templateId: string) => {
     const updatedTemplates = savedTemplates.filter(template => template.id !== templateId);
     setSavedTemplates(updatedTemplates);
@@ -248,7 +242,6 @@ const Admin: React.FC = () => {
     }
   };
 
-  // Train AI model
   const handleTrainModel = async () => {
     if (savedTemplates.length < 5) {
       toast.error("You need at least 5 templates to train the model");
@@ -282,7 +275,6 @@ const Admin: React.FC = () => {
     }
   };
 
-  // Capture canvas elements when they change
   const handleCanvasUpdate = (context: any) => {
     canvasContextRef.current = context;
     if (context && Array.isArray(context.elements)) {
@@ -290,12 +282,10 @@ const Admin: React.FC = () => {
     }
   };
 
-  // Callback to save the canvas state
   const captureAndSaveTemplate = () => {
     handleSaveTemplate();
   };
 
-  // Callback for when the model is ready
   const handleModelReady = (model: tf.LayersModel) => {
     setAiModel(model);
     setIsModelTrained(true);
@@ -341,6 +331,13 @@ const Admin: React.FC = () => {
                 <h3 className="text-sm font-medium mb-4">Fonte do Layout</h3>
                 
                 <AdminPSDImport onPSDImport={handlePSDImport} />
+                
+                <div className="mb-4">
+                  <AdminJsonImporter 
+                    onLayoutsImport={handleJSONImport} 
+                    existingTemplates={savedTemplates} 
+                  />
+                </div>
                 
                 <div className="mb-4 border-t pt-4">
                   <h3 className="text-sm font-medium mb-4">Ou Selecione um Formato</h3>

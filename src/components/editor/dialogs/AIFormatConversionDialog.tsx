@@ -1,283 +1,244 @@
-import React, { useState, useEffect } from "react";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger,
-  DialogFooter,
-  DialogDescription
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { BannerSize, EXTENDED_BANNER_SIZES } from "../types";
-import { Separator } from "@/components/ui/separator";
-import { Check, Maximize } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  verticalFormats, 
-  horizontalFormats, 
-  squareFormats 
-} from "@/data/formats";
 
-interface AIFormatConversionDialogProps {
-  children: React.ReactNode;
+import React, { useState, PropsWithChildren } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { BannerSize } from "../types";
+import { Button } from "@/components/ui/button";
+import { Check, AlertCircle } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+// Format categories
+const SOCIAL_MEDIA_FORMATS: BannerSize[] = [
+  { name: "Instagram Post", width: 1080, height: 1080 },
+  { name: "Instagram Story", width: 1080, height: 1920 },
+  { name: "Facebook Post", width: 1200, height: 630 },
+  { name: "Facebook Cover", width: 820, height: 312 },
+  { name: "Twitter Post", width: 1024, height: 512 },
+  { name: "Twitter Header", width: 1500, height: 500 },
+  { name: "LinkedIn Post", width: 1200, height: 627 },
+  { name: "LinkedIn Banner", width: 1584, height: 396 }
+];
+
+const EMAIL_FORMATS: BannerSize[] = [
+  { name: "Email Template", width: 600, height: 800 },
+  { name: "Email Header", width: 600, height: 200 },
+  { name: "Email Newsletter", width: 600, height: 1200 }
+];
+
+const AD_FORMATS: BannerSize[] = [
+  { name: "Display Ad - Medium Rectangle", width: 300, height: 250 },
+  { name: "Display Ad - Leaderboard", width: 728, height: 90 },
+  { name: "Display Ad - Large Rectangle", width: 336, height: 280 },
+  { name: "Display Ad - Skyscraper", width: 160, height: 600 },
+  { name: "Display Ad - Half Page", width: 300, height: 600 },
+  { name: "YouTube Thumbnail", width: 1280, height: 720 }
+];
+
+// Combined all formats
+const ALL_FORMATS = [
+  ...SOCIAL_MEDIA_FORMATS,
+  ...EMAIL_FORMATS,
+  ...AD_FORMATS
+];
+
+interface AIFormatConversionDialogProps extends PropsWithChildren {
   currentFormat: BannerSize;
-  onConvert: (formats: BannerSize[]) => void;
+  onConvert: (targetFormats: BannerSize[]) => void;
   isAITrained: boolean;
 }
 
-export function AIFormatConversionDialog({
+export const AIFormatConversionDialog: React.FC<AIFormatConversionDialogProps> = ({
   children,
   currentFormat,
   onConvert,
   isAITrained
-}: AIFormatConversionDialogProps) {
+}) => {
+  const [open, setOpen] = useState(false);
   const [selectedFormats, setSelectedFormats] = useState<BannerSize[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
-  const [recommendedFormats, setRecommendedFormats] = useState<BannerSize[]>([]);
+  const [isConverting, setIsConverting] = useState(false);
   
-  // Function to determine if format is vertical, horizontal, or square
-  const getFormatType = (format: BannerSize): "vertical" | "horizontal" | "square" => {
-    const aspectRatio = format.width / format.height;
-    if (aspectRatio > 1.1) return "horizontal";
-    if (aspectRatio < 0.9) return "vertical";
-    return "square";
-  };
-  
-  // Determine current format type
-  const currentFormatType = getFormatType(currentFormat);
-  
-  // Group formats by similarity
-  useEffect(() => {
-    if (currentFormat) {
-      // Generate recommendations based on format type
-      let recommended: BannerSize[] = [];
-      
-      // Get formats that match the aspect ratio type, but exclude exact current format
-      if (currentFormatType === "vertical") {
-        recommended = verticalFormats.filter(
-          format => format.name !== currentFormat.name
-        ).slice(0, 6);
-      } else if (currentFormatType === "horizontal") {
-        recommended = horizontalFormats.filter(
-          format => format.name !== currentFormat.name
-        ).slice(0, 6);
-      } else {
-        recommended = squareFormats.filter(
-          format => format.name !== currentFormat.name
-        ).slice(0, 6);
-      }
-      
-      // Add some contrasting formats 
-      const otherFormats = EXTENDED_BANNER_SIZES.filter(
-        format => getFormatType(format) !== currentFormatType && 
-                 format.name !== currentFormat.name
-      ).slice(0, 4);
-      
-      setRecommendedFormats([...recommended, ...otherFormats]);
-    }
-  }, [currentFormat, currentFormatType]);
-  
-  const toggleFormatSelection = (format: BannerSize) => {
-    setSelectedFormats(prev => {
-      // Check if format is already selected
-      const isSelected = prev.some(f => f.name === format.name);
-      
-      // If already selected, remove it
-      if (isSelected) {
-        return prev.filter(f => f.name !== format.name);
-      }
-      
-      // Otherwise add it
-      return [...prev, format];
-    });
-  };
-  
-  const handleConvert = () => {
-    if (selectedFormats.length > 0) {
-      onConvert(selectedFormats);
-      setSelectedFormats([]);
-      setIsOpen(false);
-    }
-  };
-  
-  const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
-    if (!open) {
-      setSelectedFormats([]);
-    }
-  };
-  
-  // Filter formats by type
-  const verticalBanners = verticalFormats.filter(format => format.name !== currentFormat.name);
-  const horizontalBanners = horizontalFormats.filter(format => format.name !== currentFormat.name);
-  const squareBanners = squareFormats.filter(format => format.name !== currentFormat.name);
+  // Filter out the current format
+  const availableFormats = ALL_FORMATS.filter(format => 
+    format.name !== currentFormat.name && 
+    !(format.width === currentFormat.width && format.height === currentFormat.height)
+  );
 
-  const renderFormatGrid = (formats: BannerSize[]) => {
-    return (
-      <div className="grid grid-cols-3 gap-4 mt-4">
-        {formats.map((format, index) => {
-          const isSelected = selectedFormats.some(f => f.name === format.name);
-          
-          return (
-            <div 
-              key={`${format.name}-${index}`}
-              className={`
-                p-3 border rounded-md cursor-pointer transition-all flex flex-col items-center
-                ${isSelected ? 'border-primary bg-primary/5' : 'hover:bg-gray-50'}
-              `}
-              onClick={() => toggleFormatSelection(format)}
-            >
-              {isSelected && (
-                <div className="self-end mb-1">
-                  <Check className="h-4 w-4 text-primary" />
-                </div>
-              )}
-              
-              <div className="relative mb-2">
-                <div 
-                  className="border border-gray-300 bg-gray-50"
-                  style={{
-                    width: '100px',
-                    height: '80px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden'
-                  }}
-                >
-                  <div
-                    style={{
-                      width: `${Math.min(100, (format.width / format.height) * 80)}px`,
-                      height: `${Math.min(80, (format.height / format.width) * 100)}px`,
-                      backgroundColor: 'rgba(59, 130, 246, 0.3)',
-                      border: '1px solid rgba(59, 130, 246, 0.5)'
-                    }}
-                  ></div>
-                </div>
-              </div>
-              
-              <span className="text-sm font-medium text-center">{format.name}</span>
-              <span className="text-xs text-gray-500">{format.width} × {format.height}</span>
-            </div>
-          );
-        })}
-      </div>
-    );
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (!newOpen) {
+      // Reset selection when closing
+      setSelectedFormats([]);
+    }
   };
+
+  const handleToggleFormat = (format: BannerSize) => {
+    const isSelected = selectedFormats.some(f => f.name === format.name);
+    
+    if (isSelected) {
+      setSelectedFormats(selectedFormats.filter(f => f.name !== format.name));
+    } else {
+      setSelectedFormats([...selectedFormats, format]);
+    }
+  };
+
+  const handleSelectAll = (formats: BannerSize[]) => {
+    const allSelected = formats.every(format => 
+      selectedFormats.some(f => f.name === format.name)
+    );
+    
+    if (allSelected) {
+      // Deselect all formats in this category
+      setSelectedFormats(selectedFormats.filter(selected => 
+        !formats.some(f => f.name === selected.name)
+      ));
+    } else {
+      // Select all formats in this category
+      const newSelection = [
+        ...selectedFormats.filter(selected => 
+          !formats.some(f => f.name === selected.name)
+        ),
+        ...formats
+      ];
+      setSelectedFormats(newSelection);
+    }
+  };
+
+  const handleConvert = async () => {
+    if (selectedFormats.length === 0) return;
+    
+    setIsConverting(true);
+    
+    try {
+      // Call the onConvert callback with the selected formats
+      onConvert(selectedFormats);
+      
+      // Close the dialog after a small delay
+      setTimeout(() => {
+        setOpen(false);
+        setIsConverting(false);
+        setSelectedFormats([]);
+      }, 500);
+    } catch (error) {
+      console.error("Error during conversion:", error);
+      setIsConverting(false);
+    }
+  };
+  
+  const formatCategories = [
+    { name: "Redes Sociais", formats: SOCIAL_MEDIA_FORMATS.filter(f => 
+      f.name !== currentFormat.name && 
+      !(f.width === currentFormat.width && f.height === currentFormat.height)
+    )},
+    { name: "Email", formats: EMAIL_FORMATS.filter(f => 
+      f.name !== currentFormat.name && 
+      !(f.width === currentFormat.width && f.height === currentFormat.height)
+    )},
+    { name: "Anúncios", formats: AD_FORMATS.filter(f => 
+      f.name !== currentFormat.name && 
+      !(f.width === currentFormat.width && f.height === currentFormat.height)
+    )}
+  ];
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
+    <>
+      <div onClick={() => setOpen(true)}>
         {children}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Maximize className="h-5 w-5" />
-            Desdobrar para outros formatos usando IA
-          </DialogTitle>
-          <DialogDescription>
-            A IA irá adaptar seu design para outros formatos automaticamente. O layout atual é {currentFormat.name} ({currentFormat.width} × {currentFormat.height}).
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="flex-1 overflow-y-auto mt-4">
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-medium mb-2">Formatos recomendados</h3>
-              <div className="grid grid-cols-3 gap-4">
-                {recommendedFormats.map((format, index) => {
-                  const isSelected = selectedFormats.some(f => f.name === format.name);
-                  
-                  return (
-                    <div 
-                      key={`rec-${format.name}-${index}`}
-                      className={`
-                        p-3 border rounded-md cursor-pointer transition-all flex flex-col items-center
-                        ${isSelected ? 'border-primary bg-primary/5' : 'hover:bg-gray-50'}
-                      `}
-                      onClick={() => toggleFormatSelection(format)}
-                    >
-                      {isSelected && (
-                        <div className="self-end mb-1">
-                          <Check className="h-4 w-4 text-primary" />
-                        </div>
-                      )}
-                      
-                      <div className="relative mb-2">
-                        <div 
-                          className="border border-gray-300 bg-gray-50"
-                          style={{
-                            width: '100px',
-                            height: '80px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            overflow: 'hidden'
-                          }}
+      </div>
+      
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="sm:max-w-[700px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Adaptar para outros formatos</DialogTitle>
+            <DialogDescription>
+              Selecione os formatos para os quais você deseja adaptar seu design usando IA
+            </DialogDescription>
+          </DialogHeader>
+          
+          {!isAITrained ? (
+            <div className="py-6 text-center">
+              <div className="mb-4 flex justify-center">
+                <AlertCircle size={40} className="text-amber-500" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">Modelo de IA não treinado</h3>
+              <p className="text-gray-600 mb-4">
+                O modelo de IA precisa ser treinado antes de poder adaptar designs para outros formatos.
+                Acesse o painel Admin para treinar o modelo.
+              </p>
+            </div>
+          ) : (
+            <>
+              <ScrollArea className="max-h-[400px] mt-4 pr-4">
+                <div className="space-y-6">
+                  {formatCategories.map(category => (
+                    <div key={category.name} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-medium">{category.name}</h3>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="h-8 text-xs"
+                          onClick={() => handleSelectAll(category.formats)}
                         >
-                          <div
-                            style={{
-                              width: `${Math.min(100, (format.width / format.height) * 80)}px`,
-                              height: `${Math.min(80, (format.height / format.width) * 100)}px`,
-                              backgroundColor: 'rgba(59, 130, 246, 0.3)',
-                              border: '1px solid rgba(59, 130, 246, 0.5)'
-                            }}
-                          ></div>
-                        </div>
+                          {category.formats.every(format => 
+                            selectedFormats.some(f => f.name === format.name)
+                          ) ? "Desmarcar todos" : "Selecionar todos"}
+                        </Button>
                       </div>
                       
-                      <span className="text-sm font-medium text-center">{format.name}</span>
-                      <span className="text-xs text-gray-500">{format.width} × {format.height}</span>
+                      <div className="grid grid-cols-2 gap-3">
+                        {category.formats.map((format) => {
+                          const isSelected = selectedFormats.some(f => f.name === format.name);
+                          return (
+                            <div 
+                              key={format.name}
+                              className={`
+                                flex items-center space-x-3 border rounded-lg p-3 cursor-pointer
+                                ${isSelected ? 'border-primary bg-primary/5' : 'border-gray-200'}
+                              `}
+                              onClick={() => handleToggleFormat(format)}
+                            >
+                              <div className={`
+                                w-5 h-5 rounded-full flex items-center justify-center
+                                ${isSelected ? 'bg-primary text-white' : 'border border-gray-300'}
+                              `}>
+                                {isSelected && <Check size={12} />}
+                              </div>
+                              <div>
+                                <div className="font-medium text-sm">{format.name}</div>
+                                <div className="text-xs text-gray-500">
+                                  {format.width} × {format.height} px
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-            
-            <Separator className="my-6" />
-            
-            <Tabs defaultValue="vertical">
-              <TabsList className="grid grid-cols-3 mb-4">
-                <TabsTrigger value="vertical">Vertical</TabsTrigger>
-                <TabsTrigger value="horizontal">Horizontal</TabsTrigger>
-                <TabsTrigger value="square">Quadrado</TabsTrigger>
-              </TabsList>
+                  ))}
+                </div>
+              </ScrollArea>
               
-              <TabsContent value="vertical">
-                {renderFormatGrid(verticalBanners.slice(0, 12))}
-              </TabsContent>
-              
-              <TabsContent value="horizontal">
-                {renderFormatGrid(horizontalBanners.slice(0, 12))}
-              </TabsContent>
-              
-              <TabsContent value="square">
-                {renderFormatGrid(squareBanners)}
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
-        
-        <DialogFooter className="flex items-center justify-between mt-4 pt-4 border-t">
-          <div>
-            {selectedFormats.length > 0 && (
-              <Badge variant="outline" className="mr-2">
-                {selectedFormats.length} formato{selectedFormats.length !== 1 ? 's' : ''} selecionado{selectedFormats.length !== 1 ? 's' : ''}
-              </Badge>
-            )}
-          </div>
-          <Button 
-            onClick={handleConvert} 
-            disabled={selectedFormats.length === 0 || !isAITrained}
-            className="ml-auto"
-          >
-            Desdobrar Formatos
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+              <DialogFooter className="mt-6">
+                <div className="flex justify-between items-center w-full">
+                  <div className="text-sm text-gray-500">
+                    {selectedFormats.length} formatos selecionados
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button variant="outline" onClick={() => setOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button 
+                      onClick={handleConvert} 
+                      disabled={selectedFormats.length === 0 || isConverting}
+                    >
+                      {isConverting ? "Processando..." : "Adaptar designs"}
+                    </Button>
+                  </div>
+                </div>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
-}
+};

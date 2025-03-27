@@ -10,7 +10,7 @@ import { BannerSize, EditorMode } from "./types";
 import { FormatSelectionDialog } from "./dialogs/FormatSelectionDialog";
 import { AIFormatConversionDialog } from "./dialogs/AIFormatConversionDialog";
 import { Button } from "@/components/ui/button";
-import { Split, Cpu, Maximize, Upload } from "lucide-react";
+import { Split, Cpu, Maximize, Upload, FileJson } from "lucide-react";
 import { toast } from "sonner";
 import { StartProjectDialog } from "./dialogs/StartProjectDialog";
 import { JsonUploader } from "./JsonUploader";
@@ -57,7 +57,7 @@ const CanvasContent = ({ editorMode, canvasRef, hideImportPSD, onPSDImport }: Ca
   // Function to handle PSD import
   const handlePSDImportSelection = () => {
     setShowStartProjectDialog(false);
-    // The PSD import component will handle the actual import
+    // The PSD import component will be triggered via the file input
   };
   
   // Function to handle format selection from start dialog

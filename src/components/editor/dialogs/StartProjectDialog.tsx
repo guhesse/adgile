@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useRef } from "react";
 import { 
   Dialog, 
   DialogContent, 
@@ -7,9 +7,7 @@ import {
   DialogTitle,
   DialogDescription
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Upload } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { FileText, Upload, FileJson } from "lucide-react";
 
 interface StartProjectDialogProps {
   open: boolean;
@@ -24,6 +22,8 @@ export const StartProjectDialog: React.FC<StartProjectDialogProps> = ({
   onSelectFormat,
   onImportPSD,
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Handle open change to prevent accidental closing
   const handleOpenChange = (value: boolean) => {
     // Only allow changing to false if the user has made a selection
@@ -31,6 +31,11 @@ export const StartProjectDialog: React.FC<StartProjectDialogProps> = ({
       onOpenChange(true);
     }
     // We don't allow closing without making a selection
+  };
+  
+  // Trigger the file input click when the PSD import option is clicked
+  const handlePSDImportClick = () => {
+    fileInputRef.current?.click();
   };
 
   return (
@@ -60,7 +65,7 @@ export const StartProjectDialog: React.FC<StartProjectDialogProps> = ({
             
             <div 
               className="flex flex-col items-center cursor-pointer border p-8 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
-              onClick={onImportPSD}
+              onClick={handlePSDImportClick}
             >
               <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <Upload size={30} className="text-primary" />
@@ -72,6 +77,18 @@ export const StartProjectDialog: React.FC<StartProjectDialogProps> = ({
             </div>
           </div>
         </div>
+        
+        {/* Hidden file input for PSD import */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept=".psd"
+          className="hidden"
+          onChange={() => {
+            onImportPSD();
+            onOpenChange(false);
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
