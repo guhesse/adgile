@@ -20,9 +20,15 @@ import { BannerSize } from "../types";
 
 interface AdminFormatSelectorProps {
   onSelectFormat: (format: BannerSize) => void;
+  selectedFormat?: BannerSize | null;
+  formats?: BannerSize[];
 }
 
-export const AdminFormatSelector = ({ onSelectFormat }: AdminFormatSelectorProps) => {
+export const AdminFormatSelector = ({ 
+  onSelectFormat, 
+  selectedFormat, 
+  formats 
+}: AdminFormatSelectorProps) => {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("social");
   

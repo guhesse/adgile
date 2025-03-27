@@ -30,6 +30,7 @@ export const ElementRender: React.FC<ElementRenderProps> = ({ element, scale = 1
     padding: style.padding || '0',
     overflow: 'hidden',
     zIndex: 1,
+    opacity: style.opacity !== undefined ? style.opacity : 1,
   };
 
   const renderContent = () => {
@@ -41,7 +42,9 @@ export const ElementRender: React.FC<ElementRenderProps> = ({ element, scale = 1
         return (
           <div className="w-full h-full bg-gray-200 flex items-center justify-center">
             {content ? (
-              <img src={content} alt="Element" className="max-w-full max-h-full object-contain" />
+              <img src={content} alt="Element" className="max-w-full max-h-full object-contain" style={{
+                objectFit: style.objectFit as any || 'contain'
+              }} />
             ) : (
               <div className="text-xs text-gray-500">Image</div>
             )}

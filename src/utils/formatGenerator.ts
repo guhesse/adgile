@@ -102,3 +102,53 @@ export const generateRectangleSizes = (): BannerSize[] => {
     }
   ];
 };
+
+/**
+ * Get a collection of optimized formats for the application
+ * @returns Array of BannerSize objects representing the most common formats
+ */
+export const getOptimizedFormats = (): BannerSize[] => {
+  const socialMediaFormats = generateBannerSizes();
+  const squareFormats = generateSquareSizes().slice(0, 2); // Only the small and medium square
+  const rectangleFormats = generateRectangleSizes().filter(
+    format => ['Landscape Medium', 'Portrait Medium'].includes(format.name)
+  );
+  
+  return [
+    ...socialMediaFormats,
+    ...squareFormats,
+    ...rectangleFormats
+  ];
+};
+
+/**
+ * Get formats similar to the provided dimensions
+ * @param width Width in pixels
+ * @param height Height in pixels 
+ * @returns Array of recommended BannerSize objects
+ */
+export const getSimilarFormats = (width: number, height: number): BannerSize[] => {
+  const allFormats = [
+    ...generateBannerSizes(),
+    ...generateSquareSizes(),
+    ...generateRectangleSizes()
+  ];
+  
+  // Determine if the input is square, landscape or portrait
+  const aspectRatio = width / height;
+  const isSquare = aspectRatio >= 0.9 && aspectRatio <= 1.1;
+  const isLandscape = aspectRatio > 1.1;
+  
+  return allFormats.filter(format => {
+    const formatRatio = format.width / format.height;
+    const formatIsSquare = formatRatio >= 0.9 && formatRatio <= 1.1;
+    const formatIsLandscape = formatRatio > 1.1;
+    
+    // Filter based on orientation similarity
+    if (isSquare && formatIsSquare) return true;
+    if (isLandscape && formatIsLandscape) return true;
+    if (!isSquare && !isLandscape && !formatIsSquare && !formatIsLandscape) return true;
+    
+    return false;
+  }).slice(0, 6); // Return top 6 similar formats
+};
