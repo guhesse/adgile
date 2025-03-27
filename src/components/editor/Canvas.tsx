@@ -43,9 +43,9 @@ const CanvasContent = ({ editorMode, canvasRef, hideImportPSD, onPSDImport }: Ca
     modelState
   } = useCanvas();
 
-  const [showFormatDialog, setShowFormatDialog] = useState(!selectedSize || selectedSize.name === 'All');
+  const [showFormatDialog, setShowFormatDialog] = useState(true);
   
-  // Effect to show format dialog initially if no size is selected
+  // Effect to show format dialog initially
   useEffect(() => {
     if (!selectedSize || selectedSize.name === 'All') {
       setShowFormatDialog(true);
@@ -58,6 +58,11 @@ const CanvasContent = ({ editorMode, canvasRef, hideImportPSD, onPSDImport }: Ca
   };
   
   const handleFormatConversion = (targetFormats: BannerSize[]) => {
+    if (!modelState?.trained) {
+      toast.error("Modelo de IA ainda não foi treinado");
+      return;
+    }
+    
     // Add the target formats to the active sizes
     targetFormats.forEach(format => {
       addCustomSize(format);
@@ -65,6 +70,17 @@ const CanvasContent = ({ editorMode, canvasRef, hideImportPSD, onPSDImport }: Ca
     
     toast.success(`Layouts adaptados para ${targetFormats.length} formatos adicionais`);
   };
+
+  // If there is no selected size, render just the dialog
+  if (!selectedSize && showFormatDialog) {
+    return (
+      <FormatSelectionDialog
+        open={showFormatDialog}
+        onOpenChange={setShowFormatDialog}
+        onSelectFormat={handleSelectFormat}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-1 h-full">

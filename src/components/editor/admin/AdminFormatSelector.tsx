@@ -14,7 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   generateBannerSizes, 
   generateSquareSizes, 
-  generateRectangleSizes 
+  generateRectangleSizes,
+  getOptimizedFormats
 } from "@/utils/formatGenerator";
 import { BannerSize } from "../types";
 
@@ -80,7 +81,9 @@ export const AdminFormatSelector = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full">Escolher Formato</Button>
+        <Button variant="outline" className="w-full">
+          {selectedFormat ? `${selectedFormat.name} (${selectedFormat.width}×${selectedFormat.height})` : 'Escolher Formato'}
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>

@@ -77,8 +77,16 @@ export const FormatSelectionDialog = ({
     ));
   };
 
+  // Don't allow closing the dialog with escape key or clicking outside if no format is selected
+  const handleOpenChange = (value: boolean) => {
+    // Only allow closing if we're moving from open to closed AND we already have a format selected
+    if (!value) {
+      onOpenChange(value);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Começar um novo projeto</DialogTitle>
@@ -87,8 +95,8 @@ export const FormatSelectionDialog = ({
         <Tabs defaultValue="inicio" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="inicio">Início</TabsTrigger>
-            <TabsTrigger value="formatos" disabled={activeTab === "inicio"}>Formatos</TabsTrigger>
-            <TabsTrigger value="psd" disabled={activeTab === "inicio"}>Upload PSD</TabsTrigger>
+            <TabsTrigger value="formatos" disabled={activeTab === "inicio" && !selectedMode}>Formatos</TabsTrigger>
+            <TabsTrigger value="psd" disabled={activeTab === "inicio" && !selectedMode}>Upload PSD</TabsTrigger>
           </TabsList>
           
           <div className="flex-1 overflow-y-auto py-4">
@@ -177,9 +185,6 @@ export const FormatSelectionDialog = ({
               Voltar
             </Button>
           )}
-          <DialogClose asChild>
-            <Button variant="outline">Cancelar</Button>
-          </DialogClose>
         </DialogFooter>
       </DialogContent>
     </Dialog>

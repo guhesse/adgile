@@ -36,13 +36,20 @@ export const ElementRender: React.FC<ElementRenderProps> = ({ element, scale = 1
   const renderContent = () => {
     switch (type) {
       case 'text':
-        return <div>{content || 'Text Element'}</div>;
+        return <div className="w-full h-full flex items-center" style={{
+          fontFamily: style.fontFamily || 'inherit',
+          fontWeight: style.fontWeight || 'normal',
+          fontSize: style.fontSize ? `${style.fontSize}px` : 'inherit',
+          fontStyle: style.fontStyle || 'normal',
+          lineHeight: style.lineHeight || 'normal',
+          letterSpacing: style.letterSpacing ? `${style.letterSpacing}px` : 'normal',
+        }}>{content || 'Text Element'}</div>;
       
       case 'image':
         return (
           <div className="w-full h-full bg-gray-200 flex items-center justify-center">
             {content ? (
-              <img src={content} alt="Element" className="max-w-full max-h-full object-contain" style={{
+              <img src={content} alt="Element" className="max-w-full max-h-full" style={{
                 objectFit: style.objectFit as any || 'contain'
               }} />
             ) : (
@@ -54,7 +61,7 @@ export const ElementRender: React.FC<ElementRenderProps> = ({ element, scale = 1
       case 'button':
         return (
           <div className="h-full w-full flex items-center justify-center">
-            <div className="px-4 py-2 bg-blue-500 text-white rounded">
+            <div className="px-4 py-2 bg-blue-500 text-white rounded flex items-center justify-center w-full h-full">
               {content || 'Button'}
             </div>
           </div>
