@@ -1,15 +1,17 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Sparkles, AlertCircle, Loader } from 'lucide-react';
+import { Sparkles, AlertCircle, Loader, Brain } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useCanvas } from '../CanvasContext';
+import { AIFormatConversionDialog } from '../dialogs/AIFormatConversionDialog';
 
 interface AIFormatSuggestionProps {
   currentFormat: {
     width: number;
     height: number;
-    orientation?: string;
+    orientation?: 'vertical' | 'horizontal' | 'square';
   };
 }
 
@@ -21,7 +23,7 @@ export const AIFormatSuggestion: React.FC<AIFormatSuggestionProps> = ({ currentF
                       
   return (
     <div className="space-y-4">
-      <Alert>
+      <Alert variant="default">
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>IA em treinamento</AlertTitle>
         <AlertDescription>
@@ -45,15 +47,8 @@ export const AIPanel = () => {
   // Estado para controlar quando a IA está gerando sugestões
   const [isGenerating, setIsGenerating] = useState(false);
   
-  // Formato atual (exemplo)
-  const currentFormat = {
-    width: 1080,
-    height: 1920,
-    orientation: 'vertical'
-  };
-  
-  // Verificar se o modelo está treinado
-  const isModelTrained = false; // Vamos supor que ainda não está treinado
+  // Use Canvas context to get current format
+  const { selectedSize, modelState } = useCanvas();
   
   // Função para gerar sugestões de layout
   const generateLayoutSuggestions = () => {
@@ -62,6 +57,14 @@ export const AIPanel = () => {
     setTimeout(() => {
       setIsGenerating(false);
     }, 3000);
+  };
+
+  // Determine o formato atual
+  const currentFormat = selectedSize || { 
+    width: 1080, 
+    height: 1920, 
+    orientation: 'vertical' as const,
+    name: 'Default'
   };
 
   return (
@@ -85,10 +88,13 @@ export const AIPanel = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {isModelTrained ? (
+              {modelState?.trained ? (
                 <div className="space-y-4">
                   <div className="text-sm text-gray-500">
-                    Formato atual: {currentFormat.width} × {currentFormat.height}px ({currentFormat.orientation})
+                    Formato atual: {currentFormat.width} × {currentFormat.height}px 
+                    ({currentFormat.orientation || 
+                      (currentFormat.width > currentFormat.height ? 'horizontal' : 
+                      (currentFormat.width < currentFormat.height ? 'vertical' : 'square'))})
                   </div>
                   <Button 
                     className="w-full" 
@@ -107,6 +113,17 @@ export const AIPanel = () => {
                       </>
                     )}
                   </Button>
+                  
+                  <AIFormatConversionDialog 
+                    currentFormat={currentFormat} 
+                    onConvert={() => {}}
+                    isAITrained={modelState?.trained}
+                  >
+                    <Button className="w-full mt-2 gap-2" variant="outline">
+                      <Brain className="h-4 w-4" />
+                      Desdobrar para outros formatos
+                    </Button>
+                  </AIFormatConversionDialog>
                 </div>
               ) : (
                 <AIFormatSuggestion currentFormat={currentFormat} />
