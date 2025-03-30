@@ -3,6 +3,55 @@ import { EditorElement, BannerSize } from "../types";
 import { toast } from "sonner";
 import { calculateSmartPosition } from "../utils/grid/responsivePosition";
 
+// Calculate responsive font size
+const calculateResponsiveFontSize = (
+  originalFontSize: number,
+  sourceWidth: number,
+  sourceHeight: number,
+  targetWidth: number,
+  targetHeight: number
+): number => {
+  // This function follows a smart algorithm to scale text properly 
+  // between different format sizes
+  
+  // Determine if formats are horizontal or vertical
+  const isSourceHorizontal = sourceWidth > sourceHeight;
+  const isTargetHorizontal = targetWidth > targetHeight;
+  
+  // Base scaling factors
+  const widthRatio = targetWidth / sourceWidth;
+  const heightRatio = targetHeight / sourceHeight;
+  
+  let scaleFactor = 1;
+  
+  if (isSourceHorizontal && isTargetHorizontal) {
+    // Both horizontal - scale primarily based on width
+    scaleFactor = widthRatio * 0.8 + heightRatio * 0.2;
+  } else if (!isSourceHorizontal && !isTargetHorizontal) {
+    // Both vertical - scale primarily based on height
+    scaleFactor = heightRatio * 0.8 + widthRatio * 0.2;
+  } else {
+    // Mixed orientations - use a balanced approach
+    scaleFactor = (widthRatio * 0.5) + (heightRatio * 0.5);
+  }
+  
+  // Apply limits to prevent too small or too large text
+  const minFontSize = 12;
+  const maxFactor = 1.5;
+  const minFactor = 0.7;
+  
+  // Constrain scale factor
+  scaleFactor = Math.max(minFactor, Math.min(maxFactor, scaleFactor));
+  
+  // Calculate and round new font size
+  let newFontSize = Math.round(originalFontSize * scaleFactor);
+  
+  // Ensure minimum readable size
+  newFontSize = Math.max(minFontSize, newFontSize);
+  
+  return newFontSize;
+};
+
 // Link an element across all active sizes
 export const linkElementsAcrossSizes = (
   element: EditorElement,
@@ -51,6 +100,19 @@ export const linkElementsAcrossSizes = (
       // Calculate position and size for this specific canvas size
       const { x, y, width, height } = calculateSmartPosition(element, selectedSize, size);
       
+      // Calculate responsive font size if this is a text element
+      let responsiveStyle: any = {};
+      if (element.type === 'text' && element.style.fontSize) {
+        const newFontSize = calculateResponsiveFontSize(
+          element.style.fontSize,
+          selectedSize.width,
+          selectedSize.height,
+          size.width,
+          size.height
+        );
+        responsiveStyle.fontSize = newFontSize;
+      }
+      
       // Create a clone for this size
       const clone: EditorElement = {
         ...element,
@@ -59,6 +121,7 @@ export const linkElementsAcrossSizes = (
         linkedElementId: linkedId,
         style: {
           ...element.style,
+          ...responsiveStyle,
           x,
           y,
           width,
@@ -156,6 +219,10 @@ export const updateAllLinkedElements = (
     calculatedPercentChanges.heightPercent = (absoluteChanges.height / sourceSize.height) * 100;
   }
   
+  // For font size changes, we need to calculate responsive sizes for each target format
+  const hasFontSizeChange = absoluteChanges.fontSize !== undefined;
+  const originalFontSize = hasFontSizeChange ? absoluteChanges.fontSize : sourceElement.style.fontSize;
+  
   return elements.map(el => {
     // Update source element
     if (el.id === sourceElement.id) {
@@ -191,6 +258,17 @@ export const updateAllLinkedElements = (
         
         if (calculatedPercentChanges.heightPercent !== undefined) {
           newAbsoluteValues.height = (calculatedPercentChanges.heightPercent * size.height) / 100;
+        }
+        
+        // Handle font size responsively if it changed
+        if (hasFontSizeChange && originalFontSize) {
+          newAbsoluteValues.fontSize = calculateResponsiveFontSize(
+            originalFontSize,
+            sourceSize.width,
+            sourceSize.height,
+            size.width,
+            size.height
+          );
         }
         
         return {
@@ -267,6 +345,19 @@ export const createLinkedVersions = (
       size
     );
     
+    // Calculate responsive font size if this is a text element
+    let responsiveStyle: any = {};
+    if (element.type === 'text' && element.style.fontSize) {
+      const newFontSize = calculateResponsiveFontSize(
+        element.style.fontSize,
+        selectedSize.width,
+        selectedSize.height,
+        size.width,
+        size.height
+      );
+      responsiveStyle.fontSize = newFontSize;
+    }
+    
     let linkedElement: EditorElement;
     
     if (element.type === 'layout') {
@@ -277,6 +368,7 @@ export const createLinkedVersions = (
         linkedElementId: linkedId,
         style: {
           ...element.style,
+          ...responsiveStyle,
           x,
           y,
           width,
@@ -301,6 +393,7 @@ export const createLinkedVersions = (
         linkedElementId: linkedId,
         style: {
           ...element.style,
+          ...responsiveStyle,
           x,
           y,
           width,

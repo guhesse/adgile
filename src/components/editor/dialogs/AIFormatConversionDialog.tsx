@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { 
   Dialog, 
@@ -10,7 +9,7 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Cpu, Maximize, Check, ArrowRight, Brain } from "lucide-react";
+import { Maximize, Check, ArrowRight, Brain, Columns, Rows } from "lucide-react";
 import { getSimilarFormats } from "@/utils/formatGenerator";
 import { BannerSize, EditorElement } from "@/components/editor/types";
 import { toast } from "sonner";
@@ -19,6 +18,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useCanvas } from "@/components/editor/CanvasContext";
 import { generateRandomId } from "@/components/editor/utils/idGenerator";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface AIFormatConversionDialogProps {
   currentFormat: BannerSize;
@@ -37,6 +38,8 @@ export const AIFormatConversionDialog = ({
   const [selectedFormats, setSelectedFormats] = useState<BannerSize[]>([]);
   const [recommendedFormats, setRecommendedFormats] = useState<BannerSize[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [useHorizontalLayout, setUseHorizontalLayout] = useState(true);
+  const [useResponsiveText, setUseResponsiveText] = useState(true);
   
   const { 
     elements, 
@@ -107,21 +110,76 @@ export const AIFormatConversionDialog = ({
     setSelectedFormats([]);
   };
   
+  const calculateResponsiveTextSize = (
+    originalFontSize: number,
+    sourceFormat: BannerSize,
+    targetFormat: BannerSize
+  ): number => {
+    if (!useResponsiveText) return originalFontSize;
+    
+    // Base the scaling primarily on width for horizontal formats
+    // and height for vertical formats
+    const isSourceHorizontal = sourceFormat.width > sourceFormat.height;
+    const isTargetHorizontal = targetFormat.width > targetFormat.height;
+    
+    let scaleFactor = 1;
+    
+    if (isSourceHorizontal && isTargetHorizontal) {
+      // Both horizontal - scale primarily based on width
+      scaleFactor = (targetFormat.width / sourceFormat.width) * 0.8 + 
+                   (targetFormat.height / sourceFormat.height) * 0.2;
+    } else if (!isSourceHorizontal && !isTargetHorizontal) {
+      // Both vertical - scale primarily based on height
+      scaleFactor = (targetFormat.height / sourceFormat.height) * 0.8 + 
+                   (targetFormat.width / sourceFormat.width) * 0.2;
+    } else {
+      // Mixed orientations - use a balanced approach
+      scaleFactor = (targetFormat.width / sourceFormat.width) * 0.5 + 
+                   (targetFormat.height / sourceFormat.height) * 0.5;
+    }
+    
+    // Apply limits to prevent too small or too large text
+    const minFontSize = 12;
+    const maxFactor = 1.8;
+    const minFactor = 0.6;
+    
+    // Constrain scale factor
+    scaleFactor = Math.max(minFactor, Math.min(maxFactor, scaleFactor));
+    
+    // Calculate and round new font size
+    let newFontSize = Math.round(originalFontSize * scaleFactor);
+    
+    // Ensure minimum readable size
+    newFontSize = Math.max(minFontSize, newFontSize);
+    
+    return newFontSize;
+  };
+  
   const generateNewElementForFormat = (originalElement: EditorElement, targetFormat: BannerSize): EditorElement => {
     // Generate a new unique ID for each new element
     const newId = `${originalElement.type}-${targetFormat.name.toLowerCase().replace(/\s+/g, '-')}-${generateRandomId()}`;
     
-    // For this example, we'll use a simple algorithm to position elements based on format dimensions
+    // For this example, we'll use a smart algorithm to position elements based on format dimensions
     // In a real implementation, this would use AI predictions from a trained model
     
     // Clone the original element but generate new position and size
     const widthRatio = targetFormat.width / currentFormat.width;
     const heightRatio = targetFormat.height / currentFormat.height;
     
+    // Determine orientations
+    const isSourceHorizontal = currentFormat.width > currentFormat.height;
+    const isTargetHorizontal = targetFormat.width > targetFormat.height;
+    const isOrientationChange = isSourceHorizontal !== isTargetHorizontal;
+    
     // Base positioning categories
-    const isHeaderElement = originalElement.style.y < currentFormat.height * 0.2;
+    const isHeaderElement = originalElement.style.y < currentFormat.height * 0.25;
     const isFooterElement = originalElement.style.y > currentFormat.height * 0.7;
     const isCenterElement = !isHeaderElement && !isFooterElement;
+    
+    // Determine if element is on left/right side
+    const isLeftElement = originalElement.style.x < currentFormat.width * 0.33;
+    const isRightElement = originalElement.style.x > currentFormat.width * 0.66;
+    const isMiddleHElement = !isLeftElement && !isRightElement;
     
     // Base sizing (use different scaling for different format types)
     let newWidth = originalElement.style.width;
@@ -131,8 +189,39 @@ export const AIFormatConversionDialog = ({
     
     // Different rules for different element types
     if (originalElement.type === 'text') {
+      // Calculate a responsive font size based on the format change
+      const newFontSize = calculateResponsiveTextSize(
+        originalElement.style.fontSize || 16, 
+        currentFormat, 
+        targetFormat
+      );
+      
       // Text elements should maintain reasonable size for readability
-      newWidth = Math.min(targetFormat.width * 0.8, originalElement.style.width * widthRatio);
+      if (isTargetHorizontal && useHorizontalLayout) {
+        // In horizontal layouts, we want to maintain column structure
+        if (isLeftElement) {
+          // Keep left column text on the left
+          newX = targetFormat.width * 0.05;
+          newWidth = targetFormat.width * 0.45;
+        } else if (isRightElement) {
+          // Keep right column text on the right
+          newX = targetFormat.width * 0.55;
+          newWidth = targetFormat.width * 0.4;
+        } else {
+          // Center text stays centered
+          newX = (targetFormat.width - newWidth * widthRatio) / 2;
+          newWidth = newWidth * widthRatio;
+        }
+      } else if (isOrientationChange) {
+        // Handle orientation change differently
+        newWidth = Math.min(targetFormat.width * 0.8, originalElement.style.width * widthRatio);
+        
+        // Center horizontally
+        newX = (targetFormat.width - newWidth) / 2;
+      } else {
+        // Standard scaling
+        newWidth = Math.min(targetFormat.width * 0.8, originalElement.style.width * widthRatio);
+      }
       
       // Position differently based on original location
       if (isHeaderElement) {
@@ -141,29 +230,69 @@ export const AIFormatConversionDialog = ({
       } else if (isFooterElement) {
         // Keep footer text at the bottom
         newY = targetFormat.height - (currentFormat.height - originalElement.style.y) * heightRatio;
+      } else if (isTargetHorizontal && useHorizontalLayout) {
+        // In horizontal layouts, vertically center within the column
+        newY = targetFormat.height * 0.3;
       } else {
         // Center content vertically with relative positioning
         const relativeY = originalElement.style.y / currentFormat.height;
         newY = relativeY * targetFormat.height;
       }
       
-      // Horizontal positioning
-      if (originalElement.style.x < currentFormat.width * 0.3) {
-        // Keep left alignment
-        newX = originalElement.style.x * widthRatio;
-      } else if (originalElement.style.x > currentFormat.width * 0.7) {
-        // Keep right alignment
-        newX = targetFormat.width - (currentFormat.width - originalElement.style.x) * widthRatio;
-      } else {
-        // Center horizontally
-        newX = (targetFormat.width - newWidth) / 2;
+      // Special handling for different text sizes
+      if (originalElement.style.fontSize && originalElement.style.fontSize > 24) {
+        // This is likely a heading or title - make it more prominent
+        if (isTargetHorizontal) {
+          newY = Math.min(newY, targetFormat.height * 0.4);
+        } else {
+          newY = Math.min(newY, targetFormat.height * 0.3);
+        }
       }
+      
+      return {
+        ...originalElement,
+        id: newId,
+        sizeId: targetFormat.name,
+        linkedElementId: null, // No linking to other elements
+        style: {
+          ...originalElement.style,
+          x: newX,
+          y: newY,
+          width: newWidth,
+          height: newHeight,
+          fontSize: newFontSize,
+          // Remove percentage values so elements stay fixed in their own format
+          xPercent: undefined,
+          yPercent: undefined,
+          widthPercent: undefined,
+          heightPercent: undefined
+        }
+      };
     } else if (originalElement.type === 'image') {
       // Images should maintain aspect ratio
       const aspectRatio = originalElement.style.width / originalElement.style.height;
       
       // Size differently based on format change
-      if (widthRatio < heightRatio) {
+      if (isTargetHorizontal && useHorizontalLayout) {
+        // In horizontal layouts, try to maintain a column structure
+        if (isRightElement) {
+          // If image was on right side, keep it there
+          newX = targetFormat.width * 0.55;
+          newWidth = targetFormat.width * 0.4;
+          newHeight = newWidth / aspectRatio;
+          
+          // Vertically center the image
+          newY = (targetFormat.height - newHeight) / 2;
+        } else {
+          // Width constraint
+          newWidth = Math.min(targetFormat.width * 0.45, originalElement.style.width * widthRatio);
+          newHeight = newWidth / aspectRatio;
+          
+          // Position on left if it was left originally
+          newX = isLeftElement ? targetFormat.width * 0.05 : (targetFormat.width - newWidth) / 2;
+          newY = (targetFormat.height - newHeight) / 2;
+        }
+      } else if (widthRatio < heightRatio) {
         // Width constraint
         newWidth = Math.min(targetFormat.width * 0.9, originalElement.style.width * widthRatio);
         newHeight = newWidth / aspectRatio;
@@ -178,19 +307,37 @@ export const AIFormatConversionDialog = ({
         newWidth = targetFormat.width;
         newHeight = newWidth / aspectRatio;
         newX = 0;
-      } else {
-        // Default position centers the image
+      } else if (!isTargetHorizontal || !useHorizontalLayout) {
+        // Default position centers the image for non-horizontal layouts
         newX = (targetFormat.width - newWidth) / 2;
       }
       
       // Background images or banners should stay at the top
       if (isHeaderElement && originalElement.style.width > currentFormat.width * 0.7) {
         newY = 0;
-      } else {
+      } else if (!isTargetHorizontal || !useHorizontalLayout) {
         // Default position is based on relative positioning
         const relativeY = originalElement.style.y / currentFormat.height;
         newY = relativeY * targetFormat.height;
       }
+      
+      return {
+        ...originalElement,
+        id: newId,
+        sizeId: targetFormat.name,
+        linkedElementId: null,
+        style: {
+          ...originalElement.style,
+          x: newX,
+          y: newY,
+          width: newWidth,
+          height: newHeight,
+          xPercent: undefined,
+          yPercent: undefined,
+          widthPercent: undefined,
+          heightPercent: undefined
+        }
+      };
     } else if (originalElement.type === 'button') {
       // Buttons should have reasonable sizes
       newWidth = Math.min(
@@ -204,14 +351,38 @@ export const AIFormatConversionDialog = ({
       
       // Buttons often at the bottom
       if (isFooterElement) {
-        newY = targetFormat.height - (currentFormat.height - originalElement.style.y) * heightRatio;
+        newY = targetFormat.height - newHeight - 20;
+      } else if (isTargetHorizontal && useHorizontalLayout && isRightElement) {
+        // In horizontal layouts with column structure, put button on bottom of right column
+        newY = targetFormat.height * 0.7;
+        newX = targetFormat.width * 0.7;
       } else {
         const relativeY = originalElement.style.y / currentFormat.height;
         newY = relativeY * targetFormat.height;
       }
       
-      // Center buttons horizontally
-      newX = (targetFormat.width - newWidth) / 2;
+      // Center buttons horizontally if not in column layout
+      if (!isTargetHorizontal || !useHorizontalLayout || !isRightElement) {
+        newX = (targetFormat.width - newWidth) / 2;
+      }
+      
+      return {
+        ...originalElement,
+        id: newId,
+        sizeId: targetFormat.name,
+        linkedElementId: null,
+        style: {
+          ...originalElement.style,
+          x: newX,
+          y: newY,
+          width: newWidth,
+          height: newHeight,
+          xPercent: undefined,
+          yPercent: undefined,
+          widthPercent: undefined,
+          heightPercent: undefined
+        }
+      };
     } else {
       // Default scaling for other element types
       newWidth = originalElement.style.width * widthRatio;
@@ -223,32 +394,29 @@ export const AIFormatConversionDialog = ({
       
       newX = relativeX * targetFormat.width;
       newY = relativeY * targetFormat.height;
+      
+      // Ensure elements don't go outside the canvas
+      newX = Math.max(0, Math.min(newX, targetFormat.width - newWidth));
+      newY = Math.max(0, Math.min(newY, targetFormat.height - newHeight));
+      
+      return {
+        ...originalElement,
+        id: newId,
+        sizeId: targetFormat.name,
+        linkedElementId: null,
+        style: {
+          ...originalElement.style,
+          x: newX,
+          y: newY,
+          width: newWidth,
+          height: newHeight,
+          xPercent: undefined,
+          yPercent: undefined,
+          widthPercent: undefined,
+          heightPercent: undefined
+        }
+      };
     }
-    
-    // Ensure elements don't go outside the canvas
-    newX = Math.max(0, Math.min(newX, targetFormat.width - newWidth));
-    newY = Math.max(0, Math.min(newY, targetFormat.height - newHeight));
-    
-    // Create a new element with the calculated dimensions for this format
-    // Important: We're creating a completely NEW element, not linked to the original
-    return {
-      ...originalElement,
-      id: newId,
-      sizeId: targetFormat.name,
-      linkedElementId: null, // No linking to other elements
-      style: {
-        ...originalElement.style,
-        x: newX,
-        y: newY,
-        width: newWidth,
-        height: newHeight,
-        // Remove percentage values so elements stay fixed in their own format
-        xPercent: undefined,
-        yPercent: undefined,
-        widthPercent: undefined,
-        heightPercent: undefined
-      }
-    };
   };
   
   const handleConvert = async () => {
@@ -347,6 +515,35 @@ export const AIFormatConversionDialog = ({
               <Button variant="outline" size="sm" onClick={handleSelectAll}>
                 Selecionar todos
               </Button>
+            </div>
+          </div>
+          
+          <div className="bg-gray-50 rounded-md p-4 mb-4">
+            <h3 className="text-sm font-medium mb-3">Configurações de conversão</h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Columns className="h-4 w-4 text-gray-500" />
+                  <Label htmlFor="horizontal-layout">Usar layout em colunas para formatos horizontais</Label>
+                </div>
+                <Switch 
+                  id="horizontal-layout" 
+                  checked={useHorizontalLayout} 
+                  onCheckedChange={setUseHorizontalLayout}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Rows className="h-4 w-4 text-gray-500" />
+                  <Label htmlFor="responsive-text">Aplicar tamanhos de texto responsivos</Label>
+                </div>
+                <Switch 
+                  id="responsive-text" 
+                  checked={useResponsiveText} 
+                  onCheckedChange={setUseResponsiveText}
+                />
+              </div>
             </div>
           </div>
           

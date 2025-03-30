@@ -7,6 +7,7 @@ import { useCanvasKeyboardShortcuts } from "./canvas/hooks/useCanvasKeyboardShor
 import { useCanvasZoomAndPan } from "./canvas/hooks/useCanvasZoomAndPan";
 import { useCanvasInitialization } from "./canvas/hooks/useCanvasInitialization";
 import { constrainAllElements } from "./utils/containerUtils";
+import { ResponsiveToggle } from "./components/ResponsiveToggle";
 
 interface CanvasWorkspaceProps {
   canvasRef?: React.RefObject<HTMLDivElement>;
@@ -108,13 +109,12 @@ export const CanvasWorkspace = ({ canvasRef, onElementsChange }: CanvasWorkspace
     }
   }, [elements, onElementsChange]);
   
-  // Effect to set responsive mode in localStorage
-  useEffect(() => {
-    // Default to independent mode if not set
-    if (!localStorage.getItem('responsiveMode')) {
-      localStorage.setItem('responsiveMode', 'independent');
-    }
-  }, []);
+  // Handle responsive mode change
+  const handleResponsiveModeChange = (mode: 'linked' | 'independent') => {
+    // No need to do anything else, the mode is saved in localStorage
+    // and will be used by other functions that need it
+    console.log(`Responsive mode set to: ${mode}`);
+  };
 
   // Modify the handleCanvasMouseDown to clear the selection when clicking on the canvas
   const handleCanvasClick = (e: React.MouseEvent) => {
@@ -131,33 +131,45 @@ export const CanvasWorkspace = ({ canvasRef, onElementsChange }: CanvasWorkspace
   };
 
   return (
-    <CanvasWorkspaceContent
-      containerRef={containerRef}
-      canvasRef={workspaceCanvasRef}
-      canvasNavMode={canvasNavMode}
-      isPanning={isPanning}
-      panPosition={panPosition}
-      activeSizes={activeSizes}
-      shouldShowAllSizes={activeSizes.length > 1 && selectedSize.name === 'All'}
-      selectedSize={selectedSize}
-      zoomLevel={zoomLevel}
-      setZoomLevel={setZoomLevel}
-      elements={elements}
-      selectedElement={selectedElement}
-      isDragging={isDragging}
-      isResizing={isResizing}
-      isElementOutsideContainer={isElementOutsideContainer}
-      hoveredContainer={hoveredContainer}
-      handleMouseDown={handleMouseDown}
-      handleCanvasMouseDown={handleCanvasClick}
-      handleResizeStart={handleResizeStart}
-      handleContainerHover={handleContainerHover}
-      handleContainerHoverEnd={handleContainerHoverEnd}
-      handleMouseMove={handleMouseMove}
-      handleMouseUp={handleMouseUp}
-      editorKey={key.toString()} // Convert number to string for editorKey
-      editingMode={editingMode}
-      setEditingMode={setEditingMode}
-    />
+    <div className="relative h-full">
+      {/* Add the ResponsiveToggle component above the canvas */}
+      {activeSizes.length > 1 && (
+        <div className="absolute top-1 right-1 z-20 bg-white/80 backdrop-blur-sm p-1 rounded-md border shadow-sm">
+          <ResponsiveToggle
+            initialMode={localStorage.getItem('responsiveMode') as 'linked' | 'independent' || 'independent'}
+            onChange={handleResponsiveModeChange}
+          />
+        </div>
+      )}
+      
+      <CanvasWorkspaceContent
+        containerRef={containerRef}
+        canvasRef={workspaceCanvasRef}
+        canvasNavMode={canvasNavMode}
+        isPanning={isPanning}
+        panPosition={panPosition}
+        activeSizes={activeSizes}
+        shouldShowAllSizes={activeSizes.length > 1 && selectedSize.name === 'All'}
+        selectedSize={selectedSize}
+        zoomLevel={zoomLevel}
+        setZoomLevel={setZoomLevel}
+        elements={elements}
+        selectedElement={selectedElement}
+        isDragging={isDragging}
+        isResizing={isResizing}
+        isElementOutsideContainer={isElementOutsideContainer}
+        hoveredContainer={hoveredContainer}
+        handleMouseDown={handleMouseDown}
+        handleCanvasMouseDown={handleCanvasClick}
+        handleResizeStart={handleResizeStart}
+        handleContainerHover={handleContainerHover}
+        handleContainerHoverEnd={handleContainerHoverEnd}
+        handleMouseMove={handleMouseMove}
+        handleMouseUp={handleMouseUp}
+        editorKey={key.toString()} // Convert number to string for editorKey
+        editingMode={editingMode}
+        setEditingMode={setEditingMode}
+      />
+    </div>
   );
 };
