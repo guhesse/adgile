@@ -40,39 +40,46 @@ export const linkElementsAcrossSizes = (
     };
   }
   
-  // Create clones for each other active size
-  activeSizes.forEach(size => {
-    // Skip the current size (source element's size)
-    if (size.name === selectedSize.name) return;
-    
-    // Calculate position and size for this specific canvas size
-    const { x, y, width, height } = calculateSmartPosition(element, selectedSize, size);
-    
-    // Create a clone for this size
-    const clone: EditorElement = {
-      ...element,
-      id: `${element.id}-${size.name.replace(/\s+/g, '-').toLowerCase()}`,
-      sizeId: size.name,
-      linkedElementId: linkedId,
-      style: {
-        ...element.style,
-        x,
-        y,
-        width,
-        height,
-        // Store percentage values
-        xPercent,
-        yPercent,
-        widthPercent,
-        heightPercent
-      }
-    };
-    
-    // Add the clone to the elements array
-    updatedElements.push(clone);
-  });
+  // Create clones for each other active size - only if independent mode is NOT active
+  const independentMode = localStorage.getItem('responsiveMode') === 'independent';
   
-  toast.success('Elemento vinculado em todos os tamanhos');
+  if (!independentMode) {
+    activeSizes.forEach(size => {
+      // Skip the current size (source element's size)
+      if (size.name === selectedSize.name) return;
+      
+      // Calculate position and size for this specific canvas size
+      const { x, y, width, height } = calculateSmartPosition(element, selectedSize, size);
+      
+      // Create a clone for this size
+      const clone: EditorElement = {
+        ...element,
+        id: `${element.id}-${size.name.replace(/\s+/g, '-').toLowerCase()}`,
+        sizeId: size.name,
+        linkedElementId: linkedId,
+        style: {
+          ...element.style,
+          x,
+          y,
+          width,
+          height,
+          // Store percentage values
+          xPercent,
+          yPercent,
+          widthPercent,
+          heightPercent
+        }
+      };
+      
+      // Add the clone to the elements array
+      updatedElements.push(clone);
+    });
+    
+    toast.success('Elemento vinculado em todos os tamanhos');
+  } else {
+    toast.info('Elementos independentes - sem vinculação automática');
+  }
+  
   return updatedElements;
 };
 
@@ -108,6 +115,24 @@ export const updateAllLinkedElements = (
   activeSizes: BannerSize[]
 ): EditorElement[] => {
   if (!sourceElement.linkedElementId) return elements;
+  
+  // Check if in independent mode
+  const independentMode = localStorage.getItem('responsiveMode') === 'independent';
+  if (independentMode) {
+    // In independent mode, only update the source element
+    return elements.map(el => {
+      if (el.id === sourceElement.id) {
+        return {
+          ...el,
+          style: {
+            ...el.style,
+            ...absoluteChanges
+          }
+        };
+      }
+      return el;
+    });
+  }
   
   // Find source size
   const sourceSize = activeSizes.find(size => size.name === sourceElement.sizeId) || activeSizes[0];
@@ -192,6 +217,9 @@ export const createLinkedVersions = (
   const linkedElements: EditorElement[] = [];
   const linkedId = `linked-${Date.now()}`;
   
+  // Check if in independent mode
+  const independentMode = localStorage.getItem('responsiveMode') === 'independent';
+  
   // Calculate percentage values for the source element
   const xPercent = (element.style.x / selectedSize.width) * 100;
   const yPercent = (element.style.y / selectedSize.height) * 100;
@@ -201,7 +229,7 @@ export const createLinkedVersions = (
   // Update the original element with the linked ID and percentage values
   const updatedElement = {
     ...element,
-    linkedElementId: linkedId,
+    linkedElementId: independentMode ? undefined : linkedId,
     style: {
       ...element.style,
       xPercent,
@@ -212,6 +240,11 @@ export const createLinkedVersions = (
   };
   
   linkedElements.push(updatedElement);
+  
+  // If independent mode is active, don't create linked elements
+  if (independentMode) {
+    return linkedElements;
+  }
   
   // Create linked elements for other sizes
   activeSizes.forEach(size => {

@@ -107,6 +107,14 @@ export const CanvasWorkspace = ({ canvasRef, onElementsChange }: CanvasWorkspace
       onElementsChange(elements);
     }
   }, [elements, onElementsChange]);
+  
+  // Effect to set responsive mode in localStorage
+  useEffect(() => {
+    // Default to independent mode if not set
+    if (!localStorage.getItem('responsiveMode')) {
+      localStorage.setItem('responsiveMode', 'independent');
+    }
+  }, []);
 
   // Modify the handleCanvasMouseDown to clear the selection when clicking on the canvas
   const handleCanvasClick = (e: React.MouseEvent) => {
