@@ -139,7 +139,7 @@ export const CanvasWorkspace = ({ canvasRef, onElementsChange }: CanvasWorkspace
       {activeSizes.length > 1 && (
         <div className="absolute top-1 right-1 z-20 bg-white/80 backdrop-blur-sm p-1 rounded-md border shadow-sm">
           <ResponsiveToggle
-            initialMode="independent"  {/* Set to independent by default */}
+            initialMode="independent"
             onChange={handleResponsiveModeChange}
           />
         </div>
