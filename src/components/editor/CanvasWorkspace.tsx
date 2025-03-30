@@ -92,7 +92,7 @@ export const CanvasWorkspace = ({ canvasRef, onElementsChange }: CanvasWorkspace
 
   // Effect to ensure all elements stay within the bounds of the artboard
   useEffect(() => {
-    if (elements.length > 0 && !elements.some(el => el.style.hasMask)) {
+    if (elements.length > 0 && selectedSize && !elements.some(el => el.style.hasMask)) {
       const constrainedElements = constrainAllElements(elements, selectedSize.width, selectedSize.height);
       
       // Only update if elements changed to avoid re-renders
@@ -100,7 +100,7 @@ export const CanvasWorkspace = ({ canvasRef, onElementsChange }: CanvasWorkspace
         setElements(constrainedElements);
       }
     }
-  }, [selectedSize, elements.length]);
+  }, [selectedSize, elements.length, elements, setElements]);
 
   // Effect to notify parent when elements change
   useEffect(() => {
@@ -132,6 +132,11 @@ export const CanvasWorkspace = ({ canvasRef, onElementsChange }: CanvasWorkspace
       setSelectedElement(null);
     }
   };
+
+  // If there is no selectedSize, show a loading message
+  if (!selectedSize) {
+    return <div className="flex items-center justify-center h-full">Loading canvas...</div>;
+  }
 
   return (
     <div className="relative h-full">

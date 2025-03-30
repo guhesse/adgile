@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import PropertyPanel from "./PropertyPanel";
 import { CanvasControls } from "./CanvasControls";
@@ -5,7 +6,7 @@ import { CanvasWorkspace } from "./CanvasWorkspace";
 import { useCanvas } from "./CanvasContext";
 import { LeftSidebar } from "./LeftSidebar";
 import { PSDImport } from "./PSDImport";
-import { BannerSize, EditorMode } from "./types";
+import { BannerSize, EditorMode, BANNER_SIZES } from "./types";
 import { FormatSelectionDialog } from "./dialogs/FormatSelectionDialog";
 import { AIFormatConversionDialog } from "./dialogs/AIFormatConversionDialog";
 import { Button } from "@/components/ui/button";
@@ -46,9 +47,19 @@ const CanvasContent = ({ editorMode, canvasRef, hideImportPSD, onPSDImport }: Ca
   const [showFormatDialog, setShowFormatDialog] = useState(false);
   const [showStartProjectDialog, setShowStartProjectDialog] = useState(!selectedSize);
   
+  // Set default size if none is selected
+  useEffect(() => {
+    if (!selectedSize && !showStartProjectDialog && !showFormatDialog) {
+      setSelectedSize(BANNER_SIZES[0]); // Use Facebook as default
+      addCustomSize(BANNER_SIZES[0]);
+      console.log("Setting default format:", BANNER_SIZES[0].name);
+    }
+  }, [selectedSize, showStartProjectDialog, showFormatDialog, setSelectedSize, addCustomSize]);
+  
   // Function to handle format selection
   const handleSelectFormat = (format: BannerSize) => {
     setSelectedSize(format);
+    addCustomSize(format);
     setShowFormatDialog(false);
   };
   
@@ -101,9 +112,9 @@ const CanvasContent = ({ editorMode, canvasRef, hideImportPSD, onPSDImport }: Ca
     );
   }
 
-  // If there is still no selected size, return null to prevent rendering
+  // If there is still no selected size, show loading
   if (!selectedSize) {
-    return null;
+    return <div className="flex items-center justify-center h-full">Selecione um formato para começar</div>;
   }
 
   return (

@@ -89,25 +89,23 @@ export const CanvasArea = ({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        {elementsToShow
-          .filter(el => !el.inContainer)
-          .map((element, index) => (
-            <CanvasElement
-              key={`${element.id}-${index}`}
-              element={element}
-              canvasSize={size}
-              selectedElement={selectedElement}
-              isDragging={isDragging}
-              isElementOutsideContainer={isElementOutsideContainer}
-              handleMouseDown={handleMouseDown}
-              handleResizeStart={handleResizeStart}
-              handleContainerHover={handleContainerHover}
-              handleContainerHoverEnd={handleContainerHoverEnd}
-              hoveredContainer={hoveredContainer}
-              canvasNavMode={canvasNavMode}
-              zIndex={index} // Pass the index to control z-index
-            />
-          ))}
+        {elementsToShow.map((element, index) => (
+          <CanvasElement
+            key={`${element.id}-${index}`}
+            element={element}
+            canvasSize={size}
+            selectedElement={selectedElement}
+            isDragging={isDragging}
+            isElementOutsideContainer={isElementOutsideContainer}
+            handleMouseDown={handleMouseDown}
+            handleResizeStart={handleResizeStart}
+            handleContainerHover={handleContainerHover}
+            handleContainerHoverEnd={handleContainerHoverEnd}
+            hoveredContainer={hoveredContainer}
+            canvasNavMode={canvasNavMode}
+            zIndex={index} // Pass the index to control z-index
+          />
+        ))}
       </Card>
     </div>
   );

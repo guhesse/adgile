@@ -44,6 +44,8 @@ export interface EditorElement {
   childElements?: EditorElement[];
   parentId?: string;
   columns?: number;
+  inContainer?: boolean;
+  artboardSize?: string;
 }
 
 export interface BannerSize {
@@ -57,3 +59,12 @@ export interface BannerSize {
 export type EditorMode = "banner" | "template";
 export type CanvasNavigationMode = 'edit' | 'pan' | 'zoom';
 export type EditingMode = 'global' | 'single';
+
+// Export the BANNER_SIZES constant so it can be used in multiple files
+export const BANNER_SIZES: BannerSize[] = [
+  { name: "Facebook", width: 1200, height: 628, orientation: "horizontal" },
+  { name: "Instagram", width: 1080, height: 1080, orientation: "square" },
+  { name: "Twitter", width: 1200, height: 675, orientation: "horizontal" },
+  { name: "Story", width: 1080, height: 1920, orientation: "vertical" },
+  { name: "All", width: 0, height: 0 } // Special size for showing all artboards
+];
