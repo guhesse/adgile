@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import { Button } from '../../ui/button';
 import { AIModelManager } from './AIModelManager';
@@ -8,16 +8,13 @@ import { EditorElement, BannerSize } from '../types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../../ui/card';
 import { toast } from 'sonner';
 import { PopoverContent, Popover, PopoverTrigger } from '../../ui/popover';
-import { Wand2, Loader } from 'lucide-react';
+import { Wand2 } from 'lucide-react';
 import { LayoutTemplate } from '../types/admin';
 
 export const AIFormatSuggestions: React.FC = () => {
   const { selectedSize, handleAddElement, elements, setElements } = useCanvas();
   const [model, setModel] = useState<tf.LayersModel | null>(null);
-  const [mobileNetModel, setMobileNetModel] = useState<tf.GraphModel | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isLoadingMobileNet, setIsLoadingMobileNet] = useState(false);
-  const [referenceTemplates, setReferenceTemplates] = useState<LayoutTemplate[]>([]);
   
   // Mock data for AIModelManager - in a real app you'd get this from a context or API
   const mockTemplates: LayoutTemplate[] = [];
@@ -27,66 +24,6 @@ export const AIFormatSuggestions: React.FC = () => {
     accuracy: 0.85,
     loss: 0.15
   };
-  
-  // Load MobileNet model for element detection
-  useEffect(() => {
-    const loadMobileNet = async () => {
-      if (mobileNetModel || isLoadingMobileNet) return;
-      
-      try {
-        setIsLoadingMobileNet(true);
-        
-        await tf.ready();
-        console.log("Loading MobileNet model...");
-        
-        // Load MobileNet model
-        const loadedModel = await tf.loadGraphModel(
-          'https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v2_100_224/classification/3/default/1', 
-          { fromTFHub: true }
-        );
-        
-        setMobileNetModel(loadedModel);
-        console.log("MobileNet model loaded successfully");
-        toast.success("MobileNet carregado com sucesso");
-      } catch (error) {
-        console.error("Error loading MobileNet:", error);
-        toast.error("Falha ao carregar MobileNet");
-      } finally {
-        setIsLoadingMobileNet(false);
-      }
-    };
-    
-    // Load templates from localStorage
-    const loadTemplatesFromStorage = () => {
-      try {
-        const storedTemplates = localStorage.getItem('admin-layout-templates');
-        if (storedTemplates) {
-          const parsedTemplates = JSON.parse(storedTemplates);
-          if (Array.isArray(parsedTemplates)) {
-            console.log(`Loaded ${parsedTemplates.length} templates from storage`);
-            setReferenceTemplates(parsedTemplates);
-          }
-        }
-      } catch (error) {
-        console.error("Error loading templates from localStorage:", error);
-      }
-    };
-    
-    loadMobileNet();
-    loadTemplatesFromStorage();
-    
-    return () => {
-      // Clean up tensors
-      if (mobileNetModel) {
-        try {
-          // Use as any to bypass TypeScript strict checking
-          tf.dispose(mobileNetModel as any);
-        } catch (e) {
-          console.error("Error disposing MobileNet model:", e);
-        }
-      }
-    };
-  }, []);
   
   // Handle when model is ready
   const handleModelReady = useCallback((trainedModel: tf.LayersModel) => {
@@ -101,227 +38,213 @@ export const AIFormatSuggestions: React.FC = () => {
     });
   };
   
-  // Find a template with similar aspect ratio
-  const findSimilarTemplate = (width: number, height: number): LayoutTemplate | null => {
-    if (referenceTemplates.length === 0) return null;
-    
-    const targetRatio = width / height;
-    
-    let bestMatch: LayoutTemplate | null = null;
-    let smallestDiff = Infinity;
-    
-    for (const template of referenceTemplates) {
-      const templateRatio = template.width / template.height;
-      const difference = Math.abs(templateRatio - targetRatio);
-      
-      if (difference < smallestDiff) {
-        smallestDiff = difference;
-        bestMatch = template;
-      }
-    }
-    
-    // Only return if the ratio is reasonably close (within 20%)
-    if (smallestDiff <= 0.2) {
-      return bestMatch;
-    }
-    
-    return null;
-  };
-  
-  // Generate element based on template and current format
-  const generateElementFromTemplateReference = (
-    element: EditorElement, 
-    sourceTemplate: LayoutTemplate,
-    targetSize: BannerSize
-  ): EditorElement => {
-    const newId = `ai-${element.type}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    
-    // Calculate scaling ratios
-    const widthRatio = targetSize.width / sourceTemplate.width;
-    const heightRatio = targetSize.height / sourceTemplate.height;
-    
-    // Calculate new dimensions and position
-    const newX = element.style.x * widthRatio;
-    const newY = element.style.y * heightRatio;
-    const newWidth = element.style.width * widthRatio;
-    let newHeight = element.style.height * heightRatio;
-    
-    // If it's an image, preserve aspect ratio
-    if (element.type === 'image' || element.type === 'logo') {
-      const aspectRatio = element.style.width / element.style.height;
-      newHeight = newWidth / aspectRatio;
-    }
-    
-    return {
-      ...element,
-      id: newId,
-      sizeId: targetSize.name,
-      style: {
-        ...element.style,
-        x: newX,
-        y: newY,
-        width: newWidth,
-        height: newHeight
-      }
-    };
-  };
-  
-  // Generate a suggested format based on the trained model and templates
+  // Generate a suggested format based on the trained model
   const generateSuggestedFormat = useCallback(async () => {
-    if (!selectedSize) {
-      toast.error("Nenhum tamanho selecionado");
+    if (!model || !selectedSize) {
+      toast.error("Model not ready or no size selected");
       return;
     }
     
     setIsGenerating(true);
-    toast.info("Gerando sugestões baseadas em templates similares...");
+    toast.info("Generating suggestions based on AI analysis...");
     
     try {
-      const similarTemplate = findSimilarTemplate(selectedSize.width, selectedSize.height);
+      // Common element types to generate
+      const elementTypes = ['text', 'image', 'button', 'container'];
+      const canvasWidth = selectedSize.width;
+      const canvasHeight = selectedSize.height;
       
-      if (!similarTemplate) {
-        toast.error("Nenhum template semelhante encontrado para referência");
-        return;
-      }
+      // Generate suggestions for each element type
+      const suggestedElements: EditorElement[] = [];
       
-      console.log("Found similar template:", similarTemplate.name);
-      
-      // Create elements based on the reference template
-      const newElements: EditorElement[] = [];
-      
-      for (const templateElement of similarTemplate.elements) {
-        const newElement = generateElementFromTemplateReference(
-          templateElement,
-          similarTemplate,
-          selectedSize
-        );
+      for (const elementType of elementTypes) {
+        // One-hot encoding for this element type
+        const isText = elementType === 'text' ? 1 : 0;
+        const isImage = elementType === 'image' ? 1 : 0;
+        const isButton = elementType === 'button' ? 1 : 0;
+        const isContainer = elementType === 'container' ? 1 : 0;
+        const isBackground = 0; // Not generating background elements
         
-        newElements.push(newElement);
-      }
-      
-      // Add elements to canvas
-      setElements(prev => [...prev, ...newElements]);
-      
-      toast.success(`Gerados ${newElements.length} elementos com base em template similar`);
-    } catch (error) {
-      console.error('Error generating suggestions:', error);
-      toast.error("Falha ao gerar sugestões");
-    } finally {
-      setIsGenerating(false);
-    }
-  }, [selectedSize, referenceTemplates, setElements]);
-  
-  // Analyze existing elements with MobileNet
-  const analyzeExistingElements = useCallback(async () => {
-    if (!mobileNetModel || elements.length === 0 || !selectedSize) {
-      const reason = !mobileNetModel 
-        ? "Modelo MobileNet não carregado" 
-        : elements.length === 0 
-          ? "Nenhum elemento para analisar" 
-          : "Nenhum tamanho selecionado";
-          
-      toast.error(reason);
-      return;
-    }
-    
-    setIsGenerating(true);
-    toast.info("Analisando elementos e otimizando layout...");
-    
-    try {
-      // Get elements for this size
-      const sizeElements = elements.filter(el => el.sizeId === selectedSize.name);
-      
-      if (sizeElements.length === 0) {
-        toast.info("Nenhum elemento para esse tamanho");
-        return;
-      }
-      
-      // Find similar reference template
-      const similarTemplate = findSimilarTemplate(selectedSize.width, selectedSize.height);
-      
-      if (!similarTemplate) {
-        toast.info("Otimizando baseado apenas nos elementos atuais");
+        // Create input tensor
+        const input = tf.tensor2d([
+          [canvasWidth / 1000, canvasHeight / 1000, isText, isImage, isButton]
+        ]);
         
-        // Simple optimization: space elements evenly
-        const updatedElements = elements.map(element => {
-          if (element.sizeId !== selectedSize.name) return element;
-          
-          // Simple optimization for text elements
-          if (element.type === 'text') {
-            return {
-              ...element,
-              style: {
-                ...element.style,
-                fontSize: Math.min(24, element.style.fontSize || 16) // Ensure readable font size
-              }
-            };
-          }
-          
-          return element;
-        });
+        // Make prediction
+        const prediction = model.predict(input) as tf.Tensor;
+        const values = prediction.dataSync();
         
-        setElements(updatedElements);
-        toast.success("Elementos otimizados com ajustes básicos");
-        return;
-      }
-      
-      // Using reference template to improve layout
-      console.log("Using template reference:", similarTemplate.name);
-      
-      // Group elements by type
-      const elementsByType: Record<string, EditorElement[]> = {};
-      sizeElements.forEach(el => {
-        const type = el.type;
-        if (!elementsByType[type]) elementsByType[type] = [];
-        elementsByType[type].push(el);
-      });
-      
-      // Find corresponding elements in template
-      const templateElementsByType: Record<string, EditorElement[]> = {};
-      similarTemplate.elements.forEach(el => {
-        const type = el.type;
-        if (!templateElementsByType[type]) templateElementsByType[type] = [];
-        templateElementsByType[type].push(el);
-      });
-      
-      // Update elements based on template positioning
-      const updatedElements = elements.map(element => {
-        if (element.sizeId !== selectedSize.name) return element;
+        // Denormalize values
+        const x = Math.round(values[0] * canvasWidth);
+        const y = Math.round(values[1] * canvasHeight);
+        const width = Math.round(values[2] * canvasWidth);
+        const height = Math.round(values[3] * canvasHeight);
         
-        const templateElementsOfSameType = templateElementsByType[element.type];
-        if (!templateElementsOfSameType || templateElementsOfSameType.length === 0) return element;
+        // Generate element ID
+        const elementId = `ai-${elementType}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         
-        // Find the best match in template elements
-        const bestMatch = templateElementsOfSameType[0]; // Simplified for demo
-        
-        // Calculate scaling ratios
-        const widthRatio = selectedSize.width / similarTemplate.width;
-        const heightRatio = selectedSize.height / similarTemplate.height;
-        
-        // Create improved element based on template
-        return {
-          ...element,
+        // Create element based on type
+        let newElement: EditorElement = {
+          id: elementId,
+          type: elementType as any,
+          content: '',
+          sizeId: selectedSize.name,
           style: {
-            ...element.style,
-            // Adjust position based on template's relative position
-            x: bestMatch.style.x * widthRatio,
-            y: bestMatch.style.y * heightRatio,
-            // Keep original width/height to avoid breaking layout
-            fontSize: element.type === 'text' ? bestMatch.style.fontSize : element.style.fontSize
+            x,
+            y,
+            width,
+            height,
+            backgroundColor: 'transparent',
           }
         };
-      });
+        
+        // Customize element properties based on type
+        switch (elementType) {
+          case 'text':
+            newElement.content = 'AI Generated Text';
+            newElement.style.fontSize = 16;
+            newElement.style.fontWeight = 'normal';
+            newElement.style.color = '#000000';
+            break;
+            
+          case 'image':
+            newElement.content = 'https://via.placeholder.com/300x200?text=AI+Generated+Image';
+            break;
+            
+          case 'button':
+            newElement.content = 'AI Button';
+            newElement.style.backgroundColor = '#3b82f6';
+            newElement.style.color = '#ffffff';
+            newElement.style.padding = '8px 16px';
+            newElement.style.borderRadius = 4;
+            break;
+            
+          case 'container':
+            newElement.style.backgroundColor = '#f9fafb';
+            newElement.style.borderWidth = 1;
+            newElement.style.borderColor = '#e5e7eb';
+            newElement.style.borderStyle = 'solid';
+            break;
+        }
+        
+        suggestedElements.push(newElement);
+        
+        // Cleanup tensors
+        input.dispose();
+        prediction.dispose();
+      }
       
-      setElements(updatedElements);
-      toast.success("Layout otimizado com base em template similar");
+      // Add all the suggested elements to the canvas
+      setElements(prev => [...prev, ...suggestedElements]);
       
+      toast.success(`Generated ${suggestedElements.length} elements using AI`);
     } catch (error) {
-      console.error('Error analyzing elements:', error);
-      toast.error("Falha ao analisar elementos");
+      console.error('Error generating suggestions:', error);
+      toast.error("Failed to generate suggestions");
     } finally {
       setIsGenerating(false);
     }
-  }, [mobileNetModel, elements, selectedSize, setElements]);
+  }, [model, selectedSize, setElements]);
+  
+  // Suggest positioning for a specific element type
+  const suggestPositioning = useCallback((elementType: string) => {
+    if (!model || !selectedSize) {
+      toast.error("Model not ready or no size selected");
+      return;
+    }
+    
+    try {
+      // Create input tensor with simplified features
+      const isText = elementType === 'text' ? 1 : 0;
+      const isImage = (elementType === 'image' || elementType === 'logo') ? 1 : 0;
+      const isButton = elementType === 'button' ? 1 : 0;
+      
+      const input = tf.tensor2d([
+        [selectedSize.width / 1000, selectedSize.height / 1000, isText, isImage, isButton]
+      ]);
+      
+      // Make prediction
+      const prediction = model.predict(input) as tf.Tensor;
+      const values = prediction.dataSync();
+      
+      // Denormalize values
+      const position = {
+        x: Math.round(values[0] * selectedSize.width),
+        y: Math.round(values[1] * selectedSize.height),
+        width: Math.round(values[2] * selectedSize.width),
+        height: Math.round(values[3] * selectedSize.height)
+      };
+      
+      // Cleanup tensors
+      input.dispose();
+      prediction.dispose();
+      
+      return position;
+    } catch (error) {
+      console.error('Error suggesting positioning:', error);
+      toast.error("Failed to suggest positioning");
+      return null;
+    }
+  }, [model, selectedSize]);
+  
+  // Analyze existing elements and suggest improvements
+  const analyzeExistingElements = useCallback(() => {
+    if (!model || elements.length === 0 || !selectedSize) {
+      toast.error("Model not ready or no elements to analyze");
+      return;
+    }
+    
+    try {
+      let improvementsMade = 0;
+      const updatedElements = elements.map(element => {
+        // Skip elements without proper type or style information
+        if (!element.type || !element.style) return element;
+        
+        // Get suggestion for this element type
+        const suggestion = suggestPositioning(element.type);
+        if (!suggestion) return element;
+        
+        // Calculate how far the current position is from the suggested position
+        const xDiff = Math.abs(element.style.x - suggestion.x);
+        const yDiff = Math.abs(element.style.y - suggestion.y);
+        const widthDiff = Math.abs(element.style.width - suggestion.width);
+        const heightDiff = Math.abs(element.style.height - suggestion.height);
+        
+        // Only adjust if the element is significantly off from the suggestion
+        const significantDifference = 
+          xDiff > selectedSize.width * 0.1 || 
+          yDiff > selectedSize.height * 0.1 ||
+          widthDiff > suggestion.width * 0.2 ||
+          heightDiff > suggestion.height * 0.2;
+        
+        if (significantDifference) {
+          improvementsMade++;
+          return {
+            ...element,
+            style: {
+              ...element.style,
+              x: suggestion.x,
+              y: suggestion.y,
+              width: suggestion.width,
+              height: suggestion.height
+            }
+          };
+        }
+        
+        return element;
+      });
+      
+      if (improvementsMade > 0) {
+        setElements(updatedElements);
+        toast.success(`Made ${improvementsMade} improvements to element positioning`);
+      } else {
+        toast.info("No significant improvements needed");
+      }
+    } catch (error) {
+      console.error('Error analyzing elements:', error);
+      toast.error("Failed to analyze elements");
+    }
+  }, [model, elements, selectedSize, suggestPositioning, setElements]);
   
   return (
     <div className="space-y-4">
@@ -335,53 +258,33 @@ export const AIFormatSuggestions: React.FC = () => {
       
       <Card>
         <CardHeader>
-          <CardTitle>Sugestões de Formato por IA</CardTitle>
+          <CardTitle>AI Format Suggestions</CardTitle>
           <CardDescription>
-            Gerar e otimizar formatos baseados em análise por IA
+            Generate and optimize formats based on AI analysis
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-2">
             <Button 
               onClick={generateSuggestedFormat} 
-              disabled={isGenerating || referenceTemplates.length === 0}
+              disabled={!model || isGenerating}
               className="w-full"
             >
-              {isGenerating ? (
-                <>
-                  <Loader className="mr-2 h-4 w-4 animate-spin" />
-                  Gerando...
-                </>
-              ) : (
-                <>
-                  <Wand2 className="mr-2 h-4 w-4" />
-                  Gerar Formato
-                </>
-              )}
+              {isGenerating ? 'Generating...' : 'Generate Format'}
             </Button>
             
             <Button 
               onClick={analyzeExistingElements} 
-              disabled={isGenerating || elements.length === 0 || isLoadingMobileNet}
+              disabled={!model || elements.length === 0}
               variant="outline"
               className="w-full"
             >
-              {isLoadingMobileNet ? (
-                <>
-                  <Loader className="mr-2 h-4 w-4 animate-spin" />
-                  Carregando MobileNet...
-                </>
-              ) : (
-                <>
-                  <Wand2 className="mr-2 h-4 w-4" />
-                  Otimizar Layout
-                </>
-              )}
+              Optimize Layout
             </Button>
           </div>
           
           <div className="border rounded-md p-3 bg-gray-50">
-            <h3 className="text-sm font-medium mb-2">Adicionar elementos com IA</h3>
+            <h3 className="text-sm font-medium mb-2">Add AI-positioned elements</h3>
             <div className="grid grid-cols-4 gap-2">
               {['text', 'image', 'button', 'container'].map(type => (
                 <Popover key={type}>
@@ -390,7 +293,7 @@ export const AIFormatSuggestions: React.FC = () => {
                       variant="ghost" 
                       size="sm"
                       className="w-full capitalize flex items-center gap-1"
-                      disabled={isGenerating}
+                      disabled={!model}
                     >
                       <Wand2 size={14} />
                       {type}
@@ -398,61 +301,34 @@ export const AIFormatSuggestions: React.FC = () => {
                   </PopoverTrigger>
                   <PopoverContent className="w-52 p-2">
                     <div className="space-y-2">
-                      <h4 className="text-sm font-medium">Adicionar {type} com posicionamento IA</h4>
+                      <h4 className="text-sm font-medium">Add {type} with AI positioning</h4>
                       <div className="grid grid-cols-2 gap-2">
                         <Button 
                           onClick={() => {
-                            if (!selectedSize) return;
-                            
-                            // Find a reference template
-                            const similarTemplate = findSimilarTemplate(selectedSize.width, selectedSize.height);
-                            
-                            if (similarTemplate) {
-                              // Find reference elements of this type
-                              const referenceElements = similarTemplate.elements.filter(el => el.type === type);
-                              
-                              if (referenceElements.length > 0) {
-                                // Use the first reference element for positioning
-                                const referenceElement = referenceElements[0];
-                                
-                                // Calculate scaling
-                                const widthRatio = selectedSize.width / similarTemplate.width;
-                                const heightRatio = selectedSize.height / similarTemplate.height;
-                                
-                                // Create a new element based on the reference
-                                const newElement: EditorElement = {
-                                  id: `ai-${type}-${Date.now()}`,
-                                  type: type as any,
-                                  content: type === 'text' ? 'Texto gerado por IA' : 
-                                          (type === 'button' ? 'Botão IA' : ''),
-                                  style: {
-                                    x: referenceElement.style.x * widthRatio,
-                                    y: referenceElement.style.y * heightRatio,
-                                    width: referenceElement.style.width * widthRatio,
-                                    height: referenceElement.style.height * heightRatio,
-                                    backgroundColor: type === 'button' ? '#3b82f6' : 'transparent',
-                                    color: type === 'button' ? '#ffffff' : '#000000',
-                                    fontSize: type === 'text' ? (referenceElement.style.fontSize || 16) : undefined,
-                                    fontWeight: type === 'text' ? (referenceElement.style.fontWeight || 'normal') : undefined,
-                                  },
-                                  sizeId: selectedSize.name
-                                };
-                                
-                                setElements(prev => [...prev, newElement]);
-                                toast.success(`Adicionado ${type} com posicionamento baseado em template`);
-                              } else {
-                                // If no reference, add a default positioned element
-                                handleAddElement(type as any);
-                              }
-                            } else {
-                              // If no similar template, use default positioning
-                              handleAddElement(type as any);
+                            const suggestion = suggestPositioning(type);
+                            if (suggestion) {
+                              const newElement: EditorElement = {
+                                id: `ai-${type}-${Date.now()}`,
+                                type: type as any,
+                                content: type === 'text' ? 'AI Text' : 
+                                        (type === 'button' ? 'AI Button' : ''),
+                                style: {
+                                  ...suggestion,
+                                  backgroundColor: type === 'button' ? '#3b82f6' : 'transparent',
+                                  color: type === 'button' ? '#ffffff' : '#000000',
+                                  fontSize: type === 'text' ? 16 : undefined,
+                                  fontWeight: type === 'text' ? 'normal' : undefined,
+                                },
+                                sizeId: selectedSize.name
+                              };
+                              setElements(prev => [...prev, newElement]);
+                              toast.success(`Added ${type} with AI positioning`);
                             }
                           }}
                           variant="default"
                           size="sm"
                         >
-                          Adicionar
+                          Add
                         </Button>
                         <Button 
                           onClick={() => {

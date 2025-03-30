@@ -25,27 +25,16 @@ export interface EditorElementStyle {
   clipPath?: string;
   hasMask?: boolean;
   maskInfo?: any;
-  originalWidth?: number;
-  originalHeight?: number;
-  objectPosition?: string;
 }
 
 export interface EditorElement {
   id: string;
-  type: 'text' | 'image' | 'button' | 'container' | 'artboard-background' | 'logo' | 'layout';
+  type: 'text' | 'image' | 'button' | 'container' | 'artboard-background';
   content: string;
   style: EditorElementStyle;
   sizeId: string;
   _layerName?: string;
   psdLayerData?: any;
-  linkedElementId?: string;
-  isIndividuallyPositioned?: boolean;
-  alt?: string;
-  childElements?: EditorElement[];
-  parentId?: string;
-  columns?: number;
-  inContainer?: boolean;
-  artboardSize?: string;
 }
 
 export interface BannerSize {
@@ -53,18 +42,6 @@ export interface BannerSize {
   width: number;
   height: number;
   thumbnail?: string;
-  orientation?: 'horizontal' | 'vertical' | 'square';
 }
 
 export type EditorMode = "banner" | "template";
-export type CanvasNavigationMode = 'edit' | 'pan' | 'zoom';
-export type EditingMode = 'global' | 'single';
-
-// Export the BANNER_SIZES constant so it can be used in multiple files
-export const BANNER_SIZES: BannerSize[] = [
-  { name: "Facebook", width: 1200, height: 628, orientation: "horizontal" },
-  { name: "Instagram", width: 1080, height: 1080, orientation: "square" },
-  { name: "Twitter", width: 1200, height: 675, orientation: "horizontal" },
-  { name: "Story", width: 1080, height: 1920, orientation: "vertical" },
-  { name: "All", width: 0, height: 0 } // Special size for showing all artboards
-];

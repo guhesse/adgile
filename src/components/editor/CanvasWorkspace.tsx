@@ -7,7 +7,6 @@ import { useCanvasKeyboardShortcuts } from "./canvas/hooks/useCanvasKeyboardShor
 import { useCanvasZoomAndPan } from "./canvas/hooks/useCanvasZoomAndPan";
 import { useCanvasInitialization } from "./canvas/hooks/useCanvasInitialization";
 import { constrainAllElements } from "./utils/containerUtils";
-import { ResponsiveToggle } from "./components/ResponsiveToggle";
 
 interface CanvasWorkspaceProps {
   canvasRef?: React.RefObject<HTMLDivElement>;
@@ -92,7 +91,7 @@ export const CanvasWorkspace = ({ canvasRef, onElementsChange }: CanvasWorkspace
 
   // Effect to ensure all elements stay within the bounds of the artboard
   useEffect(() => {
-    if (elements.length > 0 && selectedSize && !elements.some(el => el.style.hasMask)) {
+    if (elements.length > 0 && !elements.some(el => el.style.hasMask)) {
       const constrainedElements = constrainAllElements(elements, selectedSize.width, selectedSize.height);
       
       // Only update if elements changed to avoid re-renders
@@ -100,7 +99,7 @@ export const CanvasWorkspace = ({ canvasRef, onElementsChange }: CanvasWorkspace
         setElements(constrainedElements);
       }
     }
-  }, [selectedSize, elements.length, elements, setElements]);
+  }, [selectedSize, elements.length]);
 
   // Effect to notify parent when elements change
   useEffect(() => {
@@ -108,16 +107,6 @@ export const CanvasWorkspace = ({ canvasRef, onElementsChange }: CanvasWorkspace
       onElementsChange(elements);
     }
   }, [elements, onElementsChange]);
-  
-  // Handle responsive mode change
-  const handleResponsiveModeChange = (mode: 'linked' | 'independent') => {
-    // Set default mode to independent
-    if (mode === 'independent') {
-      console.log('Setting independent mode as default');
-    } else {
-      console.log('Warning: linked mode is not fully supported for styles, only content will be synced');
-    }
-  };
 
   // Modify the handleCanvasMouseDown to clear the selection when clicking on the canvas
   const handleCanvasClick = (e: React.MouseEvent) => {
@@ -133,51 +122,34 @@ export const CanvasWorkspace = ({ canvasRef, onElementsChange }: CanvasWorkspace
     }
   };
 
-  // If there is no selectedSize, show a loading message
-  if (!selectedSize) {
-    return <div className="flex items-center justify-center h-full">Loading canvas...</div>;
-  }
-
   return (
-    <div className="relative h-full">
-      {/* Add the ResponsiveToggle component above the canvas */}
-      {activeSizes.length > 1 && (
-        <div className="absolute top-1 right-1 z-20 bg-white/80 backdrop-blur-sm p-1 rounded-md border shadow-sm">
-          <ResponsiveToggle
-            initialMode="independent"
-            onChange={handleResponsiveModeChange}
-          />
-        </div>
-      )}
-      
-      <CanvasWorkspaceContent
-        containerRef={containerRef}
-        canvasRef={workspaceCanvasRef}
-        canvasNavMode={canvasNavMode}
-        isPanning={isPanning}
-        panPosition={panPosition}
-        activeSizes={activeSizes}
-        shouldShowAllSizes={activeSizes.length > 1 && selectedSize.name === 'All'}
-        selectedSize={selectedSize}
-        zoomLevel={zoomLevel}
-        setZoomLevel={setZoomLevel}
-        elements={elements}
-        selectedElement={selectedElement}
-        isDragging={isDragging}
-        isResizing={isResizing}
-        isElementOutsideContainer={isElementOutsideContainer}
-        hoveredContainer={hoveredContainer}
-        handleMouseDown={handleMouseDown}
-        handleCanvasMouseDown={handleCanvasClick}
-        handleResizeStart={handleResizeStart}
-        handleContainerHover={handleContainerHover}
-        handleContainerHoverEnd={handleContainerHoverEnd}
-        handleMouseMove={handleMouseMove}
-        handleMouseUp={handleMouseUp}
-        editorKey={key.toString()} // Convert number to string for editorKey
-        editingMode={editingMode}
-        setEditingMode={setEditingMode}
-      />
-    </div>
+    <CanvasWorkspaceContent
+      containerRef={containerRef}
+      canvasRef={workspaceCanvasRef}
+      canvasNavMode={canvasNavMode}
+      isPanning={isPanning}
+      panPosition={panPosition}
+      activeSizes={activeSizes}
+      shouldShowAllSizes={activeSizes.length > 1 && selectedSize.name === 'All'}
+      selectedSize={selectedSize}
+      zoomLevel={zoomLevel}
+      setZoomLevel={setZoomLevel}
+      elements={elements}
+      selectedElement={selectedElement}
+      isDragging={isDragging}
+      isResizing={isResizing}
+      isElementOutsideContainer={isElementOutsideContainer}
+      hoveredContainer={hoveredContainer}
+      handleMouseDown={handleMouseDown}
+      handleCanvasMouseDown={handleCanvasClick}
+      handleResizeStart={handleResizeStart}
+      handleContainerHover={handleContainerHover}
+      handleContainerHoverEnd={handleContainerHoverEnd}
+      handleMouseMove={handleMouseMove}
+      handleMouseUp={handleMouseUp}
+      editorKey={key.toString()} // Convert number to string for editorKey
+      editingMode={editingMode}
+      setEditingMode={setEditingMode}
+    />
   );
 };

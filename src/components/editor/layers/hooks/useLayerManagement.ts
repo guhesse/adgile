@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { EditorElement, BANNER_SIZES } from '../../types';
 

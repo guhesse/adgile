@@ -35,74 +35,37 @@ export const AdminLayoutImport: React.FC<AdminLayoutImportProps> = ({ onImportLa
     return sanitized;
   };
 
-  // Helper to validate and normalize orientation
-  const normalizeOrientation = (orientation: string): "vertical" | "horizontal" | "square" => {
-    orientation = orientation.toLowerCase();
-    if (orientation === "vertical" || orientation === "horizontal" || orientation === "square") {
-      return orientation as "vertical" | "horizontal" | "square";
-    }
-    
-    // Default based on dimensions if orientation is invalid
-    return "square"; // This will be corrected later with actual dimensions
-  };
-
   const extractTemplates = (data: any): LayoutTemplate[] => {
     // Handle the various possible formats
     if (Array.isArray(data)) {
       // Case 1: Direct array of templates
       if (data.length > 0 && isTemplateObject(data[0])) {
-        return data.map(normalizeTemplate);
+        return data;
       }
       
       // Case 2: Array with key-data structure like your provided example
       const keyDataItem = data.find(item => item.key === "admin-layout-templates" && Array.isArray(item.data));
       if (keyDataItem) {
-        return keyDataItem.data.map(normalizeTemplate);
+        return keyDataItem.data;
       }
     }
     
     // Case 3: Object with templates array
     if (data.templates && Array.isArray(data.templates)) {
-      return data.templates.map(normalizeTemplate);
+      return data.templates;
     }
     
     // Case 4: Object with admin-layout-templates key
     if (data["admin-layout-templates"] && Array.isArray(data["admin-layout-templates"])) {
-      return data["admin-layout-templates"].map(normalizeTemplate);
+      return data["admin-layout-templates"];
     }
     
     // Case 5: Direct object with data array for admin-layout-templates
     if (data.data && Array.isArray(data.data) && data.key === "admin-layout-templates") {
-      return data.data.map(normalizeTemplate);
+      return data.data;
     }
     
     throw new Error("Não foi possível encontrar templates no formato esperado");
-  };
-
-  // Normalize template to ensure it has the correct format and types
-  const normalizeTemplate = (template: any): LayoutTemplate => {
-    // Calculate orientation if not provided or normalize it if it is
-    let orientation: "vertical" | "horizontal" | "square";
-    
-    if (template.orientation) {
-      orientation = normalizeOrientation(template.orientation);
-    } else {
-      // Calculate based on dimensions
-      const ratio = template.width / template.height;
-      if (ratio > 1.05) orientation = "horizontal";
-      else if (ratio >= 0.95 && ratio <= 1.05) orientation = "square";
-      else orientation = "vertical";
-    }
-    
-    // Ensure createdAt and updatedAt are present
-    const now = new Date().toISOString();
-    
-    return {
-      ...template,
-      orientation,
-      createdAt: template.createdAt || now,
-      updatedAt: template.updatedAt || now
-    };
   };
 
   const isTemplateObject = (obj: any): boolean => {
@@ -162,12 +125,22 @@ export const AdminLayoutImport: React.FC<AdminLayoutImportProps> = ({ onImportLa
       const validTemplates = templates.filter(validateTemplate);
 
       if (validTemplates.length > 0) {
-        // Make sure all templates have the correct orientation type
-        const normalizedTemplates = validTemplates.map(normalizeTemplate);
-        
-        console.log(`Found ${normalizedTemplates.length} valid templates`);
-        onImportLayouts(normalizedTemplates);
-        toast.success(`Importados ${normalizedTemplates.length} templates com sucesso`);
+        // Adicionar a orientação se não existir
+        const templatesWithOrientation = validTemplates.map(template => {
+          if (!template.orientation) {
+            const ratio = template.width / template.height;
+            let orientation = 'vertical';
+            if (ratio > 1.05) orientation = 'horizontal';
+            else if (ratio >= 0.95 && ratio <= 1.05) orientation = 'square';
+            
+            return { ...template, orientation };
+          }
+          return template;
+        });
+
+        console.log(`Found ${templatesWithOrientation.length} valid templates`);
+        onImportLayouts(templatesWithOrientation);
+        toast.success(`Importados ${validTemplates.length} templates com sucesso`);
         
         // Limpar o input para permitir importar o mesmo arquivo novamente
         if (fileInputRef.current) {
