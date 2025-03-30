@@ -9,11 +9,16 @@ interface AIFormatSuggestionProps {
   currentFormat: {
     width: number;
     height: number;
-    orientation: string;
+    orientation?: string;
   };
 }
 
 export const AIFormatSuggestion: React.FC<AIFormatSuggestionProps> = ({ currentFormat }) => {
+  // Determinar orientação se não estiver definida
+  const orientation = currentFormat.orientation || 
+                      (currentFormat.width > currentFormat.height ? 'horizontal' : 
+                      (currentFormat.width < currentFormat.height ? 'vertical' : 'square'));
+                      
   return (
     <div className="space-y-4">
       <Alert>
@@ -25,7 +30,7 @@ export const AIFormatSuggestion: React.FC<AIFormatSuggestionProps> = ({ currentF
       </Alert>
       
       <div className="text-sm text-gray-500">
-        Formato atual: {currentFormat.width} × {currentFormat.height}px ({currentFormat.orientation})
+        Formato atual: {currentFormat.width} × {currentFormat.height}px ({orientation})
       </div>
       
       <Button className="w-full" disabled>

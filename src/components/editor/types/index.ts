@@ -25,6 +25,13 @@ export interface EditorElementStyle {
   clipPath?: string;
   hasMask?: boolean;
   maskInfo?: any;
+  originalWidth?: number;
+  originalHeight?: number;
+  opacity?: number;
+  objectPosition?: string;
+  animationPlayState?: string;
+  animationDelay?: number;
+  animationDuration?: number;
 }
 
 export interface EditorElement {
@@ -35,6 +42,13 @@ export interface EditorElement {
   sizeId: string;
   _layerName?: string;
   psdLayerData?: any;
+  linkedElementId?: string;
+  isIndividuallyPositioned?: boolean;
+  childElements?: EditorElement[];
+  inContainer?: boolean;
+  link?: string;
+  alt?: string;
+  openInNewTab?: boolean;
 }
 
 export interface BannerSize {
@@ -42,6 +56,9 @@ export interface BannerSize {
   width: number;
   height: number;
   thumbnail?: string;
+  orientation?: 'vertical' | 'horizontal' | 'square';
 }
 
 export type EditorMode = "banner" | "template";
+
+export type CanvasNavigationMode = "select" | "pan";

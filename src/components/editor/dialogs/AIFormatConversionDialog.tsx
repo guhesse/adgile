@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { 
   Dialog, 
@@ -45,25 +44,46 @@ export const AIFormatConversionDialog = ({
     selectedSize 
   } = useCanvas();
   
+  // Determine orientation based on aspect ratio
+  const determineOrientation = (width: number, height: number): 'vertical' | 'horizontal' | 'square' => {
+    const ratio = width / height;
+    if (ratio > 1.2) return 'horizontal';
+    if (ratio < 0.8) return 'vertical';
+    return 'square';
+  };
+  
   useEffect(() => {
     if (currentFormat) {
+      // Add orientation to currentFormat
+      const currentOrientation = determineOrientation(currentFormat.width, currentFormat.height);
+      const currentFormatWithOrientation = {
+        ...currentFormat,
+        orientation: currentOrientation
+      };
+      
       // Get more recommended formats based on the current format dimensions
       const similarFormats = getSimilarFormats(currentFormat.width, currentFormat.height);
       
+      // Add orientation to all formats
+      const formatsWithOrientation = similarFormats.map(format => ({
+        ...format,
+        orientation: determineOrientation(format.width, format.height)
+      }));
+      
       // Add more format options for testing
       const additionalFormats: BannerSize[] = [
-        { name: "Facebook Story", width: 1080, height: 1920 },
-        { name: "LinkedIn Post", width: 1200, height: 627 },
-        { name: "Pinterest Pin", width: 1000, height: 1500 },
-        { name: "YouTube Thumbnail", width: 1280, height: 720 },
-        { name: "Twitter Header", width: 1500, height: 500 },
-        { name: "Email Banner", width: 600, height: 200 },
-        { name: "Billboard", width: 970, height: 250 },
-        { name: "Medium Rectangle", width: 300, height: 250 }
+        { name: "Facebook Story", width: 1080, height: 1920, orientation: 'vertical' },
+        { name: "LinkedIn Post", width: 1200, height: 627, orientation: 'horizontal' },
+        { name: "Pinterest Pin", width: 1000, height: 1500, orientation: 'vertical' },
+        { name: "YouTube Thumbnail", width: 1280, height: 720, orientation: 'horizontal' },
+        { name: "Twitter Header", width: 1500, height: 500, orientation: 'horizontal' },
+        { name: "Email Banner", width: 600, height: 200, orientation: 'horizontal' },
+        { name: "Billboard", width: 970, height: 250, orientation: 'horizontal' },
+        { name: "Medium Rectangle", width: 300, height: 250, orientation: 'square' }
       ];
       
       // Filter out formats that might be duplicates
-      const allFormats = [...similarFormats];
+      const allFormats = [...formatsWithOrientation];
       
       additionalFormats.forEach(format => {
         const isDuplicate = allFormats.some(f => 
@@ -107,142 +127,320 @@ export const AIFormatConversionDialog = ({
     setSelectedFormats([]);
   };
   
-  const generateNewElementForFormat = (originalElement: EditorElement, targetFormat: BannerSize): EditorElement => {
+  // Improved function to generate elements for different format orientations
+  const generateNewElementForFormat = (originalElement: EditorElement, targetFormat: BannerSize, sourceFormat: BannerSize): EditorElement => {
     // Generate a new unique ID for each new element
     const newId = `${originalElement.type}-${targetFormat.name.toLowerCase().replace(/\s+/g, '-')}-${generateRandomId()}`;
     
-    // For this example, we'll use a simple algorithm to position elements based on format dimensions
-    // In a real implementation, this would use AI predictions from a trained model
+    // Determine orientations
+    const sourceOrientation = determineOrientation(sourceFormat.width, sourceFormat.height);
+    const targetOrientation = determineOrientation(targetFormat.width, targetFormat.height);
     
-    // Clone the original element but generate new position and size
-    const widthRatio = targetFormat.width / currentFormat.width;
-    const heightRatio = targetFormat.height / currentFormat.height;
+    // Handle orientation change - especially vertical to horizontal conversion
+    const isOrientationChange = sourceOrientation !== targetOrientation;
     
-    // Base positioning categories
-    const isHeaderElement = originalElement.style.y < currentFormat.height * 0.2;
-    const isFooterElement = originalElement.style.y > currentFormat.height * 0.7;
-    const isCenterElement = !isHeaderElement && !isFooterElement;
-    
-    // Base sizing (use different scaling for different format types)
+    // Clone the original element
     let newWidth = originalElement.style.width;
     let newHeight = originalElement.style.height;
     let newX = originalElement.style.x;
     let newY = originalElement.style.y;
     
-    // Different rules for different element types
-    if (originalElement.type === 'text') {
-      // Text elements should maintain reasonable size for readability
-      newWidth = Math.min(targetFormat.width * 0.8, originalElement.style.width * widthRatio);
-      
-      // Position differently based on original location
-      if (isHeaderElement) {
-        // Keep header text at the top
-        newY = originalElement.style.y * heightRatio;
-      } else if (isFooterElement) {
-        // Keep footer text at the bottom
-        newY = targetFormat.height - (currentFormat.height - originalElement.style.y) * heightRatio;
-      } else {
-        // Center content vertically with relative positioning
-        const relativeY = originalElement.style.y / currentFormat.height;
-        newY = relativeY * targetFormat.height;
+    // Calculate aspect ratios and scaling factors
+    const widthRatio = targetFormat.width / sourceFormat.width;
+    const heightRatio = targetFormat.height / sourceFormat.height;
+    
+    // Determine relative positions in source format (as percentages)
+    const relativeX = originalElement.style.x / sourceFormat.width;
+    const relativeY = originalElement.style.y / sourceFormat.height;
+    const relativeRight = (originalElement.style.x + originalElement.style.width) / sourceFormat.width;
+    const relativeBottom = (originalElement.style.y + originalElement.style.height) / sourceFormat.height;
+    
+    // Check if element is in top, middle, or bottom third of source
+    const isTopThird = relativeY < 0.33;
+    const isMiddleThird = relativeY >= 0.33 && relativeY < 0.66;
+    const isBottomThird = relativeY >= 0.66;
+    
+    // Check if element is in left, center, or right third of source
+    const isLeftThird = relativeX < 0.33;
+    const isCenterThird = relativeX >= 0.33 && relativeX < 0.66;
+    const isRightThird = relativeX >= 0.66;
+    
+    // Check element size relative to canvas
+    const isLargeElement = originalElement.style.width > sourceFormat.width * 0.5 || 
+                          originalElement.style.height > sourceFormat.height * 0.5;
+    
+    // Special handling for vertical to horizontal conversion
+    if (sourceOrientation === 'vertical' && targetOrientation === 'horizontal') {
+      // Different strategies based on element type
+      if (originalElement.type === 'text') {
+        // Adjust font size for text elements when changing orientation
+        const fontSizeRatio = Math.min(widthRatio, heightRatio) * 0.85; // Reduce slightly to avoid overflow
+        const newFontSize = originalElement.style.fontSize ? originalElement.style.fontSize * fontSizeRatio : undefined;
+        
+        // Keep text elements proportionally sized
+        newWidth = Math.min(originalElement.style.width * widthRatio * 0.8, targetFormat.width * 0.7);
+        
+        // Position text by logical zones
+        if (isTopThird) {
+          // Top text goes to top area
+          newY = targetFormat.height * 0.1;
+          newX = targetFormat.width * 0.05;
+        } else if (isMiddleThird) {
+          // Middle text is centered
+          newY = (targetFormat.height - newHeight) / 2;
+          newX = targetFormat.width * 0.05;
+        } else {
+          // Bottom text stays at bottom
+          newY = targetFormat.height * 0.75;
+          newX = targetFormat.width * 0.05;
+        }
+        
+        // Return the updated text element with adjusted font size
+        return {
+          ...originalElement,
+          id: newId,
+          sizeId: targetFormat.name,
+          linkedElementId: null,
+          style: {
+            ...originalElement.style,
+            x: newX,
+            y: newY,
+            width: newWidth,
+            height: originalElement.style.height * heightRatio,
+            fontSize: newFontSize,
+            xPercent: undefined,
+            yPercent: undefined,
+            widthPercent: undefined,
+            heightPercent: undefined
+          }
+        };
+      } 
+      else if (originalElement.type === 'image') {
+        // For images in vertical to horizontal conversion
+        const aspectRatio = originalElement.style.width / originalElement.style.height;
+        
+        if (isLargeElement) {
+          // Large hero images need special treatment
+          // Make image fill the right side of the horizontal format
+          newWidth = targetFormat.width * 0.6;
+          newHeight = newWidth / aspectRatio;
+          
+          // Position on the right side
+          newX = targetFormat.width * 0.4;
+          newY = (targetFormat.height - newHeight) / 2;
+          
+          // If image is too tall, adjust height and center vertically
+          if (newHeight > targetFormat.height * 1.2) {
+            newHeight = targetFormat.height * 1.2;
+            newWidth = newHeight * aspectRatio;
+            newY = (targetFormat.height - newHeight) / 2;
+          }
+        } else {
+          // Smaller images
+          newWidth = originalElement.style.width * widthRatio * 0.5;
+          newHeight = newWidth / aspectRatio;
+          
+          // Position based on original location
+          if (isTopThird) {
+            newY = targetFormat.height * 0.1;
+          } else if (isMiddleThird) {
+            newY = (targetFormat.height - newHeight) / 2;
+          } else {
+            newY = targetFormat.height - newHeight - (targetFormat.height * 0.1);
+          }
+          
+          newX = targetFormat.width * 0.6;
+        }
+        
+        // Make sure image doesn't extend too far beyond canvas (allow slight overflow for visual impact)
+        if (newY + newHeight > targetFormat.height * 1.2) {
+          newY = targetFormat.height - newHeight;
+        }
       }
-      
-      // Horizontal positioning
-      if (originalElement.style.x < currentFormat.width * 0.3) {
-        // Keep left alignment
-        newX = originalElement.style.x * widthRatio;
-      } else if (originalElement.style.x > currentFormat.width * 0.7) {
-        // Keep right alignment
-        newX = targetFormat.width - (currentFormat.width - originalElement.style.x) * widthRatio;
-      } else {
+      else if (originalElement.type === 'button') {
+        // Buttons maintain a reasonable size
+        newWidth = Math.min(targetFormat.width * 0.3, originalElement.style.width * widthRatio);
+        newHeight = Math.min(targetFormat.height * 0.12, originalElement.style.height * heightRatio);
+        
+        // Position buttons based on original position
+        if (isBottomThird) {
+          // Bottom buttons stay at bottom
+          newY = targetFormat.height - newHeight - (targetFormat.height * 0.1);
+          newX = targetFormat.width * 0.05;
+        } else {
+          // Other buttons get positioned in the left zone
+          newY = targetFormat.height * 0.6;
+          newX = targetFormat.width * 0.05;
+        }
+      }
+      else {
+        // Default handling for other element types
+        newWidth = originalElement.style.width * widthRatio * 0.5;
+        newHeight = originalElement.style.height * heightRatio;
+        newX = targetFormat.width * 0.1;
+        newY = targetFormat.height * 0.1;
+      }
+    }
+    // Horizontal to vertical conversion
+    else if (sourceOrientation === 'horizontal' && targetOrientation === 'vertical') {
+      // Stack elements vertically
+      if (originalElement.type === 'text') {
+        // Scale text appropriately
+        const fontSizeRatio = Math.min(widthRatio, heightRatio);
+        const newFontSize = originalElement.style.fontSize ? originalElement.style.fontSize * fontSizeRatio : undefined;
+        
+        // Adjust width to fit vertical format
+        newWidth = Math.min(targetFormat.width * 0.9, originalElement.style.width * widthRatio);
+        
+        // Position based on original horizontal position
+        if (isLeftThird) {
+          newY = targetFormat.height * 0.1;
+        } else if (isCenterThird) {
+          newY = targetFormat.height * 0.3;
+        } else {
+          newY = targetFormat.height * 0.5;
+        }
+        
         // Center horizontally
         newX = (targetFormat.width - newWidth) / 2;
+        
+        // Return the updated text element
+        return {
+          ...originalElement,
+          id: newId,
+          sizeId: targetFormat.name,
+          linkedElementId: null,
+          style: {
+            ...originalElement.style,
+            x: newX,
+            y: newY,
+            width: newWidth,
+            height: originalElement.style.height * heightRatio,
+            fontSize: newFontSize,
+            xPercent: undefined,
+            yPercent: undefined,
+            widthPercent: undefined,
+            heightPercent: undefined
+          }
+        };
       }
-    } else if (originalElement.type === 'image') {
-      // Images should maintain aspect ratio
-      const aspectRatio = originalElement.style.width / originalElement.style.height;
-      
-      // Size differently based on format change
-      if (widthRatio < heightRatio) {
-        // Width constraint
-        newWidth = Math.min(targetFormat.width * 0.9, originalElement.style.width * widthRatio);
-        newHeight = newWidth / aspectRatio;
-      } else {
-        // Height constraint
-        newHeight = Math.min(targetFormat.height * 0.9, originalElement.style.height * heightRatio);
-        newWidth = newHeight * aspectRatio;
+      else if (originalElement.type === 'image') {
+        // For images in horizontal to vertical conversion
+        const aspectRatio = originalElement.style.width / originalElement.style.height;
+        
+        if (isLargeElement) {
+          // Make image fit width with proportional height
+          newWidth = targetFormat.width;
+          newHeight = newWidth / aspectRatio;
+          newX = 0;
+          
+          // Position image in top half
+          newY = targetFormat.height * 0.3;
+        } else {
+          // Smaller images
+          newWidth = targetFormat.width * 0.8;
+          newHeight = newWidth / aspectRatio;
+          
+          // Center horizontally
+          newX = (targetFormat.width - newWidth) / 2;
+          
+          // Position in top half
+          newY = targetFormat.height * 0.2;
+        }
       }
-      
-      // Images taking up the entire width should stay that way
-      if (originalElement.style.width > currentFormat.width * 0.9) {
-        newWidth = targetFormat.width;
-        newHeight = newWidth / aspectRatio;
-        newX = 0;
-      } else {
-        // Default position centers the image
+      else if (originalElement.type === 'button') {
+        // Buttons maintain proper size
+        newWidth = Math.min(targetFormat.width * 0.7, originalElement.style.width * widthRatio);
+        newHeight = Math.min(targetFormat.height * 0.07, originalElement.style.height * heightRatio);
+        
+        // Position at bottom
+        newY = targetFormat.height * 0.85;
         newX = (targetFormat.width - newWidth) / 2;
       }
-      
-      // Background images or banners should stay at the top
-      if (isHeaderElement && originalElement.style.width > currentFormat.width * 0.7) {
-        newY = 0;
-      } else {
-        // Default position is based on relative positioning
-        const relativeY = originalElement.style.y / currentFormat.height;
+      else {
+        // Default handling for other element types
+        newWidth = originalElement.style.width * widthRatio;
+        newHeight = originalElement.style.height * heightRatio;
+        newX = (targetFormat.width - newWidth) / 2;
+        newY = targetFormat.height * 0.5;
+      }
+    }
+    // Similar orientation (just scaling)
+    else {
+      // When orientations match, use simpler scaling logic
+      if (originalElement.type === 'text') {
+        // Scale text with format
+        const fontSizeRatio = Math.min(widthRatio, heightRatio);
+        const newFontSize = originalElement.style.fontSize ? originalElement.style.fontSize * fontSizeRatio : undefined;
+        
+        // Maintain relative position
+        newX = relativeX * targetFormat.width;
+        newY = relativeY * targetFormat.height;
+        newWidth = originalElement.style.width * widthRatio;
+        
+        // Return the updated text element
+        return {
+          ...originalElement,
+          id: newId,
+          sizeId: targetFormat.name,
+          linkedElementId: null,
+          style: {
+            ...originalElement.style,
+            x: newX,
+            y: newY,
+            width: newWidth,
+            height: originalElement.style.height * heightRatio,
+            fontSize: newFontSize,
+            xPercent: undefined,
+            yPercent: undefined,
+            widthPercent: undefined,
+            heightPercent: undefined
+          }
+        };
+      }
+      else if (originalElement.type === 'image') {
+        // Maintain aspect ratio for images
+        const aspectRatio = originalElement.style.width / originalElement.style.height;
+        
+        // Scale proportionally
+        if (widthRatio < heightRatio) {
+          newWidth = originalElement.style.width * widthRatio;
+          newHeight = newWidth / aspectRatio;
+        } else {
+          newHeight = originalElement.style.height * heightRatio;
+          newWidth = newHeight * aspectRatio;
+        }
+        
+        // Maintain relative position
+        newX = relativeX * targetFormat.width;
         newY = relativeY * targetFormat.height;
       }
-    } else if (originalElement.type === 'button') {
-      // Buttons should have reasonable sizes
-      newWidth = Math.min(
-        Math.max(originalElement.style.width * widthRatio, 120), 
-        targetFormat.width * 0.6
-      );
-      newHeight = Math.min(
-        Math.max(originalElement.style.height * heightRatio, 40),
-        targetFormat.height * 0.1
-      );
-      
-      // Buttons often at the bottom
-      if (isFooterElement) {
-        newY = targetFormat.height - (currentFormat.height - originalElement.style.y) * heightRatio;
-      } else {
-        const relativeY = originalElement.style.y / currentFormat.height;
+      else {
+        // Standard scaling for other elements
+        newWidth = originalElement.style.width * widthRatio;
+        newHeight = originalElement.style.height * heightRatio;
+        newX = relativeX * targetFormat.width;
         newY = relativeY * targetFormat.height;
       }
-      
-      // Center buttons horizontally
-      newX = (targetFormat.width - newWidth) / 2;
-    } else {
-      // Default scaling for other element types
-      newWidth = originalElement.style.width * widthRatio;
-      newHeight = originalElement.style.height * heightRatio;
-      
-      // Maintain relative positioning
-      const relativeX = originalElement.style.x / currentFormat.width;
-      const relativeY = originalElement.style.y / currentFormat.height;
-      
-      newX = relativeX * targetFormat.width;
-      newY = relativeY * targetFormat.height;
     }
     
-    // Ensure elements don't go outside the canvas
-    newX = Math.max(0, Math.min(newX, targetFormat.width - newWidth));
-    newY = Math.max(0, Math.min(newY, targetFormat.height - newHeight));
+    // Ensure elements remain within canvas (with small margin)
+    const margin = 0;
+    newX = Math.max(margin * -1, Math.min(newX, targetFormat.width - newWidth - margin));
+    newY = Math.max(margin * -1, Math.min(newY, targetFormat.height - newHeight - margin));
     
-    // Create a new element with the calculated dimensions for this format
-    // Important: We're creating a completely NEW element, not linked to the original
+    // Create the new element with calculated dimensions
     return {
       ...originalElement,
       id: newId,
       sizeId: targetFormat.name,
-      linkedElementId: null, // No linking to other elements
+      linkedElementId: null,
       style: {
         ...originalElement.style,
         x: newX,
         y: newY,
         width: newWidth,
         height: newHeight,
-        // Remove percentage values so elements stay fixed in their own format
         xPercent: undefined,
         yPercent: undefined,
         widthPercent: undefined,
@@ -257,17 +455,12 @@ export const AIFormatConversionDialog = ({
       return;
     }
     
-    if (!currentFormat || !isAITrained) {
-      toast.error("Modelo de IA não treinado ou formato atual não definido");
-      return;
-    }
-    
     setIsProcessing(true);
     
     try {
       // Get elements for the current format
       const currentElements = elements.filter(el => 
-        el.sizeId === currentFormat.name || el.sizeId === 'global'
+        el.sizeId === currentFormat.name
       );
       
       if (currentElements.length === 0) {
@@ -283,10 +476,26 @@ export const AIFormatConversionDialog = ({
         // Add the format to active sizes
         addCustomSize(targetFormat);
         
+        // Add orientation if missing
+        const targetFormatWithOrientation = {
+          ...targetFormat,
+          orientation: targetFormat.orientation || determineOrientation(targetFormat.width, targetFormat.height)
+        };
+        
+        // Current format with orientation
+        const sourceFormatWithOrientation = {
+          ...currentFormat,
+          orientation: currentFormat.orientation || determineOrientation(currentFormat.width, currentFormat.height)
+        };
+        
         // Create new elements for this format based on the current elements
         currentElements.forEach(element => {
           // Generate a completely new independent element for this format
-          const newElement = generateNewElementForFormat(element, targetFormat);
+          const newElement = generateNewElementForFormat(
+            element, 
+            targetFormatWithOrientation,
+            sourceFormatWithOrientation
+          );
           newElements.push(newElement);
         });
         
@@ -337,6 +546,7 @@ export const AIFormatConversionDialog = ({
               <h3 className="text-sm font-medium">Formato atual</h3>
               <p className="text-xs text-gray-500">
                 {currentFormat.name} ({currentFormat.width} × {currentFormat.height}px)
+                {currentFormat.orientation ? ` - ${currentFormat.orientation}` : ''}
               </p>
             </div>
             
@@ -373,6 +583,7 @@ export const AIFormatConversionDialog = ({
                         <h4 className="text-sm font-medium">{format.name}</h4>
                         <p className="text-xs text-gray-500">
                           {format.width} × {format.height}px
+                          {format.orientation ? ` - ${format.orientation}` : ''}
                         </p>
                       </div>
                       {isFormatSelected(format) && (
