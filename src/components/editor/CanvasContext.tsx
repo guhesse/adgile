@@ -1,10 +1,9 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from "react";
 import { 
   BannerSize, 
-  EditorElement, 
-  BANNER_SIZES, 
-  EditingMode, 
-  CanvasNavigationMode
+  EditorElement,
+  CanvasNavigationMode,
+  EditingMode
 } from "./types";
 import { animationOperations, removeElement as removeElementOp } from "./context/modificationOperations";
 import { generateRandomId } from "./utils/idGenerator";
@@ -12,12 +11,18 @@ import { CanvasContextType } from "./context/CanvasContextTypes";
 import { updateLinkedElementsIntelligently } from "./utils/grid/responsivePosition";
 import { toast } from "sonner";
 
+const BANNER_SIZES: BannerSize[] = [
+  { name: "Facebook", width: 1200, height: 628, orientation: "horizontal" },
+  { name: "Instagram", width: 1080, height: 1080, orientation: "square" },
+  { name: "Twitter", width: 1200, height: 675, orientation: "horizontal" },
+  { name: "Story", width: 1080, height: 1920, orientation: "vertical" }
+];
+
 interface CanvasProviderProps {
   children: React.ReactNode | ((context: CanvasContextType) => React.ReactNode);
   fixedSize?: BannerSize;
 }
 
-// Add model state interface
 interface ModelState {
   trained: boolean;
   accuracy?: number;
@@ -31,7 +36,7 @@ export const CanvasContext = createContext<CanvasContextType | undefined>(undefi
 export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedSize }) => {
   const [elements, setElements] = useState<EditorElement[]>([]);
   const [selectedElement, setSelectedElement] = useState<EditorElement | null>(null);
-  const [selectedSize, setSelectedSize] = useState<BannerSize | null>(null); // Changed to null to start with no format
+  const [selectedSize, setSelectedSize] = useState<BannerSize | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [resizeDirection, setResizeDirection] = useState("");
@@ -45,7 +50,6 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
   const [editingMode, setEditingMode] = useState<EditingMode>('global');
   const [gridLayout, setGridLayout] = useState(false);
   const [artboardBackgroundColor, setArtboardBackgroundColor] = useState<string>('#ffffff');
-  // Add model state
   const [modelState, setModelState] = useState<ModelState>({ 
     trained: true,
     accuracy: 0.92,
@@ -62,7 +66,6 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
       setActiveSizes([fixedSize]);
     }
     
-    // No need to fetch model state as we're always setting it to trained=true by default
   }, [fixedSize]);
 
   const organizeElements = () => {
@@ -84,26 +87,40 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
   const updateElementStyle = (property: string, value: any) => {
     if (!selectedElement) return;
 
+    const independentMode = localStorage.getItem('responsiveMode') === 'independent';
+
     setElements(prevElements => {
       return prevElements.map(el => {
-        if (editingMode === 'global' && selectedElement.linkedElementId && 
-            el.linkedElementId === selectedElement.linkedElementId) {
-          return {
-            ...el,
-            style: {
-              ...el.style,
-              [property]: value
-            }
-          };
-        }
-        else if (el.id === selectedElement.id) {
-          return {
-            ...el,
-            style: {
-              ...el.style,
-              [property]: value
-            }
-          };
+        if (independentMode) {
+          if (el.id === selectedElement.id) {
+            return {
+              ...el,
+              style: {
+                ...el.style,
+                [property]: value
+              }
+            };
+          }
+        } else {
+          if (editingMode === 'global' && selectedElement.linkedElementId && 
+              el.linkedElementId === selectedElement.linkedElementId) {
+            return {
+              ...el,
+              style: {
+                ...el.style,
+                [property]: value
+              }
+            };
+          }
+          else if (el.id === selectedElement.id) {
+            return {
+              ...el,
+              style: {
+                ...el.style,
+                [property]: value
+              }
+            };
+          }
         }
         return el;
       });
@@ -125,7 +142,7 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
 
     setElements(prevElements => {
       return prevElements.map(el => {
-        if (editingMode === 'global' && selectedElement.linkedElementId && 
+        if (selectedElement.linkedElementId && 
             el.linkedElementId === selectedElement.linkedElementId) {
           return {
             ...el,
@@ -252,9 +269,32 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
     elements: EditorElement[],
     sourceElement: EditorElement,
     percentageChanges: Partial<{ xPercent: number; yPercent: number; widthPercent: number; heightPercent: number }>,
-    absoluteChanges: Partial<{ x: number; y: number; width: number; height: number }>
+    absoluteChanges: Partial<{ x: number; y: number; width: number; height: number; fontSize?: number }>
   ): EditorElement[] => {
     if (!sourceElement.linkedElementId) return elements;
+    
+    const independentMode = localStorage.getItem('responsiveMode') === 'independent';
+    
+    if (independentMode) {
+      return elements.map(el => {
+        if (el.id === sourceElement.id) {
+          return {
+            ...el,
+            style: {
+              ...el.style,
+              ...absoluteChanges
+            }
+          };
+        }
+        if (el.linkedElementId === sourceElement.linkedElementId && el.id !== sourceElement.id) {
+          return {
+            ...el,
+            content: sourceElement.content
+          };
+        }
+        return el;
+      });
+    }
     
     const calculatedPercentChanges = { ...percentageChanges };
     

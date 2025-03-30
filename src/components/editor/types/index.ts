@@ -25,16 +25,25 @@ export interface EditorElementStyle {
   clipPath?: string;
   hasMask?: boolean;
   maskInfo?: any;
+  originalWidth?: number;
+  originalHeight?: number;
+  objectPosition?: string;
 }
 
 export interface EditorElement {
   id: string;
-  type: 'text' | 'image' | 'button' | 'container' | 'artboard-background';
+  type: 'text' | 'image' | 'button' | 'container' | 'artboard-background' | 'logo' | 'layout';
   content: string;
   style: EditorElementStyle;
   sizeId: string;
   _layerName?: string;
   psdLayerData?: any;
+  linkedElementId?: string;
+  isIndividuallyPositioned?: boolean;
+  alt?: string;
+  childElements?: EditorElement[];
+  parentId?: string;
+  columns?: number;
 }
 
 export interface BannerSize {
@@ -42,6 +51,9 @@ export interface BannerSize {
   width: number;
   height: number;
   thumbnail?: string;
+  orientation?: 'horizontal' | 'vertical' | 'square';
 }
 
 export type EditorMode = "banner" | "template";
+export type CanvasNavigationMode = 'edit' | 'pan' | 'zoom';
+export type EditingMode = 'global' | 'single';

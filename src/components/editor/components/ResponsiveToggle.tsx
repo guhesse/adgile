@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Link, LinkBreak } from "lucide-react";
+import { Link, Unlink } from "lucide-react"; // Changed LinkBreak to Unlink
 import { toast } from "sonner";
 
 interface ResponsiveToggleProps {
@@ -23,6 +23,10 @@ export const ResponsiveToggle = ({
     const savedMode = localStorage.getItem('responsiveMode');
     if (savedMode === 'linked' || savedMode === 'independent') {
       setResponsiveMode(savedMode);
+    } else {
+      // Set default to independent as requested
+      localStorage.setItem('responsiveMode', 'independent');
+      setResponsiveMode('independent');
     }
   }, []);
 
@@ -61,7 +65,7 @@ export const ResponsiveToggle = ({
                   </>
                 ) : (
                   <>
-                    <LinkBreak className="h-3.5 w-3.5" />
+                    <Unlink className="h-3.5 w-3.5" />
                     <span>Independente</span>
                   </>
                 )}

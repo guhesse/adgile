@@ -111,9 +111,12 @@ export const CanvasWorkspace = ({ canvasRef, onElementsChange }: CanvasWorkspace
   
   // Handle responsive mode change
   const handleResponsiveModeChange = (mode: 'linked' | 'independent') => {
-    // No need to do anything else, the mode is saved in localStorage
-    // and will be used by other functions that need it
-    console.log(`Responsive mode set to: ${mode}`);
+    // Set default mode to independent
+    if (mode === 'independent') {
+      console.log('Setting independent mode as default');
+    } else {
+      console.log('Warning: linked mode is not fully supported for styles, only content will be synced');
+    }
   };
 
   // Modify the handleCanvasMouseDown to clear the selection when clicking on the canvas
@@ -136,7 +139,7 @@ export const CanvasWorkspace = ({ canvasRef, onElementsChange }: CanvasWorkspace
       {activeSizes.length > 1 && (
         <div className="absolute top-1 right-1 z-20 bg-white/80 backdrop-blur-sm p-1 rounded-md border shadow-sm">
           <ResponsiveToggle
-            initialMode={localStorage.getItem('responsiveMode') as 'linked' | 'independent' || 'independent'}
+            initialMode="independent"  {/* Set to independent by default */}
             onChange={handleResponsiveModeChange}
           />
         </div>

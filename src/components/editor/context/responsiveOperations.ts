@@ -174,17 +174,27 @@ export const updateAllLinkedElements = (
   elements: EditorElement[],
   sourceElement: EditorElement,
   percentageChanges: Partial<{ xPercent: number; yPercent: number; widthPercent: number; heightPercent: number }>,
-  absoluteChanges: Partial<{ x: number; y: number; width: number; height: number }>,
+  absoluteChanges: Partial<{ 
+    x: number; 
+    y: number; 
+    width: number; 
+    height: number; 
+    fontSize?: number; // Add this to fix type error
+  }>,
   activeSizes: BannerSize[]
 ): EditorElement[] => {
   if (!sourceElement.linkedElementId) return elements;
   
   // Check if in independent mode
   const independentMode = localStorage.getItem('responsiveMode') === 'independent';
+  
+  // In independent mode, only sync content, not styles
   if (independentMode) {
-    // In independent mode, only update the source element
+    const sourceContent = sourceElement.content;
+    
     return elements.map(el => {
       if (el.id === sourceElement.id) {
+        // Update source element with its changes
         return {
           ...el,
           style: {
@@ -192,11 +202,18 @@ export const updateAllLinkedElements = (
             ...absoluteChanges
           }
         };
+      } else if (el.linkedElementId === sourceElement.linkedElementId) {
+        // Only update content for linked elements in independent mode
+        return {
+          ...el,
+          content: sourceContent
+        };
       }
       return el;
     });
   }
   
+  // If linked mode, continue with full sync
   // Find source size
   const sourceSize = activeSizes.find(size => size.name === sourceElement.sizeId) || activeSizes[0];
   
@@ -221,7 +238,7 @@ export const updateAllLinkedElements = (
   
   // For font size changes, we need to calculate responsive sizes for each target format
   const hasFontSizeChange = absoluteChanges.fontSize !== undefined;
-  const originalFontSize = hasFontSizeChange ? absoluteChanges.fontSize : sourceElement.style.fontSize;
+  const originalFontSize = hasFontSizeChange && absoluteChanges.fontSize ? absoluteChanges.fontSize : sourceElement.style.fontSize;
   
   return elements.map(el => {
     // Update source element
@@ -304,7 +321,7 @@ export const createLinkedVersions = (
   const widthPercent = (element.style.width / selectedSize.width) * 100;
   const heightPercent = (element.style.height / selectedSize.height) * 100;
   
-  // Update the original element with the linked ID and percentage values
+  // Add link ID to original element if not in independent mode
   const updatedElement = {
     ...element,
     linkedElementId: independentMode ? undefined : linkedId,
