@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { 
   Dialog, 
@@ -55,9 +54,9 @@ export const AIFormatConversionDialog = ({
   
   useEffect(() => {
     if (currentFormat) {
-      // Add orientation to currentFormat if not already set
-      const currentOrientation = currentFormat.orientation || determineOrientation(currentFormat.width, currentFormat.height);
-      const currentFormatWithOrientation: BannerSize = {
+      // Add orientation to currentFormat
+      const currentOrientation = determineOrientation(currentFormat.width, currentFormat.height);
+      const currentFormatWithOrientation = {
         ...currentFormat,
         orientation: currentOrientation
       };
@@ -133,9 +132,9 @@ export const AIFormatConversionDialog = ({
     // Generate a new unique ID for each new element
     const newId = `${originalElement.type}-${targetFormat.name.toLowerCase().replace(/\s+/g, '-')}-${generateRandomId()}`;
     
-    // Determine orientations with fallbacks
-    const sourceOrientation = sourceFormat.orientation || determineOrientation(sourceFormat.width, sourceFormat.height);
-    const targetOrientation = targetFormat.orientation || determineOrientation(targetFormat.width, targetFormat.height);
+    // Determine orientations
+    const sourceOrientation = determineOrientation(sourceFormat.width, sourceFormat.height);
+    const targetOrientation = determineOrientation(targetFormat.width, targetFormat.height);
     
     // Handle orientation change - especially vertical to horizontal conversion
     const isOrientationChange = sourceOrientation !== targetOrientation;
@@ -201,7 +200,7 @@ export const AIFormatConversionDialog = ({
           ...originalElement,
           id: newId,
           sizeId: targetFormat.name,
-          linkedElementId: undefined,
+          linkedElementId: null,
           style: {
             ...originalElement.style,
             x: newX,
@@ -310,7 +309,7 @@ export const AIFormatConversionDialog = ({
           ...originalElement,
           id: newId,
           sizeId: targetFormat.name,
-          linkedElementId: undefined,
+          linkedElementId: null,
           style: {
             ...originalElement.style,
             x: newX,
@@ -384,7 +383,7 @@ export const AIFormatConversionDialog = ({
           ...originalElement,
           id: newId,
           sizeId: targetFormat.name,
-          linkedElementId: undefined,
+          linkedElementId: null,
           style: {
             ...originalElement.style,
             x: newX,
@@ -435,7 +434,7 @@ export const AIFormatConversionDialog = ({
       ...originalElement,
       id: newId,
       sizeId: targetFormat.name,
-      linkedElementId: undefined,
+      linkedElementId: null,
       style: {
         ...originalElement.style,
         x: newX,
@@ -478,13 +477,13 @@ export const AIFormatConversionDialog = ({
         addCustomSize(targetFormat);
         
         // Add orientation if missing
-        const targetFormatWithOrientation: BannerSize = {
+        const targetFormatWithOrientation = {
           ...targetFormat,
           orientation: targetFormat.orientation || determineOrientation(targetFormat.width, targetFormat.height)
         };
         
         // Current format with orientation
-        const sourceFormatWithOrientation: BannerSize = {
+        const sourceFormatWithOrientation = {
           ...currentFormat,
           orientation: currentFormat.orientation || determineOrientation(currentFormat.width, currentFormat.height)
         };
