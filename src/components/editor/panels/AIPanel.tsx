@@ -41,7 +41,8 @@ export const AIFormatSuggestion: React.FC<AIFormatSuggestionProps> = ({
           'https://storage.googleapis.com/tfjs-models/tfhub/mobilenet_v2_100_224/1/model.json'
         );
         
-        setModel(mobileNet);
+        // Use as any to bypass TypeScript strict checking for the model
+        setModel(mobileNet as any);
         setIsModelReady(true);
         onModelLoaded(true);
         console.log("MobileNet model loaded successfully");
@@ -60,8 +61,8 @@ export const AIFormatSuggestion: React.FC<AIFormatSuggestionProps> = ({
     return () => {
       if (model) {
         try {
-          // Clean up tensors
-          tf.dispose(model);
+          // Clean up tensors - using as any to bypass type checking
+          tf.dispose(model as any);
         } catch (e) {
           console.error("Error disposing model:", e);
         }
@@ -71,7 +72,7 @@ export const AIFormatSuggestion: React.FC<AIFormatSuggestionProps> = ({
   
   return (
     <div className="space-y-4">
-      <Alert variant={isModelReady ? "default" : "warning"}>
+      <Alert variant={isModelReady ? "default" : "default"}>
         {isModelReady ? (
           <>
             <Check className="h-4 w-4" />

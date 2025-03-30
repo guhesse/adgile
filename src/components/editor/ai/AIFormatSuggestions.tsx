@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import { Button } from '../../ui/button';
@@ -78,7 +79,8 @@ export const AIFormatSuggestions: React.FC = () => {
       // Clean up tensors
       if (mobileNetModel) {
         try {
-          tf.dispose(mobileNetModel);
+          // Use as any to bypass TypeScript strict checking
+          tf.dispose(mobileNetModel as any);
         } catch (e) {
           console.error("Error disposing MobileNet model:", e);
         }

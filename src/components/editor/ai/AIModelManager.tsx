@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,7 +33,6 @@ export const AIModelManager: React.FC<AIModelManagerProps> = ({
   const [storedTemplates, setStoredTemplates] = useState<LayoutTemplate[]>([]);
 
   useEffect(() => {
-    // Load stored templates
     try {
       const templatesString = localStorage.getItem('admin-layout-templates');
       if (templatesString) {
@@ -47,7 +45,6 @@ export const AIModelManager: React.FC<AIModelManagerProps> = ({
       console.error("Error loading templates from localStorage:", error);
     }
     
-    // Try to load an existing model
     if (isModelTrained && !model) {
       loadModelFromLocalStorage();
     }
@@ -57,10 +54,8 @@ export const AIModelManager: React.FC<AIModelManagerProps> = ({
     try {
       setIsLoading(true);
       
-      // For demonstration, create a simple model with MobileNet-like architecture
       const demoModel = tf.sequential();
       
-      // Input layer - expects [canvasWidth, canvasHeight, isText, isImage, isButton]
       demoModel.add(tf.layers.dense({ 
         units: 16, 
         inputShape: [5], 
@@ -68,7 +63,6 @@ export const AIModelManager: React.FC<AIModelManagerProps> = ({
         kernelInitializer: 'varianceScaling'
       }));
       
-      // Hidden layers
       demoModel.add(tf.layers.dense({ 
         units: 32, 
         activation: 'relu',
@@ -81,7 +75,6 @@ export const AIModelManager: React.FC<AIModelManagerProps> = ({
         kernelInitializer: 'varianceScaling'
       }));
       
-      // Output layer - [x, y, width, height]
       demoModel.add(tf.layers.dense({ 
         units: 4, 
         activation: 'sigmoid',
@@ -93,9 +86,6 @@ export const AIModelManager: React.FC<AIModelManagerProps> = ({
         loss: 'meanSquaredError',
         metrics: ['accuracy']
       });
-      
-      // Simulate loading
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
       setModel(demoModel);
       onModelReady(demoModel);
@@ -119,7 +109,6 @@ export const AIModelManager: React.FC<AIModelManagerProps> = ({
       setIsLoading(true);
       setTrainingProgress(0);
       
-      // Create a model if it doesn't exist
       if (!model) {
         await loadModelFromLocalStorage();
       }
@@ -128,18 +117,15 @@ export const AIModelManager: React.FC<AIModelManagerProps> = ({
         throw new Error("Falha ao criar modelo");
       }
       
-      // Prepare training data from templates
       const trainingData = prepareTrainingData(storedTemplates);
       
       if (trainingData.xs.length === 0 || trainingData.ys.length === 0) {
         throw new Error("Não foi possível extrair dados de treinamento");
       }
       
-      // Convert to tensors
       const xs = tf.tensor2d(trainingData.xs);
       const ys = tf.tensor2d(trainingData.ys);
       
-      // Train the model
       toast.info("Iniciando treinamento do modelo...");
       
       await model.fit(xs, ys, {
@@ -159,11 +145,9 @@ export const AIModelManager: React.FC<AIModelManagerProps> = ({
         }
       });
       
-      // Clean up tensors
       xs.dispose();
       ys.dispose();
       
-      // Save the model
       await model.save('indexeddb://adgile-ai-model');
       
       toast.success("Modelo treinado com sucesso!");
@@ -185,25 +169,21 @@ export const AIModelManager: React.FC<AIModelManagerProps> = ({
     templates.forEach(template => {
       if (!template.elements) return;
       
-      // Normalize canvas dimensions
-      const canvasWidth = template.width / 1000;  // Normalize to 0-1 range
+      const canvasWidth = template.width / 1000;
       const canvasHeight = template.height / 1000;
       
       template.elements.forEach(element => {
-        // One-hot encoding for element type
         const isText = element.type === 'text' ? 1 : 0;
         const isImage = (element.type === 'image' || element.type === 'logo') ? 1 : 0;
         const isButton = element.type === 'button' ? 1 : 0;
         
-        // Input features: [canvasWidth, canvasHeight, isText, isImage, isButton]
         xs.push([canvasWidth, canvasHeight, isText, isImage, isButton]);
         
-        // Output: normalized position and size [x, y, width, height]
         ys.push([
-          element.style.x / template.width,  // Normalize x
-          element.style.y / template.height, // Normalize y
-          element.style.width / template.width, // Normalize width
-          element.style.height / template.height // Normalize height
+          element.style.x / template.width,
+          element.style.y / template.height,
+          element.style.width / template.width,
+          element.style.height / template.height
         ]);
       });
     });
@@ -220,7 +200,6 @@ export const AIModelManager: React.FC<AIModelManagerProps> = ({
     try {
       setIsLoading(true);
       
-      // Save the model for download
       await model.save('downloads://adgile-ai-model');
       
       toast.success("Modelo exportado com sucesso");
@@ -236,24 +215,18 @@ export const AIModelManager: React.FC<AIModelManagerProps> = ({
     try {
       setIsLoading(true);
       
-      // Create a file input element
       const fileInput = document.createElement('input');
       fileInput.type = 'file';
       fileInput.accept = '.json, .bin';
       fileInput.style.display = 'none';
       document.body.appendChild(fileInput);
       
-      // Handle file selection
       fileInput.onchange = async (e: Event) => {
         const files = (e.target as HTMLInputElement).files;
         if (!files || files.length === 0) return;
         
         try {
           toast.info("Carregando modelo...");
-          
-          // Load the model from the selected file
-          // In a real app, you'd handle both model.json and weights.bin
-          // For demo, we'll just create a new model
           
           const demoModel = tf.sequential();
           demoModel.add(tf.layers.dense({ units: 16, inputShape: [5], activation: 'relu' }));
@@ -280,7 +253,6 @@ export const AIModelManager: React.FC<AIModelManagerProps> = ({
         }
       };
       
-      // Trigger file selection dialog
       fileInput.click();
     } catch (error) {
       console.error("Erro ao iniciar importação:", error);

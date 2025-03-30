@@ -3,20 +3,14 @@ import {
   BannerSize, 
   EditorElement,
   CanvasNavigationMode,
-  EditingMode
+  EditingMode,
+  BANNER_SIZES
 } from "./types";
 import { animationOperations, removeElement as removeElementOp } from "./context/modificationOperations";
 import { generateRandomId } from "./utils/idGenerator";
 import { CanvasContextType } from "./context/CanvasContextTypes";
 import { updateLinkedElementsIntelligently } from "./utils/grid/responsivePosition";
 import { toast } from "sonner";
-
-const BANNER_SIZES: BannerSize[] = [
-  { name: "Facebook", width: 1200, height: 628, orientation: "horizontal" },
-  { name: "Instagram", width: 1080, height: 1080, orientation: "square" },
-  { name: "Twitter", width: 1200, height: 675, orientation: "horizontal" },
-  { name: "Story", width: 1080, height: 1920, orientation: "vertical" }
-];
 
 interface CanvasProviderProps {
   children: React.ReactNode | ((context: CanvasContextType) => React.ReactNode);
