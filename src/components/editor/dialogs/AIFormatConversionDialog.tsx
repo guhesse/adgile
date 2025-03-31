@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { 
   Dialog, 
@@ -144,9 +143,6 @@ export const AIFormatConversionDialog = ({
     // Generate a new unique ID for each new element
     const newId = `${originalElement.type}-${targetFormat.name.toLowerCase().replace(/\s+/g, '-')}-${generateRandomId()}`;
     
-    // For this example, we'll use a simple algorithm to position elements based on format dimensions
-    // In a real implementation, this would use AI predictions from a trained model
-    
     // Clone the original element but generate new position and size
     const widthRatio = targetFormat.width / currentFormat.width;
     const heightRatio = targetFormat.height / currentFormat.height;
@@ -176,12 +172,13 @@ export const AIFormatConversionDialog = ({
           width: newWidth,
           height: newHeight,
           fontSize: newFontSize,
-          // Remove percentage values so elements stay fixed in their own format
+          // Remove percentage values since we don't want shared elements
           xPercent: undefined,
           yPercent: undefined,
           widthPercent: undefined,
           heightPercent: undefined
-        }
+        },
+        linkedElementId: undefined, // Explicitly remove any linking
       };
     } else if (originalElement.type === 'image') {
       // Images should maintain aspect ratio
@@ -222,7 +219,8 @@ export const AIFormatConversionDialog = ({
           yPercent: undefined,
           widthPercent: undefined,
           heightPercent: undefined
-        }
+        },
+        linkedElementId: undefined, // Explicitly remove any linking
       };
     } else {
       // Default scaling for other element types
@@ -246,7 +244,8 @@ export const AIFormatConversionDialog = ({
           yPercent: undefined,
           widthPercent: undefined,
           heightPercent: undefined
-        }
+        },
+        linkedElementId: undefined, // Explicitly remove any linking
       };
     }
   };

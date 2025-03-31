@@ -153,6 +153,12 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
   const handleAddElement = (type: EditorElement["type"]) => {
     const newId = `${type}-${generateRandomId()}`;
     
+    // Ensure we have a selected size
+    if (!selectedSize) {
+      toast.error("Selecione um formato antes de adicionar elementos");
+      return;
+    }
+    
     let newElement: EditorElement = {
       id: newId,
       type,
@@ -169,7 +175,8 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
         padding: type === 'button' ? '8px 16px' : '0px',
         borderRadius: type === 'button' ? 4 : 0,
       },
-      sizeId: selectedSize.name === 'All' ? 'global' : selectedSize.name,
+      // Always use specific size ID, never use 'global'
+      sizeId: selectedSize.name,
     };
     
     if (type === 'button') {
@@ -286,10 +293,10 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
     return updateLinkedElementsIntelligently(elements, updatedSourceElement, activeSizes);
   };
 
+  // We'll modify the linkElementsAcrossSizes to be a no-op function since we don't want elements shared
   const linkElementsAcrossSizes = (element: EditorElement) => {
-    const { linkElementsAcrossSizes: linkElements } = require('./context/responsiveOperations');
-    const updatedElements = linkElements(element, elements, selectedSize, activeSizes);
-    setElements(updatedElements);
+    // Function intentionally left empty to disable cross-size element linking
+    toast.info("Vinculação de elementos entre formatos desativada");
   };
 
   const unlinkElement = (element: EditorElement) => {

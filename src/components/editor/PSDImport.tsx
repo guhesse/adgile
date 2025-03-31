@@ -1,11 +1,11 @@
+
+import { useState } from "react";
 import { UploadIcon } from "lucide-react";
 import { useCanvas } from "./CanvasContext";
 import { importPSDFile } from "./utils/psd/importPSD";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
-import { useState } from "react";
 import { BannerSize } from "./types";
-import { convertTextStyleToCSS } from './utils/psd/textRenderer';
 
 // Log levels
 enum LogLevel {
@@ -46,112 +46,17 @@ const importLogger = {
 };
 
 /**
- * Interface para representar as informações de máscara de uma camada PSD
+ * Determina a orientação com base nas dimensões
  */
-interface MaskInfo {
-  top: number;
-  left: number;
-  bottom: number;
-  right: number;
-  width: number;
-  height: number;
-  defaultColor: number;
-  relative: boolean;
-  disabled: boolean;
-  invert: boolean;
-  hasValidMask: boolean;
-}
-
-/**
- * Processa as informações de máscara de uma camada PSD
- */
-const processMaskInfo = (layer: any): MaskInfo => {
-  // Valor padrão se não houver máscara
-  const defaultMask: MaskInfo = {
-    top: 0,
-    left: 0,
-    bottom: 0,
-    right: 0,
-    width: 0,
-    height: 0,
-    defaultColor: 0,
-    relative: false,
-    disabled: false,
-    invert: false,
-    hasValidMask: false
-  };
-
-  // Verifica se a camada existe e tem informações de máscara
-  if (!layer || !layer.mask) {
-    return defaultMask;
-  }
-
-  try {
-    const mask = layer.mask;
-    
-    // Verifica se a máscara tem dimensões válidas
-    const hasValidDimensions = 
-      mask.width && 
-      mask.height && 
-      mask.width > 0 && 
-      mask.height > 0;
-    
-    return {
-      top: mask.top || 0,
-      left: mask.left || 0,
-      bottom: mask.bottom || 0,
-      right: mask.right || 0,
-      width: mask.width || 0,
-      height: mask.height || 0,
-      defaultColor: mask.defaultColor || 0,
-      relative: mask.relative || false,
-      disabled: mask.disabled || false,
-      invert: mask.invert || false,
-      hasValidMask: hasValidDimensions
-    };
-  } catch (error) {
-    importLogger.warn("Erro ao processar informações de máscara:", error);
-    return defaultMask;
-  }
-};
-
-/**
- * Aplicar informações de máscara a um elemento após a importação
- */
-const applyMaskInfoToElement = (element: any, maskInfo: MaskInfo): any => {
-  // Se não houver máscara válida, retorna o elemento sem alterações
-  if (!maskInfo.hasValidMask) {
-    return element;
-  }
-
-  // Aplicamos as dimensões da máscara para o elemento
-  return {
-    ...element,
-    style: {
-      ...element.style,
-      // Definimos clipPath para usar as dimensões da máscara como recorte
-      clipPath: `inset(0px 0px 0px 0px)`,
-      // Dimensões baseadas na máscara
-      width: maskInfo.width,
-      height: maskInfo.height,
-      // Adicionamos propriedades específicas para reconhecer que tem máscara
-      hasMask: true,
-      maskInfo: {
-        top: maskInfo.top,
-        left: maskInfo.left,
-        bottom: maskInfo.bottom,
-        right: maskInfo.right,
-        width: maskInfo.width,
-        height: maskInfo.height,
-        invert: maskInfo.invert,
-        disabled: maskInfo.disabled
-      }
-    }
-  };
+const getOrientation = (width: number, height: number): 'vertical' | 'horizontal' | 'square' => {
+  const ratio = width / height;
+  if (ratio > 1.05) return 'horizontal';
+  if (ratio < 0.95) return 'vertical';
+  return 'square';
 };
 
 export const PSDImport = () => {
-  const { selectedSize, setElements, addCustomSize, setSelectedSize } = useCanvas();
+  const { addCustomSize, setElements, setSelectedSize } = useCanvas();
   const [isImporting, setIsImporting] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
 
@@ -179,123 +84,69 @@ export const PSDImport = () => {
       // Log file information
       importLogger.info("=== PSD IMPORT STARTED ===");
       importLogger.info(`Importando arquivo PSD: ${file.name}, Tamanho: ${Math.round(file.size / 1024)} KB`);
-      importLogger.debug("Estrutura de importação:", {
-        passos: [
-          "1. Leitura do arquivo PSD",
-          "2. Extração das dimensões do documento",
-          "3. Criação de um tamanho personalizado baseado nas dimensões",
-          "4. Processamento das camadas",
-          "5. Extração de texto e formatação",
-          "6. Extração de imagens",
-          "7. Processamento de máscaras de camada",
-          "8. Criação de elementos na canvas"
-        ]
-      });
       
       // Get PSD file dimensions first
       const { width, height } = await getPSDDimensions(file);
       importLogger.info(`Dimensões detectadas: ${width} × ${height} pixels`);
       
       if (width && height) {
+        // Determine orientation
+        const orientation = getOrientation(width, height);
+        
         // Create a custom size based on the PSD dimensions
-        const customSizeName = `PSD - ${file.name.replace('.psd', '')}`;
+        const psdBaseName = file.name.replace('.psd', '');
         const customSize: BannerSize = {
-          name: customSizeName,
+          name: `PSD - ${psdBaseName}`,
           width,
-          height
+          height,
+          orientation
         };
         
-        importLogger.info(`Criando tamanho personalizado: ${customSizeName} (${width}×${height}px)`);
+        // Create second artboard with inverted dimensions and opposite orientation
+        const invertedOrientation = orientation === 'vertical' ? 'horizontal' : 'vertical';
+        const invertedSize: BannerSize = {
+          name: `PSD - ${psdBaseName} (${invertedOrientation})`,
+          width: orientation === 'vertical' ? height : width,
+          height: orientation === 'vertical' ? width : height,
+          orientation: invertedOrientation
+        };
         
-        // Add the custom size to active sizes and select it
+        importLogger.info(`Criando tamanho primário: ${customSize.name} (${width}×${height}px, ${orientation})`);
+        importLogger.info(`Criando tamanho secundário: ${invertedSize.name} (${invertedSize.width}×${invertedSize.height}px, ${invertedOrientation})`);
+        
+        // Add both custom sizes
         addCustomSize(customSize);
+        addCustomSize(invertedSize);
         
         // Import PSD file with the new custom size
         importLogger.debug("Iniciando processamento das camadas...");
         const elements = await importPSDFile(file, customSize);
         importLogger.info(`Camadas processadas: ${elements.length}`);
         
-        // Processar máscaras para cada elemento
-        const elementsWithMasks = elements.map(element => {
-          // Verificar se o elemento tem informações de camada PSD original
-          if (element.psdLayerData) {
-            const maskInfo = processMaskInfo(element.psdLayerData);
-            
-            if (maskInfo.hasValidMask) {
-              importLogger.debug(`Máscara detectada para camada '${element.psdLayerData.name || 'sem nome'}':`, {
-                dimensões: `${maskInfo.width}×${maskInfo.height}`,
-                posição: `(${maskInfo.left},${maskInfo.top})`,
-                invertida: maskInfo.invert,
-                desativada: maskInfo.disabled
-              });
-              
-              return applyMaskInfoToElement(element, maskInfo);
-            }
-          }
-          
-          return element;
-        });
-        
-        // Contar elementos com máscara
-        const maskedElements = elementsWithMasks.filter(el => el.style && el.style.hasMask).length;
-        if (maskedElements > 0) {
-          importLogger.info(`Processadas ${maskedElements} camadas com máscaras`);
-        }
-        
-        // Ensure ALL elements have global sizeId to appear in all formats
-        const globalElements = elementsWithMasks.map(element => ({
+        // Ensure all elements have the specific sizeId (not global)
+        // This ensures elements are only shown in their specific artboard
+        const primaryElements = elements.map(element => ({
           ...element,
-          sizeId: 'global'
+          sizeId: customSize.name
         }));
         
-        importLogger.debug("Aplicando sizeId global a todos os elementos");
-        
-        // Additional logging for text elements to debug styling
-        const textElementsCount = globalElements.filter(el => el.type === 'text').length;
-        if (textElementsCount > 0) {
-          importLogger.debug("=== DETALHAMENTO DE ELEMENTOS DE TEXTO ===");
-          globalElements.filter(el => el.type === 'text').forEach((textElement, index) => {
-            importLogger.debug(`Texto #${index + 1}: "${textElement.content}"`);
-            importLogger.debug(`Estilos aplicados:`, {
-              fontFamily: textElement.style.fontFamily || 'Não definido',
-              fontSize: textElement.style.fontSize || 'Não definido',
-              fontWeight: textElement.style.fontWeight || 'Não definido',
-              fontStyle: textElement.style.fontStyle || 'Não definido',
-              color: textElement.style.color || 'Não definido',
-              textAlign: textElement.style.textAlign || 'Não definido',
-              lineHeight: textElement.style.lineHeight || 'Não definido',
-              letterSpacing: textElement.style.letterSpacing || 'Não definido'
-            });
-          });
-        }
-        
-        // Update canvas elements
-        setElements(globalElements);
-        
-        // Set the custom size as selected
+        // Set elements and select the primary size
+        setElements(primaryElements);
         setSelectedSize(customSize);
         
         // Close loading toast
         toast.dismiss(loadingToast);
         
-        // Log information about imported elements
-        const textCount = globalElements.filter(el => el.type === 'text').length;
-        const imageElements = globalElements.filter(el => el.type === 'image').length;
-        const containerElements = globalElements.filter(el => el.type === 'container').length;
+        // Display success message
+        const textCount = elements.filter(el => el.type === 'text').length;
+        const imageElements = elements.filter(el => el.type === 'image').length;
+        const containerElements = elements.filter(el => el.type === 'container').length;
         
-        importLogger.info("=== PSD IMPORT COMPLETED ===");
-        importLogger.info("Resumo da importação:", {
-          total: globalElements.length,
-          textos: textCount,
-          imagens: imageElements,
-          containers: containerElements,
-          comMáscaras: maskedElements
-        });
-        
-        if (globalElements.length === 0) {
-          toast.warning("Nenhum elemento foi importado do arquivo PSD. Verifique os logs para mais detalhes.");
+        if (elements.length === 0) {
+          toast.warning("Nenhum elemento foi importado do arquivo PSD.");
         } else {
-          toast.success(`Importados ${globalElements.length} elementos do arquivo PSD. (${textCount} textos, ${imageElements} imagens, ${containerElements} containers, ${maskedElements} com máscaras)`);
+          toast.success(`Importados ${elements.length} elementos do arquivo PSD para o formato ${orientation}.`);
+          toast.info(`Criado formato adicional ${invertedOrientation} vazio para adaptação.`);
         }
       } else {
         toast.dismiss(loadingToast);
