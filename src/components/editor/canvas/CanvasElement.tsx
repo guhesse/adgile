@@ -60,23 +60,6 @@ export const CanvasElement = ({
     height: element.style.height 
   };
   
-  // If element has percentage values and needs to be adjusted for this canvas size
-  if (element.style.xPercent !== undefined && 
-      element.style.yPercent !== undefined && 
-      element.style.widthPercent !== undefined && 
-      element.style.heightPercent !== undefined &&
-      element.sizeId !== canvasSize.name) {
-    
-    // Find the source size (the size this element was originally created for)
-    const sourceSize = {
-      name: element.sizeId || 'unknown',
-      width: canvasSize.width, // Fallback to current size if unknown
-      height: canvasSize.height
-    };
-    
-    // Use calculateSmartPosition to adjust to this canvas
-    position = calculateSmartPosition(element, sourceSize, canvasSize);
-  }
 
   // Apply the final position style
   let positionStyle: React.CSSProperties = {

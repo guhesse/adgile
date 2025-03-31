@@ -46,7 +46,7 @@ export const createNewElement = (
           type === "spacer" ? undefined : undefined,
       padding: type === "button" ? "8px 16px" : undefined,
     },
-    sizeId: selectedSize.name,
+    sizeId: selectedSize.name !== 'All' ? selectedSize.name : undefined,
   };
 
   // Calculate percentage values for the element

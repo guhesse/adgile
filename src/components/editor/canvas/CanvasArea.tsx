@@ -42,17 +42,16 @@ export const CanvasArea = ({
   handleMouseUp
 }: CanvasAreaProps) => {
   const { artboardBackgroundColor = '#ffffff' } = useCanvas();
-  
+
   // Use provided background color directly, no need to search for an element
   const backgroundColor = artboardBackgroundColor;
 
   // Filter elements that should appear in this specific size or globally
   // Sort elements by z-index (order in the array)
   const elementsToShow = elements
-    .filter(element => 
+    .filter(element =>
       !element.sizeId || // Elements without sizeId
-      element.sizeId === size.name || // Elements specific to this size
-      element.sizeId === 'global' // Global elements that should appear in all sizes
+      element.sizeId === size.name
     )
     // Filter out artboard-background elements as we handle them separately
     .filter(element => element.type !== 'artboard-background');
@@ -60,12 +59,12 @@ export const CanvasArea = ({
   return (
     <div className="relative">
       {/* Canvas label positioned at the top */}
-      <div 
+      <div
         className="absolute -top-6 left-0 right-0 text-sm text-gray-600 font-medium text-center"
       >
         {size.name} ({size.width}×{size.height})
       </div>
-      
+
       <Card
         ref={canvasRef}
         className="relative shadow-lg"
@@ -73,8 +72,8 @@ export const CanvasArea = ({
           width: size.width,
           height: size.height,
           backgroundColor: backgroundColor === 'transparent' ? undefined : backgroundColor,
-          backgroundImage: backgroundColor === 'transparent' ? 
-            "linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc), linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc)" : 
+          backgroundImage: backgroundColor === 'transparent' ?
+            "linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc), linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc)" :
             "none",
           backgroundSize: backgroundColor === 'transparent' ? "20px 20px" : "auto",
           backgroundPosition: backgroundColor === 'transparent' ? "0 0, 10px 10px" : "auto"

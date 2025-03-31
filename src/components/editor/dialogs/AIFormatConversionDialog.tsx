@@ -187,11 +187,11 @@ export const AIFormatConversionDialog = ({
       // Size differently based on format change
       if (widthRatio < heightRatio) {
         // Width constraint
-        newWidth = Math.min(targetFormat.width * 0.9, originalElement.style.width * widthRatio);
+        newWidth = Math.min(targetFormat.width * 1, originalElement.style.width * widthRatio);
         newHeight = newWidth / aspectRatio;
       } else {
         // Height constraint
-        newHeight = Math.min(targetFormat.height * 0.9, originalElement.style.height * heightRatio);
+        newHeight = Math.min(targetFormat.height * 1, originalElement.style.height * heightRatio);
         newWidth = newHeight * aspectRatio;
       }
       

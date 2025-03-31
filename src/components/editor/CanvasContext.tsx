@@ -1,15 +1,13 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from "react";
-import { 
-  BannerSize, 
-  EditorElement, 
-  BANNER_SIZES, 
-  EditingMode, 
+import {
+  BannerSize,
+  EditorElement,
+  BANNER_SIZES,
   CanvasNavigationMode
 } from "./types";
 import { animationOperations, removeElement as removeElementOp } from "./context/modificationOperations";
 import { generateRandomId } from "./utils/idGenerator";
 import { CanvasContextType } from "./context/CanvasContextTypes";
-import { updateLinkedElementsIntelligently } from "./utils/grid/responsivePosition";
 import { toast } from "sonner";
 
 interface CanvasProviderProps {
@@ -42,17 +40,16 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
   const [zoomLevel, setZoomLevel] = useState(1);
   const [canvasNavMode, setCanvasNavMode] = useState<CanvasNavigationMode>('edit');
   const [activeSizes, setActiveSizes] = useState<BannerSize[]>(fixedSize ? [fixedSize] : []);
-  const [editingMode, setEditingMode] = useState<EditingMode>('global');
   const [gridLayout, setGridLayout] = useState(false);
   const [artboardBackgroundColor, setArtboardBackgroundColor] = useState<string>('#ffffff');
   // Add model state
-  const [modelState, setModelState] = useState<ModelState>({ 
+  const [modelState, setModelState] = useState<ModelState>({
     trained: true,
     accuracy: 0.92,
     lastTrained: new Date().toISOString()
   });
-  
-  const historyRef = useRef<{elements: EditorElement[], selectedElement: EditorElement | null}[]>([]);
+
+  const historyRef = useRef<{ elements: EditorElement[], selectedElement: EditorElement | null }[]>([]);
   const currentHistoryIndexRef = useRef<number>(-1);
   const maxHistoryLength = 50;
 
@@ -61,7 +58,7 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
       setSelectedSize(fixedSize);
       setActiveSizes([fixedSize]);
     }
-    
+
     // No need to fetch model state as we're always setting it to trained=true by default
   }, [fixedSize]);
 
@@ -73,92 +70,24 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
     const { updatedElements, newSelectedElement } = removeElementOp(
       elementId,
       elements,
-      selectedElement,
-      editingMode
+      selectedElement,      
     );
 
     setElements(updatedElements);
     setSelectedElement(newSelectedElement);
   };
 
-  const updateElementStyle = (property: string, value: any) => {
-    if (!selectedElement) return;
 
-    setElements(prevElements => {
-      return prevElements.map(el => {
-        if (editingMode === 'global' && selectedElement.linkedElementId && 
-            el.linkedElementId === selectedElement.linkedElementId) {
-          return {
-            ...el,
-            style: {
-              ...el.style,
-              [property]: value
-            }
-          };
-        }
-        else if (el.id === selectedElement.id) {
-          return {
-            ...el,
-            style: {
-              ...el.style,
-              [property]: value
-            }
-          };
-        }
-        return el;
-      });
-    });
-
-    if (selectedElement) {
-      setSelectedElement({
-        ...selectedElement,
-        style: {
-          ...selectedElement.style,
-          [property]: value
-        }
-      });
-    }
-  };
-
-  const updateElementContent = (content: string) => {
-    if (!selectedElement) return;
-
-    setElements(prevElements => {
-      return prevElements.map(el => {
-        if (editingMode === 'global' && selectedElement.linkedElementId && 
-            el.linkedElementId === selectedElement.linkedElementId) {
-          return {
-            ...el,
-            content
-          };
-        }
-        else if (el.id === selectedElement.id) {
-          return {
-            ...el,
-            content
-          };
-        }
-        return el;
-      });
-    });
-
-    if (selectedElement) {
-      setSelectedElement({
-        ...selectedElement,
-        content
-      });
-    }
-  };
 
   const handleAddElement = (type: EditorElement["type"]) => {
     const newId = `${type}-${generateRandomId()}`;
-    
+
     // Ensure we have a selected size
     if (!selectedSize) {
       toast.error("Selecione um formato antes de adicionar elementos");
       return;
     }
-    
+
     let newElement: EditorElement = {
       id: newId,
       type,
@@ -178,7 +107,7 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
       // Always use specific size ID, never use 'global'
       sizeId: selectedSize.name,
     };
-    
+
     if (type === 'button') {
       newElement.content = 'Button';
     } else if (type === 'image') {
@@ -191,7 +120,7 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
       newElement.style.borderColor = '#e5e7eb';
       newElement.style.borderStyle = 'solid';
     }
-    
+
     setElements(prevElements => [...prevElements, newElement]);
     setSelectedElement(newElement);
   };
@@ -215,9 +144,9 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
         padding: '16px',
       },
       columns: template.columns,
-      sizeId: selectedSize.name === 'All' ? 'global' : selectedSize.name,
+      sizeId: selectedSize.name !== 'All' ? selectedSize.name : undefined,
     };
-    
+
     setElements(prevElements => [...prevElements, containerElement]);
     setSelectedElement(containerElement);
   };
@@ -255,55 +184,6 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
     setGridLayout(!gridLayout);
   };
 
-  const updateAllLinkedElements = (
-    elements: EditorElement[],
-    sourceElement: EditorElement,
-    percentageChanges: Partial<{ xPercent: number; yPercent: number; widthPercent: number; heightPercent: number }>,
-    absoluteChanges: Partial<{ x: number; y: number; width: number; height: number }>
-  ): EditorElement[] => {
-    if (!sourceElement.linkedElementId) return elements;
-    
-    const calculatedPercentChanges = { ...percentageChanges };
-    
-    if (absoluteChanges.x !== undefined && percentageChanges.xPercent === undefined) {
-      calculatedPercentChanges.xPercent = (absoluteChanges.x / selectedSize.width) * 100;
-    }
-    
-    if (absoluteChanges.y !== undefined && percentageChanges.yPercent === undefined) {
-      calculatedPercentChanges.yPercent = (absoluteChanges.y / selectedSize.height) * 100;
-    }
-    
-    if (absoluteChanges.width !== undefined && percentageChanges.widthPercent === undefined) {
-      calculatedPercentChanges.widthPercent = (absoluteChanges.width / selectedSize.width) * 100;
-    }
-    
-    if (absoluteChanges.height !== undefined && percentageChanges.heightPercent === undefined) {
-      calculatedPercentChanges.heightPercent = (absoluteChanges.height / selectedSize.height) * 100;
-    }
-    
-    const updatedSourceElement = {
-      ...sourceElement,
-      style: {
-        ...sourceElement.style,
-        ...absoluteChanges,
-        ...calculatedPercentChanges
-      }
-    };
-    
-    return updateLinkedElementsIntelligently(elements, updatedSourceElement, activeSizes);
-  };
-
-  // We'll modify the linkElementsAcrossSizes to be a no-op function since we don't want elements shared
-  const linkElementsAcrossSizes = (element: EditorElement) => {
-    // Function intentionally left empty to disable cross-size element linking
-    toast.info("Vinculação de elementos entre formatos desativada");
-  };
-
-  const unlinkElement = (element: EditorElement) => {
-    const { unlinkElement: unlink } = require('./context/responsiveOperations');
-    const updatedElements = unlink(element, elements);
-    setElements(updatedElements);
-  };
 
   const addCustomSize = (size: BannerSize) => {
     setActiveSizes(prevSizes => {
@@ -345,15 +225,15 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
 
   const undo = () => {
     console.log('Undo triggered');
-    
+
     if (currentHistoryIndexRef.current <= 0) {
       toast.info("Não há mais ações para desfazer");
       return;
     }
-    
+
     currentHistoryIndexRef.current--;
     const previousState = historyRef.current[currentHistoryIndexRef.current];
-    
+
     if (previousState) {
       setElements(previousState.elements);
       setSelectedElement(previousState.selectedElement);
@@ -392,23 +272,16 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
     setCanvasNavMode,
     activeSizes,
     setActiveSizes,
-    editingMode,
-    setEditingMode,
     gridLayout,
     toggleGridLayout,
     organizeElements,
     removeElement,
-    updateElementStyle,
-    updateElementContent,
     handleAddElement,
     handleAddLayout,
     handlePreviewAnimation,
     togglePlayPause,
     updateAnimations,
     handleImageUpload,
-    updateAllLinkedElements,
-    linkElementsAcrossSizes,
-    unlinkElement,
     addCustomSize,
     removeCustomSize,
     undo,

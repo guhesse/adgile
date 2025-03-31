@@ -314,7 +314,7 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
               width: layerInfo.width,
               height: layerInfo.height
             },
-            sizeId: 'global'
+            sizeId: selectedSize.name // Corrigido para usar o nome do formato selecionado
           };
 
           psdLogger.debug(`Elemento de texto criado:`, {
@@ -349,19 +349,19 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
       const element = await processLayer(layer, selectedSize, psdData, extractedImages);
       
       if (element) {
-        // Assign the sizeId as 'global' to ensure elements are visible in all artboards
-        element.sizeId = 'global';
-        
+        // Assign the sizeId as the selected size name instead of 'global'
+        element.sizeId = selectedSize.name;
+
         // Se encontramos dados de máscara válidos, anexamos ao elemento
         if (maskData && maskData.hasValidMask) {
           element.psdLayerData = element.psdLayerData || {};
           element.psdLayerData.mask = maskData;
-          
+
           // Aplicar ajustes específicos para elementos com máscara
           const adjustedElement = adjustElementWithMask(element, maskData, selectedSize);
           maskedElementsCount.count++;
           psdLogger.debug(`Aplicada máscara à camada "${layer.name || 'sem nome'}": ${maskData.width}×${maskData.height}`);
-          
+
           elements.push(adjustedElement);
         } else {
           elements.push(element);
@@ -475,40 +475,7 @@ export const importPSDFile = async (file: File, selectedSize: BannerSize): Promi
       });
     });
 
-    // Allow elements to extend slightly beyond artboard boundaries
-    // but still ensure they're connected to the artboard
-    elements.forEach(element => {
-      // Ensure all elements have the 'global' sizeId
-      element.sizeId = 'global';
-
-      // If element extends beyond right edge by more than 50%
-      if (element.style.x > selectedSize.width * 1.5) {
-        element.style.x = selectedSize.width - element.style.width / 2;
-      }
-
-      // If element extends beyond bottom edge by more than 50%
-      if (element.style.y > selectedSize.height * 1.5) {
-        element.style.y = selectedSize.height - element.style.height / 2;
-      }
-
-      // If element is completely off-screen to the left
-      if (element.style.x + element.style.width < -element.style.width * 0.5) {
-        element.style.x = -element.style.width / 2;
-      }
-
-      // If element is completely off-screen to the top
-      if (element.style.y + element.style.height < -element.style.height * 0.5) {
-        element.style.y = -element.style.height / 2;
-      }
-
-      // Recalculate percentages after adjustments
-      element.style.xPercent = (element.style.x / selectedSize.width) * 100;
-      element.style.yPercent = (element.style.y / selectedSize.height) * 100;
-      element.style.widthPercent = (element.style.width / selectedSize.width) * 100;
-      element.style.heightPercent = (element.style.height / selectedSize.height) * 100;
-    });
-
-    // Don't create the artboard background element as it will be managed separately
+  
 
     // Try to save PSD data to localStorage
     try {

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { UploadIcon } from "lucide-react";
 import { useCanvas } from "./CanvasContext";
@@ -55,7 +54,7 @@ const getOrientation = (width: number, height: number): 'vertical' | 'horizontal
   return 'square';
 };
 
-export const PSDImport = () => {
+export const PSDImport = ({ onUpload }: { onUpload?: (success: boolean) => void }) => {
   const { addCustomSize, setElements, setSelectedSize } = useCanvas();
   const [isImporting, setIsImporting] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -64,10 +63,8 @@ export const PSDImport = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Store file name for display
     setFileName(file.name);
 
-    // Validate file type
     if (!file.name.toLowerCase().endsWith('.psd')) {
       toast.error("Por favor, carregue um arquivo PSD válido.");
       setFileName(null);
@@ -75,25 +72,13 @@ export const PSDImport = () => {
     }
 
     try {
-      // Set importing state
       setIsImporting(true);
-      
-      // Show loading toast
       const loadingToast = toast.loading(`Importando ${file.name}... Este processo pode levar alguns segundos.`);
-      
-      // Log file information
-      importLogger.info("=== PSD IMPORT STARTED ===");
-      importLogger.info(`Importando arquivo PSD: ${file.name}, Tamanho: ${Math.round(file.size / 1024)} KB`);
-      
-      // Get PSD file dimensions first
+
       const { width, height } = await getPSDDimensions(file);
-      importLogger.info(`Dimensões detectadas: ${width} × ${height} pixels`);
-      
+
       if (width && height) {
-        // Determine orientation
         const orientation = getOrientation(width, height);
-        
-        // Create a custom size based on the PSD dimensions
         const psdBaseName = file.name.replace('.psd', '');
         const customSize: BannerSize = {
           name: `PSD - ${psdBaseName}`,
@@ -101,66 +86,26 @@ export const PSDImport = () => {
           height,
           orientation
         };
-        
-        // Create second artboard with inverted dimensions and opposite orientation
-        const invertedOrientation = orientation === 'vertical' ? 'horizontal' : 'vertical';
-        const invertedSize: BannerSize = {
-          name: `PSD - ${psdBaseName} (${invertedOrientation})`,
-          width: orientation === 'vertical' ? height : width,
-          height: orientation === 'vertical' ? width : height,
-          orientation: invertedOrientation
-        };
-        
-        importLogger.info(`Criando tamanho primário: ${customSize.name} (${width}×${height}px, ${orientation})`);
-        importLogger.info(`Criando tamanho secundário: ${invertedSize.name} (${invertedSize.width}×${invertedSize.height}px, ${invertedOrientation})`);
-        
-        // Add both custom sizes
+
         addCustomSize(customSize);
-        addCustomSize(invertedSize);
-        
-        // Import PSD file with the new custom size
-        importLogger.debug("Iniciando processamento das camadas...");
         const elements = await importPSDFile(file, customSize);
-        importLogger.info(`Camadas processadas: ${elements.length}`);
-        
-        // Ensure all elements have the specific sizeId (not global)
-        // This ensures elements are only shown in their specific artboard
-        const primaryElements = elements.map(element => ({
-          ...element,
-          sizeId: customSize.name
-        }));
-        
-        // Set elements and select the primary size
-        setElements(primaryElements);
+        setElements(elements);
         setSelectedSize(customSize);
-        
-        // Close loading toast
+
         toast.dismiss(loadingToast);
-        
-        // Display success message
-        const textCount = elements.filter(el => el.type === 'text').length;
-        const imageElements = elements.filter(el => el.type === 'image').length;
-        const containerElements = elements.filter(el => el.type === 'container').length;
-        
-        if (elements.length === 0) {
-          toast.warning("Nenhum elemento foi importado do arquivo PSD.");
-        } else {
-          toast.success(`Importados ${elements.length} elementos do arquivo PSD para o formato ${orientation}.`);
-          toast.info(`Criado formato adicional ${invertedOrientation} vazio para adaptação.`);
-        }
+        toast.success(`Importados ${elements.length} elementos do arquivo PSD.`);
+
+        if (onUpload) onUpload(true); // Notificar sucesso
       } else {
         toast.dismiss(loadingToast);
         toast.error("Não foi possível determinar as dimensões do arquivo PSD.");
+        if (onUpload) onUpload(false); // Notificar falha
       }
     } catch (error) {
-      importLogger.error("=== PSD IMPORT ERROR ===");
-      importLogger.error("Erro ao importar arquivo PSD:", error);
-      toast.error("Falha ao importar arquivo PSD. Verifique o console para detalhes.");
+      toast.error("Falha ao importar arquivo PSD.");
+      if (onUpload) onUpload(false); // Notificar falha
     } finally {
-      // Reset importing state
       setIsImporting(false);
-      
-      // Reset the input value to allow selecting the same file again
       event.target.value = '';
     }
   };
@@ -228,7 +173,6 @@ export const PSDImport = () => {
             {isImporting ? "Importando..." : "Importar PSD"}
           </span>
         </Button>
-        
         {fileName && !isImporting && (
           <span className="text-xs text-gray-500 whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px] ml-1">
             {fileName}

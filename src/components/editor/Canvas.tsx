@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import PropertyPanel from "./PropertyPanel";
 import { CanvasControls } from "./CanvasControls";
@@ -12,7 +11,6 @@ import { AIFormatConversionDialog } from "./dialogs/AIFormatConversionDialog";
 import { Button } from "@/components/ui/button";
 import { Split, Cpu, Maximize, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
-import { StartProjectDialog } from "./dialogs/StartProjectDialog";
 import { 
   Dialog,
   DialogContent,
@@ -277,25 +275,21 @@ const CanvasContent = ({ editorMode, canvasRef, hideImportPSD, onPSDImport }: Ca
   // If the start project dialog should be shown
   if (showStartProjectDialog) {
     return (
-      <StartProjectDialog
+      <FormatSelectionDialog
         open={showStartProjectDialog}
         onOpenChange={setShowStartProjectDialog}
-        onSelectFormat={handleFormatSelectionFromStart}
-        onImportPSD={handlePSDImportSelection}
+        onSelectFormat={(format) => {
+          handleSelectFormat(format);
+          setShowStartProjectDialog(false);
+        }}
+        onUploadPSD={() => {
+          handlePSDImportSelection();
+          setShowStartProjectDialog(false);
+        }}
       />
     );
   }
 
-  // If the format selection dialog should be shown
-  if (showFormatDialog) {
-    return (
-      <FormatSelectionDialog
-        open={showFormatDialog}
-        onOpenChange={setShowFormatDialog}
-        onSelectFormat={handleSelectFormat}
-      />
-    );
-  }
 
   // If there is still no selected size, return null to prevent rendering
   if (!selectedSize) {

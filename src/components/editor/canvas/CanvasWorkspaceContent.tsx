@@ -1,6 +1,6 @@
 
 import { CanvasArea } from "./CanvasArea";
-import { BannerSize, CanvasNavigationMode, EditingMode, EditorElement } from "../types";
+import { BannerSize, CanvasNavigationMode, EditorElement } from "../types";
 import { CanvasControls } from "./CanvasControls";
 
 interface CanvasWorkspaceContentProps {
@@ -28,8 +28,6 @@ interface CanvasWorkspaceContentProps {
   handleMouseMove: (e: React.MouseEvent) => void;
   handleMouseUp: () => void;
   editorKey: string;
-  editingMode: EditingMode;
-  setEditingMode: (mode: EditingMode) => void;
 }
 
 export const CanvasWorkspaceContent = ({
@@ -57,8 +55,6 @@ export const CanvasWorkspaceContent = ({
   handleMouseMove,
   handleMouseUp,
   editorKey,
-  editingMode,
-  setEditingMode
 }: CanvasWorkspaceContentProps) => {
   return (
     <div
@@ -95,10 +91,9 @@ export const CanvasWorkspaceContent = ({
                 const row = Math.floor(index / rowSize);
                 const col = index % rowSize;
                 
-                // Calculate positions with artboard dimensions taken into account
                 // Add extra gap (100px) to ensure no overlapping
-                const leftPosition = col * (Math.max(...activeSizes.map(s => s.width)) + 200);
-                const topPosition = row * (Math.max(...activeSizes.map(s => s.height)) + 200);
+                const leftPosition = col * (Math.max(...activeSizes.map(s => s.width)) + 100);
+                const topPosition = row * (Math.max(...activeSizes.map(s => s.height)) + 100);
                 
                 return (
                   <div 
@@ -160,8 +155,6 @@ export const CanvasWorkspaceContent = ({
       <CanvasControls 
         zoomLevel={zoomLevel}
         setZoomLevel={setZoomLevel}
-        editingMode={editingMode}
-        setEditingMode={setEditingMode}
       />
     </div>
   );

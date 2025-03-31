@@ -77,7 +77,6 @@ export type EditorElement = {
 export type EditorMode = "email" | "banner" | "social" | "impressos";
 
 export type CanvasNavigationMode = 'edit' | 'pan';
-export type EditingMode = 'global' | 'individual';
 
 export const BANNER_SIZES: BannerSize[] = [
   // Email
