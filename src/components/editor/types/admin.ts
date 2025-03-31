@@ -1,3 +1,4 @@
+
 import { EditorElement, BannerSize } from "../types";
 
 export interface LayoutTemplate {

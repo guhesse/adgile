@@ -42,6 +42,7 @@ export interface BannerSize {
   width: number;
   height: number;
   thumbnail?: string;
+  orientation?: 'vertical' | 'horizontal' | 'square';
 }
 
 export type EditorMode = "banner" | "template";

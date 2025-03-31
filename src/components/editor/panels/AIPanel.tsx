@@ -9,9 +9,17 @@ interface AIFormatSuggestionProps {
   currentFormat: {
     width: number;
     height: number;
-    orientation: string;
+    orientation: 'vertical' | 'horizontal' | 'square';
   };
 }
+
+// Helper function to determine orientation
+const getFormatOrientation = (format: { width: number; height: number }): 'vertical' | 'horizontal' | 'square' => {
+  const ratio = format.width / format.height;
+  if (ratio > 1.05) return 'horizontal';
+  if (ratio < 0.95) return 'vertical';
+  return 'square';
+};
 
 export const AIFormatSuggestion: React.FC<AIFormatSuggestionProps> = ({ currentFormat }) => {
   return (
@@ -44,7 +52,7 @@ export const AIPanel = () => {
   const currentFormat = {
     width: 1080,
     height: 1920,
-    orientation: 'vertical'
+    orientation: 'vertical' as const
   };
   
   // Verificar se o modelo está treinado
