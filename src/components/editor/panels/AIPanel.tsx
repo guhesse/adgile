@@ -26,9 +26,10 @@ export const AIFormatSuggestion: React.FC<AIFormatSuggestionProps> = ({ currentF
     <div className="space-y-4">
       <Alert>
         <AlertCircle className="h-4 w-4" />
-        <AlertTitle>IA em treinamento</AlertTitle>
+        <AlertTitle>IA temporariamente desativada</AlertTitle>
         <AlertDescription>
-          O modelo de IA ainda está sendo treinado com seus templates. Adicione mais templates para obter melhores sugestões.
+          A geração automática de layout foi temporariamente desativada para evitar elementos duplicados.
+          Por favor, use a função "Desdobrar Formatos" com formatos da mesma orientação.
         </AlertDescription>
       </Alert>
       
@@ -88,32 +89,7 @@ export const AIPanel = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {isModelTrained ? (
-                <div className="space-y-4">
-                  <div className="text-sm text-gray-500">
-                    Formato atual: {currentFormat.width} × {currentFormat.height}px ({currentFormat.orientation})
-                  </div>
-                  <Button 
-                    className="w-full" 
-                    onClick={generateLayoutSuggestions}
-                    disabled={isGenerating}
-                  >
-                    {isGenerating ? (
-                      <>
-                        <Loader className="mr-2 h-4 w-4 animate-spin" />
-                        Gerando sugestões...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="mr-2 h-4 w-4" />
-                        Gerar sugestões de layout
-                      </>
-                    )}
-                  </Button>
-                </div>
-              ) : (
-                <AIFormatSuggestion currentFormat={currentFormat} />
-              )}
+              <AIFormatSuggestion currentFormat={currentFormat} />
             </CardContent>
           </Card>
         </div>
