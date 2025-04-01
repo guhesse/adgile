@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,27 +23,24 @@ interface ImagePanelProps {
 }
 
 const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) => {
-  const {
-    updateElementContent,
-    handleImageUpload,
-  } = useCanvas();
+  const { updateElementContent, handleImageUpload } = useCanvas();
 
   const [activeTab, setActiveTab] = useState<string>("content");
   const [isUploading, setIsUploading] = useState<boolean>(false);
-  const [imageUrl, setImageUrl] = useState<string>("");
-  const [linkUrl, setLinkUrl] = useState<string>("");
-  const [altText, setAltText] = useState<string>("");
-  const [openInNewTab, setOpenInNewTab] = useState<boolean>(false);
+  const [imageUrl, setImageUrl] = useState<string>(selectedElement?.content || "");
+  const [linkUrl, setLinkUrl] = useState<string>(selectedElement?.link || "");
+  const [altText, setAltText] = useState<string>(selectedElement?.alt || "");
+  const [openInNewTab, setOpenInNewTab] = useState<boolean>(selectedElement?.openInNewTab || false);
 
-  // Initialize state with selected element values when it changes
-  useState(() => {
-    if (selectedElement && selectedElement.type === "image") {
-      setImageUrl(selectedElement.content as string);
-      setAltText(selectedElement.alt || "");
+  // Atualiza os estados quando o elemento selecionado muda
+  useEffect(() => {
+    if (selectedElement?.type === "image") {
+      setImageUrl(selectedElement.content || "");
       setLinkUrl(selectedElement.link || "");
+      setAltText(selectedElement.alt || "");
       setOpenInNewTab(selectedElement.openInNewTab || false);
     }
-  });
+  }, [selectedElement]);
 
   if (!selectedElement || selectedElement.type !== "image") {
     return null;
@@ -72,53 +68,27 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
     updateElementContent(url);
   };
 
-  const handleLinkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const url = e.target.value;
-    setLinkUrl(url);
-    
-    // Update the element in the canvas context
-    const updatedElement: Partial<EditorElement> = {
-      ...selectedElement,
-      link: url,
-    };
-    // We need to cast here because updateElementContent expects a string
-    updateElementContent(selectedElement.content as string);
-  };
-
-  const handleAltChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const text = e.target.value;
-    setAltText(text);
-    
-    // Update the element in the canvas context
-    const updatedElement: Partial<EditorElement> = {
-      ...selectedElement,
-      alt: text,
-    };
-    // We need to cast here because updateElementContent expects a string
-    updateElementContent(selectedElement.content as string);
-  };
-
-  const handleOpenInNewTabChange = (checked: boolean) => {
-    setOpenInNewTab(checked);
-    
-    // Update the element in the canvas context
-    const updatedElement: Partial<EditorElement> = {
-      ...selectedElement,
-      openInNewTab: checked,
-    };
-    // We need to cast here because updateElementContent expects a string
-    updateElementContent(selectedElement.content as string);
-  };
-
-  const handleObjectFitChange = (value: string) => {
+  const handleOpacityChange = (value: number[]) => {
     if (updateElementStyle) {
-      updateElementStyle("objectFit", value);
+      updateElementStyle("opacity", value[0] / 100); // Converte para escala de 0 a 1
     }
   };
 
-  const handleOpacityChange = (value: number[]) => {
+  const handleObjectFitChange = (fit: string) => {
     if (updateElementStyle) {
-      updateElementStyle("opacity", value[0] / 100);
+      updateElementStyle("objectFit", fit);
+    }
+  };
+
+  const handleScaleChange = (value: number[]) => {
+    if (updateElementStyle) {
+      updateElementStyle("scale", value[0] / 100); // Escala de 0 a 1
+    }
+  };
+
+  const handlePositionChange = (axis: "xPercent" | "yPercent", value: number) => {
+    if (updateElementStyle) {
+      updateElementStyle(axis, value);
     }
   };
 
@@ -127,8 +97,8 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
       <div className="flex items-center justify-center">
         <div className="text-lg font-medium">Imagem</div>
       </div>
-      
-      <Tabs defaultValue="content" value={activeTab} onValueChange={setActiveTab}>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="content" className={activeTab === "content" ? "bg-purple-600 text-white" : ""}>
             Conteúdo
@@ -137,7 +107,7 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
             Estilo
           </TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="content" className="space-y-4 mt-4">
           <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-200 rounded-md bg-gray-50">
             <Image className="w-8 h-8 text-gray-400 mb-2" />
@@ -162,25 +132,39 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
               className="mt-2"
             />
           </div>
-          
+        </TabsContent>
+
+        <TabsContent value="style" className="space-y-4 mt-4">
           <div className="space-y-4">
+            <div className="text-center text-sm text-gray-500">Opacidade</div>
+            <div className="w-full">
+              <Slider
+                defaultValue={[selectedElement.style.opacity ? selectedElement.style.opacity * 100 : 100]}
+                max={100}
+                step={1}
+                onValueChange={handleOpacityChange}
+              />
+            </div>
+
+            <Separator className="my-4" />
+
             <div className="text-center text-sm text-gray-500">Tamanho</div>
             <div className="flex justify-center bg-gray-100 rounded-md p-1">
-              <Button 
+              <Button
                 variant={selectedElement.style.objectFit === "contain" ? "default" : "ghost"}
                 className={`flex-1 ${selectedElement.style.objectFit === "contain" ? "bg-white shadow-sm" : ""}`}
                 onClick={() => handleObjectFitChange("contain")}
               >
                 Original
               </Button>
-              <Button 
+              <Button
                 variant={selectedElement.style.objectFit === "fill" ? "default" : "ghost"}
                 className={`flex-1 ${selectedElement.style.objectFit === "fill" ? "bg-white shadow-sm" : ""}`}
                 onClick={() => handleObjectFitChange("fill")}
               >
                 Preencher
               </Button>
-              <Button 
+              <Button
                 variant={selectedElement.style.objectFit === "cover" ? "default" : "ghost"}
                 className={`flex-1 ${selectedElement.style.objectFit === "cover" ? "bg-purple-600 text-white" : ""}`}
                 onClick={() => handleObjectFitChange("cover")}
@@ -188,102 +172,42 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
                 Escala
               </Button>
             </div>
-            
-            <div className="mt-6">
-              <div className="text-center text-sm text-gray-500 mb-2">Escala</div>
-              <Slider 
-                defaultValue={[selectedElement.style.opacity ? selectedElement.style.opacity * 100 : 100]}
-                max={100}
-                step={1}
-                onValueChange={handleOpacityChange}
-              />
-            </div>
-            
-            <div className="mt-6">
-              <div className="text-center text-sm text-gray-500 mb-2">Vincular a</div>
-              <Select defaultValue="web">
-                <SelectTrigger>
-                  <SelectValue placeholder="Tipo de link" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="web">Página da Web</SelectItem>
-                  <SelectItem value="email">E-mail</SelectItem>
-                  <SelectItem value="phone">Telefone</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Input
-                placeholder="Link"
-                value={linkUrl}
-                onChange={handleLinkChange}
-                className="mt-2"
-              />
-              
-              <div className="flex items-center mt-2">
-                <Switch
-                  checked={openInNewTab}
-                  onCheckedChange={handleOpenInNewTabChange}
-                  id="open-new-tab"
-                />
-                <Label htmlFor="open-new-tab" className="ml-2 text-sm text-gray-600">
-                  Abrir link em nova guia
-                </Label>
+
+            {selectedElement.style.objectFit === "cover" && (
+              <div className="mt-6 space-y-4">
+                <div>
+                  <div className="text-center text-sm text-gray-500 mb-2">Escala</div>
+                  <Slider
+                    defaultValue={[selectedElement.style.scale ? selectedElement.style.scale * 100 : 100]}
+                    max={200}
+                    step={1}
+                    onValueChange={handleScaleChange}
+                  />
+                </div>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <Label htmlFor="x-position" className="text-sm text-gray-500">Posição X</Label>
+                    <Input
+                      id="x-position"
+                      type="number"
+                      value={selectedElement.style.xPercent || 50}
+                      onChange={(e) => handlePositionChange("xPercent", parseInt(e.target.value, 10))}
+                      className="mt-1 w-20"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="y-position" className="text-sm text-gray-500">Posição Y</Label>
+                    <Input
+                      id="y-position"
+                      type="number"
+                      value={selectedElement.style.yPercent || 50}
+                      onChange={(e) => handlePositionChange("yPercent", parseInt(e.target.value, 10))}
+                      className="mt-1 w-20"
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-            
-            <div className="mt-4">
-              <div className="text-center text-sm text-gray-500 mb-2">Texto alternativo</div>
-              <Input
-                placeholder="Descreva o que vê na imagem"
-                value={altText}
-                onChange={handleAltChange}
-                className="mt-1"
-              />
-            </div>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="style" className="space-y-4 mt-4">
-          <div className="space-y-4">
-            <div className="text-center text-sm text-gray-500">Opacidade</div>
-            <div className="w-full">
-              <Slider 
-                defaultValue={[selectedElement.style.opacity ? selectedElement.style.opacity * 100 : 100]}
-                max={100}
-                step={1}
-                onValueChange={handleOpacityChange}
-              />
-            </div>
-            
-            <Separator className="my-4" />
-            
-            <div className="text-center text-sm text-gray-500">Posição</div>
-            <div className="flex justify-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => updateElementStyle && updateElementStyle("objectPosition", "left")}
-                className={selectedElement.style.objectPosition === "left" ? "bg-purple-100" : ""}
-              >
-                <AlignLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => updateElementStyle && updateElementStyle("objectPosition", "center")}
-                className={selectedElement.style.objectPosition === "center" ? "bg-purple-100" : ""}
-              >
-                <AlignCenter className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => updateElementStyle && updateElementStyle("objectPosition", "right")}
-                className={selectedElement.style.objectPosition === "right" ? "bg-purple-100" : ""}
-              >
-                <AlignRight className="h-4 w-4" />
-              </Button>
-            </div>
+            )}
           </div>
         </TabsContent>
       </Tabs>
