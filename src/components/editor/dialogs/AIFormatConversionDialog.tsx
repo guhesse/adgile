@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { refineLayouts } from '@/utils/api/refinement';
 
 interface AIFormatConversionDialogProps {
   currentFormat: BannerSize;
@@ -261,16 +262,6 @@ export const AIFormatConversionDialog = ({
       return;
     }
     
-    // Check if there are different orientations selected
-    const hasDifferentOrientations = selectedFormats.some(format => 
-      getFormatOrientation(format) !== currentOrientation
-    );
-    
-    if (hasDifferentOrientations && !confirmDifferentOrientation) {
-      setConfirmDifferentOrientation(true);
-      return;
-    }
-    
     setIsProcessing(true);
     
     try {
@@ -285,32 +276,132 @@ export const AIFormatConversionDialog = ({
         return;
       }
       
-      // Create new elements for each selected format
-      const newElements: EditorElement[] = [];
+      // Otimiza os elementos para reduzir o tamanho do payload
+      const optimizedElements = currentElements.map(el => ({
+        id: el.id,
+        type: el.type,
+        content: el.type === 'image' ? (
+          // Para imagens grandes, apenas envie uma referência em vez do data URL completo
+          el.content.startsWith('data:image') && el.content.length > 1000 
+            ? 'image-data-url' 
+            : el.content
+        ) : el.content,
+        style: el.style,
+        sizeId: el.sizeId,
+        // Remova propriedades desnecessárias para o refinamento
+        animation: undefined,
+        columns: el.columns,
+      }));
       
-      selectedFormats.forEach(targetFormat => {
-        // Add the format to active sizes
-        addCustomSize(targetFormat);
-        
-        // Create new elements for this format based on the current elements
-        currentElements.forEach(element => {
-          // Generate a completely new independent element for this format
-          const newElement = generateNewElementForFormat(element, targetFormat);
-          newElements.push(newElement);
-        });
-        
-        toast.info(`Criando layout para ${targetFormat.name}`);
+      // Prepare data to send to the API
+      const layoutData = {
+        currentFormat,
+        elements: optimizedElements,
+        targetFormats: selectedFormats
+      };
+      
+      console.log('Enviando dados para refinamento:', JSON.stringify(layoutData).substring(0, 200) + '...');
+      
+      // Criar toast único para acompanhamento do progresso
+      const toastId = "refinement-progress-toast";
+      
+      // Mostrar uma mensagem inicial de progresso
+      const formatNames = selectedFormats.map(f => f.name).join(', ');
+      toast.loading(`Iniciando adaptação dos formatos: ${formatNames}`, {
+        id: toastId,
+        duration: Infinity
       });
       
-      // Add all new elements to the canvas
-      setElements(prev => [...prev, ...newElements]);
+      // Call the API to refine layouts
+      const refinedLayouts = await refineLayouts(layoutData);
       
-      setOpen(false);
-      setConfirmDifferentOrientation(false);
-      toast.success(`${newElements.length} elementos criados em ${selectedFormats.length} novos formatos`);
+      console.log('Layouts refinados recebidos:', refinedLayouts);
+      
+      // Add refined layouts to the canvas
+      if (refinedLayouts && Array.isArray(refinedLayouts)) {
+        // Adicionar todos os formatos alvo ao Canvas
+        selectedFormats.forEach(format => {
+          addCustomSize(format);
+        });
+        
+        // Processar os elementos de cada layout refinado
+        const newElements = [];
+        const totalLayouts = refinedLayouts.length;
+        
+        for (let i = 0; i < refinedLayouts.length; i++) {
+          const layout = refinedLayouts[i];
+          
+          // Atualizar o toast com o progresso detalhado
+          toast.loading(`Processando ${i+1}/${totalLayouts}: ${layout.format.name} (${layout.format.width}×${layout.format.height})`, {
+            id: toastId
+          });
+          
+          // Garantir que o formato está adicionado ao canvas
+          const format = layout.format;
+          
+          // Processar os elementos deste layout
+          const layoutElements = layout.elements.map(el => {
+            // Restaurar conteúdo das imagens se necessário
+            if (el.type === 'image' && el.content === 'image-data-url') {
+              // Encontrar o elemento original com essa ID para obter o data URL
+              const originalElement = currentElements.find(orig => 
+                orig.id === el.originalId || orig.id === el.id.replace(`-${format.name.toLowerCase().replace(/\s+/g, '-')}`, '')
+              );
+              
+              if (originalElement) {
+                return {
+                  ...el,
+                  content: originalElement.content
+                };
+              }
+            }
+            
+            // Garantir que todas as propriedades necessárias estão presentes
+            return {
+              ...el,
+              sizeId: format.name, // Garantir que o sizeId está definido corretamente
+              // Remover potenciais propriedades undefined ou null
+              style: {
+                ...el.style,
+                // Garantir valores numéricos para coordenadas e dimensões
+                x: typeof el.style.x === 'number' ? el.style.x : 0,
+                y: typeof el.style.y === 'number' ? el.style.y : 0,
+                width: typeof el.style.width === 'number' ? el.style.width : 100,
+                height: typeof el.style.height === 'number' ? el.style.height : 100,
+              }
+            };
+          });
+          
+          newElements.push(...layoutElements);
+          
+          // Pequena pausa para garantir que o usuário veja o progresso de cada formato
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+        
+        console.log(`Adicionando ${newElements.length} novos elementos ao canvas`);
+        
+        // Adicionar todos os elementos de uma vez
+        setElements(prev => [...prev, ...newElements]);
+        
+        // Remover o toast de carregamento e mostrar sucesso com detalhes
+        toast.success(`Layouts refinados com sucesso: ${refinedLayouts.map(l => l.format.name).join(', ')}`, {
+          id: toastId,
+          duration: 5000 // Deixar visível por 5 segundos
+        });
+        
+        setOpen(false);
+      } else {
+        toast.error("Resposta inválida do servidor", {
+          id: toastId
+        });
+        throw new Error('Resposta inválida do servidor');
+      }
     } catch (error) {
-      console.error("Error converting formats:", error);
-      toast.error("Ocorreu um erro ao converter os formatos");
+      console.error("Erro ao refinar layouts:", error);
+      // Atualizar o toast de carregamento para mostrar o erro
+      toast.error(`Ocorreu um erro ao refinar os layouts: ${error.message || 'Erro desconhecido'}`, {
+        id: "refinement-progress-toast"
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -493,7 +584,10 @@ export const AIFormatConversionDialog = ({
             className="gap-2"
           >
             {isProcessing ? (
-              'Processando...'
+              <>
+                <span className="animate-pulse">Processando</span>
+                <span className="animate-pulse">...</span>
+              </>
             ) : (
               <>
                 <ArrowRight className="h-4 w-4" />
