@@ -22,9 +22,14 @@ export interface EditorElementStyle {
   borderColor?: string;
   borderStyle?: 'solid' | 'dashed' | 'dotted';
   objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
+  scale?: number;
+  opacity?: number;
   clipPath?: string;
   hasMask?: boolean;
   maskInfo?: any;
+  // Support for original dimensions for correct aspect ratio
+  originalWidth?: number;
+  originalHeight?: number;
 }
 
 export interface EditorElement {
@@ -35,6 +40,10 @@ export interface EditorElement {
   sizeId: string;
   _layerName?: string;
   psdLayerData?: any;
+  // Add link properties
+  link?: string;
+  openInNewTab?: boolean;
+  alt?: string;
 }
 
 export interface BannerSize {
