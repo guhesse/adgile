@@ -1,50 +1,89 @@
 import axios from 'axios';
+import { apiBaseUrl } from '@/config';
+import { BannerSize, EditorElement } from '@/components/editor/types';
 
-export const refineLayouts = async (layoutData: any) => {
-    try {
-        console.log('Enviando dados para refinamento:', layoutData);
-        
-        // Garantir que os dados obrigatórios estão presentes
-        if (!layoutData.currentFormat) {
-            throw new Error('Formato atual não especificado');
+const API_URL = `${apiBaseUrl}/ai`;
+
+// Interface para os dados enviados para refinamento
+interface RefinementRequest {
+  currentFormat: BannerSize;
+  elements: Partial<EditorElement>[];
+  targetFormats: BannerSize[];
+}
+
+// Interface para um layout refinado
+export interface RefinedLayout {
+  format: BannerSize;
+  elements: EditorElement[];
+}
+
+// Função para refinar layouts
+export const refineLayouts = async (data: RefinementRequest): Promise<RefinedLayout[]> => {
+  try {
+    console.log(`Enviando requisição para ${API_URL}/refine-layouts`);
+    
+    // Otimizar os dados para envio
+    const optimizedData = {
+      ...data,
+      elements: data.elements.map(el => {
+        // Reduzir tamanho de data URLs muito grandes em imagens
+        if (el.type === 'image' && typeof el.content === 'string' && el.content.startsWith('data:image') && el.content.length > 10000) {
+          return {
+            ...el,
+            content: 'image-data-placeholder' // Substitui por placeholder temporário
+          };
         }
-        
-        if (!layoutData.elements || !Array.isArray(layoutData.elements) || layoutData.elements.length === 0) {
-            throw new Error('Elementos não fornecidos ou inválidos');
-        }
-        
-        if (!layoutData.targetFormats || !Array.isArray(layoutData.targetFormats) || layoutData.targetFormats.length === 0) {
-            throw new Error('Formatos de destino não fornecidos ou inválidos');
-        }
-        
-        // Configurando axios com headers corretos
-        const response = await axios.post('http://localhost:3000/refinement/refine-layout', layoutData, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-            },
-            withCredentials: false, // Deixar como false para evitar problemas com CORS
-        });
-        
-        console.log('Resposta do servidor:', response.data);
-        return response.data;
-    } catch (error) {
-        console.error('Erro ao refinar layouts:', error);
-        
-        if (axios.isAxiosError(error)) {
-            if (error.response) {
-                // O servidor respondeu com um status diferente de 2xx
-                console.error('Detalhes do erro:', error.response.data);
-                throw new Error(`Erro do servidor: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
-            } else if (error.request) {
-                // A requisição foi feita mas não houve resposta
-                throw new Error('Não foi possível conectar ao servidor. Verifique se o backend está rodando na porta 3000.');
-            } else {
-                // Erro na configuração da requisição
-                throw new Error(`Erro na configuração da requisição: ${error.message}`);
-            }
-        }
-        
-        throw error;
+        return el;
+      })
+    };
+    
+    const response = await axios.post(`${API_URL}/refine-layouts`, optimizedData);
+    console.log('Resposta recebida do serviço de refinamento', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao refinar layouts:', error);
+    
+    // Fazer um mock se estiver em desenvolvimento ou se a API falhar
+    if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+      console.warn('Usando resposta simulada para refinamento em desenvolvimento');
+      return mockRefinement(data);
     }
+    
+    throw error;
+  }
+};
+
+// Função mock para desenvolvimento
+const mockRefinement = (data: RefinementRequest): RefinedLayout[] => {
+  return data.targetFormats.map(format => {
+    // Simula elementos adaptados para o novo formato
+    const mockElements = data.elements.map(el => {
+      // Calcular proporcionalmente novos tamanhos e posições
+      const widthRatio = format.width / data.currentFormat.width;
+      const heightRatio = format.height / data.currentFormat.height;
+      
+      // Gerar um novo ID para este elemento
+      const newId = `${el.id}-${format.name.toLowerCase().replace(/\s+/g, '-')}`;
+      
+      // Criar elemento adaptado
+      return {
+        ...el,
+        id: newId,
+        originalId: el.id,
+        sizeId: format.name,
+        style: {
+          ...el.style,
+          x: (el.style?.x || 0) * widthRatio,
+          y: (el.style?.y || 0) * heightRatio,
+          width: (el.style?.width || 100) * widthRatio,
+          height: (el.style?.height || 100) * heightRatio,
+        }
+      } as EditorElement;
+    });
+    
+    return {
+      format,
+      elements: mockElements
+    };
+  });
 };

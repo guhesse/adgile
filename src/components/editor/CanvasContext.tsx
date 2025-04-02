@@ -245,6 +245,60 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
     setArtboardBackgroundColor(color);
   };
 
+  const loadSavedLayout = async (layoutId: number) => {
+    try {
+      const layout = await getLayoutById(layoutId);
+      
+      if (!layout || !layout.content) {
+        toast.error("Layout inválido ou vazio");
+        return false;
+      }
+      
+      // Parse do conteúdo do layout
+      let layoutContent;
+      try {
+        layoutContent = typeof layout.content === 'string' 
+          ? JSON.parse(layout.content) 
+          : layout.content;
+      } catch (e) {
+        toast.error("Erro ao processar conteúdo do layout");
+        console.error("Erro ao fazer parse do conteúdo do layout:", e);
+        return false;
+      }
+      
+      const { format, elements } = layoutContent;
+      
+      if (!format || !Array.isArray(elements)) {
+        toast.error("Formato de layout inválido");
+        return false;
+      }
+      
+      // Adicionar o formato se não existir
+      addCustomSize(format);
+      
+      // Selecionar o formato
+      setSelectedSizeByName(format.name);
+      
+      // Adicionar elementos ao canvas
+      setElements(prev => {
+        // Filtrar elementos atuais deste formato
+        const currentFormatElements = prev.filter(el => 
+          el.sizeId !== format.name && el.sizeId !== 'global'
+        );
+        
+        // Adicionar os novos elementos
+        return [...currentFormatElements, ...elements];
+      });
+      
+      toast.success(`Layout "${layout.name}" carregado com sucesso`);
+      return true;
+    } catch (error) {
+      console.error("Erro ao carregar layout:", error);
+      toast.error(`Erro ao carregar layout: ${error.message || 'Erro desconhecido'}`);
+      return false;
+    }
+  };
+
   const value: CanvasContextType = {
     elements,
     setElements,
@@ -287,7 +341,8 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
     undo,
     artboardBackgroundColor,
     updateArtboardBackground,
-    modelState
+    modelState,
+    loadSavedLayout,
   };
 
   return (
