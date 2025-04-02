@@ -49,9 +49,19 @@ export const ElementRender: React.FC<ElementRenderProps> = ({ element, scale = 1
         return (
           <div className="w-full h-full bg-gray-200 flex items-center justify-center">
             {content ? (
-              <img src={content} alt="Element" className="max-w-full max-h-full" style={{
-                objectFit: style.objectFit as any || 'contain'
-              }} />
+              <img 
+                src={content} 
+                alt={element.alt || "Element"} 
+                className="max-w-full max-h-full" 
+                style={{
+                  objectFit: style.objectFit as any || 'contain',
+                  width: style.objectFit === 'cover' ? '100%' : 'auto',
+                  height: style.objectFit === 'cover' ? '100%' : 'auto',
+                  transform: style.objectFit === 'cover' && style.scale ? `scale(${style.scale})` : 'none',
+                  objectPosition: style.xPercent !== undefined && style.yPercent !== undefined ? 
+                    `${style.xPercent}% ${style.yPercent}%` : 'center'
+                }} 
+              />
             ) : (
               <div className="text-xs text-gray-500">Image</div>
             )}
@@ -59,11 +69,24 @@ export const ElementRender: React.FC<ElementRenderProps> = ({ element, scale = 1
         );
       
       case 'button':
+        const buttonContent = (
+          <div className="px-4 py-2 bg-blue-500 text-white rounded flex items-center justify-center w-full h-full">
+            {content || 'Button'}
+          </div>
+        );
+        
         return (
           <div className="h-full w-full flex items-center justify-center">
-            <div className="px-4 py-2 bg-blue-500 text-white rounded flex items-center justify-center w-full h-full">
-              {content || 'Button'}
-            </div>
+            {element.link ? (
+              <a 
+                href={element.link} 
+                target={element.openInNewTab ? "_blank" : "_self"}
+                rel="noopener noreferrer"
+                className="w-full h-full"
+              >
+                {buttonContent}
+              </a>
+            ) : buttonContent}
           </div>
         );
       
@@ -76,6 +99,22 @@ export const ElementRender: React.FC<ElementRenderProps> = ({ element, scale = 1
         return <div className="text-xs text-gray-400">Unknown Element Type</div>;
     }
   };
+
+  // For linked elements, wrap in an anchor tag
+  if (element.link && type === 'image') {
+    return (
+      <div style={elementStyle}>
+        <a 
+          href={element.link} 
+          target={element.openInNewTab ? "_blank" : "_self"}
+          rel="noopener noreferrer"
+          className="block w-full h-full"
+        >
+          {renderContent()}
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div style={elementStyle}>

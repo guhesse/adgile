@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,8 @@ import { EditorElement } from "../types";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Image, Link, CornerDownLeft, CornerDownRight, CornerUpLeft, CornerUpRight, Minus, Plus, AlignCenter, AlignLeft, AlignRight } from "lucide-react";
+import { Image, Link, Info } from "lucide-react";
+import { toast } from "sonner";
 
 interface ImagePanelProps {
   selectedElement: EditorElement;
@@ -31,6 +33,16 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
   const [linkUrl, setLinkUrl] = useState<string>(selectedElement?.link || "");
   const [altText, setAltText] = useState<string>(selectedElement?.alt || "");
   const [openInNewTab, setOpenInNewTab] = useState<boolean>(selectedElement?.openInNewTab || false);
+  const [sizeMode, setSizeMode] = useState<"original" | "fill" | "scale">(
+    selectedElement?.style?.objectFit === "contain" 
+      ? "original" 
+      : selectedElement?.style?.objectFit === "fill" 
+        ? "fill" 
+        : "scale"
+  );
+  const [scaleValue, setScaleValue] = useState<number>(
+    selectedElement?.style?.scale ? selectedElement.style.scale * 100 : 100
+  );
 
   // Atualiza os estados quando o elemento selecionado muda
   useEffect(() => {
@@ -39,6 +51,16 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
       setLinkUrl(selectedElement.link || "");
       setAltText(selectedElement.alt || "");
       setOpenInNewTab(selectedElement.openInNewTab || false);
+      
+      // Determine size mode based on objectFit
+      if (selectedElement.style.objectFit === "contain") {
+        setSizeMode("original");
+      } else if (selectedElement.style.objectFit === "fill") {
+        setSizeMode("fill");
+      } else if (selectedElement.style.objectFit === "cover") {
+        setSizeMode("scale");
+        setScaleValue(selectedElement.style.scale ? selectedElement.style.scale * 100 : 100);
+      }
     }
   }, [selectedElement]);
 
@@ -55,8 +77,10 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
       const uploadedUrl = await handleImageUpload(files[0]);
       updateElementContent(uploadedUrl);
       setImageUrl(uploadedUrl);
+      toast.success("Imagem carregada com sucesso!");
     } catch (error) {
       console.error("Error uploading image:", error);
+      toast.error("Erro ao carregar imagem");
     } finally {
       setIsUploading(false);
     }
@@ -74,21 +98,69 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
     }
   };
 
-  const handleObjectFitChange = (fit: string) => {
+  const handleSizeModeChange = (mode: "original" | "fill" | "scale") => {
+    setSizeMode(mode);
+    
     if (updateElementStyle) {
-      updateElementStyle("objectFit", fit);
+      if (mode === "original") {
+        updateElementStyle("objectFit", "contain");
+      } else if (mode === "fill") {
+        updateElementStyle("objectFit", "fill");
+      } else if (mode === "scale") {
+        updateElementStyle("objectFit", "cover");
+        // Reset scale to 100% when switching to scale mode
+        if (!selectedElement.style.scale) {
+          updateElementStyle("scale", 1);
+          setScaleValue(100);
+        }
+      }
     }
   };
 
   const handleScaleChange = (value: number[]) => {
+    const scaleValue = value[0];
+    setScaleValue(scaleValue);
+    
     if (updateElementStyle) {
-      updateElementStyle("scale", value[0] / 100); // Escala de 0 a 1
+      updateElementStyle("scale", scaleValue / 100); // Converte para escala de 0 a 1
     }
   };
 
   const handlePositionChange = (axis: "xPercent" | "yPercent", value: number) => {
     if (updateElementStyle) {
       updateElementStyle(axis, value);
+    }
+  };
+
+  const handleLinkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const url = e.target.value;
+    setLinkUrl(url);
+    
+    // Update link in the element
+    if (selectedElement) {
+      const updatedElement = { ...selectedElement, link: url };
+      updateElementContent(updatedElement.content, updatedElement);
+    }
+  };
+
+  const handleOpenInNewTabChange = (checked: boolean) => {
+    setOpenInNewTab(checked);
+    
+    // Update openInNewTab in the element
+    if (selectedElement) {
+      const updatedElement = { ...selectedElement, openInNewTab: checked };
+      updateElementContent(updatedElement.content, updatedElement);
+    }
+  };
+
+  const handleAltTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const text = e.target.value;
+    setAltText(text);
+    
+    // Update alt text in the element
+    if (selectedElement) {
+      const updatedElement = { ...selectedElement, alt: text };
+      updateElementContent(updatedElement.content, updatedElement);
     }
   };
 
@@ -132,12 +204,130 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
               className="mt-2"
             />
           </div>
+
+          <div className="space-y-4 mt-4">
+            <div className="flex items-center">
+              <Link className="w-5 h-5 text-gray-500 mr-2" />
+              <div className="text-sm font-medium">Vincular a</div>
+            </div>
+            
+            <Select defaultValue="web">
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o tipo de link" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="web">Web</SelectItem>
+                <SelectItem value="email">Email</SelectItem>
+                <SelectItem value="phone">Telefone</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Input
+              placeholder="https://exemplo.com"
+              value={linkUrl}
+              onChange={handleLinkChange}
+            />
+            
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="open-new-tab"
+                checked={openInNewTab}
+                onCheckedChange={handleOpenInNewTabChange}
+              />
+              <Label htmlFor="open-new-tab" className="text-sm">
+                Abra o link em uma nova guia
+              </Label>
+            </div>
+          </div>
+
+          <div className="space-y-4 mt-4">
+            <div className="flex items-center">
+              <Info className="w-5 h-5 text-gray-500 mr-2" />
+              <div className="text-sm font-medium">Texto alternativo</div>
+            </div>
+            
+            <Input
+              placeholder="Descreva o que você vê na imagem"
+              value={altText}
+              onChange={handleAltTextChange}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="style" className="space-y-4 mt-4">
           <div className="space-y-4">
-            <div className="text-center text-sm text-gray-500">Opacidade</div>
-            <div className="w-full">
+            <div className="text-sm font-medium mb-2">Tamanho</div>
+            <div className="grid grid-cols-3 gap-1 bg-gray-100 p-1 rounded-md">
+              <Button
+                variant={sizeMode === "original" ? "default" : "ghost"}
+                className={`${sizeMode === "original" ? "bg-white shadow-sm" : ""}`}
+                onClick={() => handleSizeModeChange("original")}
+              >
+                Original
+              </Button>
+              <Button
+                variant={sizeMode === "fill" ? "default" : "ghost"}
+                className={`${sizeMode === "fill" ? "bg-white shadow-sm" : ""}`}
+                onClick={() => handleSizeModeChange("fill")}
+              >
+                Preencher
+              </Button>
+              <Button
+                variant={sizeMode === "scale" ? "default" : "ghost"}
+                className={`${sizeMode === "scale" ? "bg-purple-600 text-white" : ""}`}
+                onClick={() => handleSizeModeChange("scale")}
+              >
+                Escala
+              </Button>
+            </div>
+
+            {sizeMode === "scale" && (
+              <div className="space-y-4 mt-4">
+                <div className="text-center text-sm text-gray-500">{scaleValue}%</div>
+                <Slider
+                  value={[scaleValue]}
+                  min={10}
+                  max={200}
+                  step={1}
+                  onValueChange={handleScaleChange}
+                />
+                
+                <div className="mt-4">
+                  <div className="text-sm font-medium mb-2">Posição da imagem</div>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <Label htmlFor="x-position" className="text-sm text-gray-500">Posição X</Label>
+                      <Input
+                        id="x-position"
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={selectedElement.style.xPercent !== undefined ? selectedElement.style.xPercent : 50}
+                        onChange={(e) => handlePositionChange("xPercent", parseInt(e.target.value, 10))}
+                        className="mt-1 w-20"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="y-position" className="text-sm text-gray-500">Posição Y</Label>
+                      <Input
+                        id="y-position"
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={selectedElement.style.yPercent !== undefined ? selectedElement.style.yPercent : 50}
+                        onChange={(e) => handlePositionChange("yPercent", parseInt(e.target.value, 10))}
+                        className="mt-1 w-20"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <Separator className="my-4" />
+
+            <div>
+              <div className="text-sm font-medium mb-2">Opacidade</div>
               <Slider
                 defaultValue={[selectedElement.style.opacity ? selectedElement.style.opacity * 100 : 100]}
                 max={100}
@@ -145,69 +335,6 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
                 onValueChange={handleOpacityChange}
               />
             </div>
-
-            <Separator className="my-4" />
-
-            <div className="text-center text-sm text-gray-500">Tamanho</div>
-            <div className="flex justify-center bg-gray-100 rounded-md p-1">
-              <Button
-                variant={selectedElement.style.objectFit === "contain" ? "default" : "ghost"}
-                className={`flex-1 ${selectedElement.style.objectFit === "contain" ? "bg-white shadow-sm" : ""}`}
-                onClick={() => handleObjectFitChange("contain")}
-              >
-                Original
-              </Button>
-              <Button
-                variant={selectedElement.style.objectFit === "fill" ? "default" : "ghost"}
-                className={`flex-1 ${selectedElement.style.objectFit === "fill" ? "bg-white shadow-sm" : ""}`}
-                onClick={() => handleObjectFitChange("fill")}
-              >
-                Preencher
-              </Button>
-              <Button
-                variant={selectedElement.style.objectFit === "cover" ? "default" : "ghost"}
-                className={`flex-1 ${selectedElement.style.objectFit === "cover" ? "bg-purple-600 text-white" : ""}`}
-                onClick={() => handleObjectFitChange("cover")}
-              >
-                Escala
-              </Button>
-            </div>
-
-            {selectedElement.style.objectFit === "cover" && (
-              <div className="mt-6 space-y-4">
-                <div>
-                  <div className="text-center text-sm text-gray-500 mb-2">Escala</div>
-                  <Slider
-                    defaultValue={[selectedElement.style.scale ? selectedElement.style.scale * 100 : 100]}
-                    max={200}
-                    step={1}
-                    onValueChange={handleScaleChange}
-                  />
-                </div>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <Label htmlFor="x-position" className="text-sm text-gray-500">Posição X</Label>
-                    <Input
-                      id="x-position"
-                      type="number"
-                      value={selectedElement.style.xPercent || 50}
-                      onChange={(e) => handlePositionChange("xPercent", parseInt(e.target.value, 10))}
-                      className="mt-1 w-20"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="y-position" className="text-sm text-gray-500">Posição Y</Label>
-                    <Input
-                      id="y-position"
-                      type="number"
-                      value={selectedElement.style.yPercent || 50}
-                      onChange={(e) => handlePositionChange("yPercent", parseInt(e.target.value, 10))}
-                      className="mt-1 w-20"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </TabsContent>
       </Tabs>
