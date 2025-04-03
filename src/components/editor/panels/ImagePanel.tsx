@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,12 +73,12 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
 
     setIsUploading(true);
     try {
-      const uploadedUrl = await handleImageUpload(files[0]);
-      updateElementContent(uploadedUrl);
-      setImageUrl(uploadedUrl);
+      const uploadedUrl = await handleImageUpload(files[0]); // Upload para o backend
+      updateElementContent(uploadedUrl); // Atualiza o conteúdo do elemento com a URL do CDN
+      setImageUrl(uploadedUrl); // Atualiza o estado local com a URL do CDN
       toast.success("Imagem carregada com sucesso!");
     } catch (error) {
-      console.error("Error uploading image:", error);
+      console.error("Erro no upload:", error);
       toast.error("Erro ao carregar imagem");
     } finally {
       setIsUploading(false);
@@ -182,7 +181,15 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
 
         <TabsContent value="content" className="space-y-4 mt-4">
           <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-200 rounded-md bg-gray-50">
-            <Image className="w-8 h-8 text-gray-400 mb-2" />
+            {imageUrl && (
+              <div className="mb-4">
+                <img
+                  src={imageUrl}
+                  alt="Preview"
+                  className="max-w-full max-h-40 rounded-md shadow-md"
+                />
+              </div>
+            )}
             <input
               type="file"
               id="image-upload"
@@ -202,54 +209,6 @@ const ImagePanel = ({ selectedElement, updateElementStyle }: ImagePanelProps) =>
               value={imageUrl}
               onChange={handleUrlChange}
               className="mt-2"
-            />
-          </div>
-
-          <div className="space-y-4 mt-4">
-            <div className="flex items-center">
-              <Link className="w-5 h-5 text-gray-500 mr-2" />
-              <div className="text-sm font-medium">Vincular a</div>
-            </div>
-            
-            <Select defaultValue="web">
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o tipo de link" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="web">Web</SelectItem>
-                <SelectItem value="email">Email</SelectItem>
-                <SelectItem value="phone">Telefone</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Input
-              placeholder="https://exemplo.com"
-              value={linkUrl}
-              onChange={handleLinkChange}
-            />
-            
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="open-new-tab"
-                checked={openInNewTab}
-                onCheckedChange={handleOpenInNewTabChange}
-              />
-              <Label htmlFor="open-new-tab" className="text-sm">
-                Abra o link em uma nova guia
-              </Label>
-            </div>
-          </div>
-
-          <div className="space-y-4 mt-4">
-            <div className="flex items-center">
-              <Info className="w-5 h-5 text-gray-500 mr-2" />
-              <div className="text-sm font-medium">Texto alternativo</div>
-            </div>
-            
-            <Input
-              placeholder="Descreva o que você vê na imagem"
-              value={altText}
-              onChange={handleAltTextChange}
             />
           </div>
         </TabsContent>

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useRef, useEffect } from "react";
+import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from "react";
 import {
   BannerSize,
   EditorElement,
@@ -10,6 +10,7 @@ import { animationOperations, removeElement as removeElementOp } from "./context
 import { generateRandomId } from "./utils/idGenerator";
 import { CanvasContextType } from "./context/CanvasContextTypes";
 import { toast } from "sonner";
+import { handleImageUpload as uploadImageToServer } from './context/elements/imageOperations';
 
 interface CanvasProviderProps {
   children: React.ReactNode | ((context: CanvasContextType) => React.ReactNode);
@@ -112,7 +113,7 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
     if (type === 'button') {
       newElement.content = 'Button';
     } else if (type === 'image') {
-      newElement.content = 'https://via.placeholder.com/300x200';
+      newElement.content = 'https://placehold.co/800?text=Upload an image&font=roboto';
     } else if (type === 'container') {
       newElement.style.width = 500;
       newElement.style.height = 300;
@@ -238,17 +239,18 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
     }
   };
 
-  const handleImageUpload = async (file: File): Promise<string> => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          resolve(reader.result);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-  };
+  // Wrapper para a função de upload de imagem
+  const handleImageUpload = useCallback(async (file: File) => {
+    console.log("CanvasContext: Recebendo solicitação de upload para arquivo:", file.name);
+    try {
+      const imageUrl = await uploadImageToServer(file);
+      console.log("CanvasContext: Upload realizado com sucesso:", imageUrl);
+      return imageUrl;
+    } catch (error) {
+      console.error("CanvasContext: Erro ao fazer upload:", error);
+      throw error;
+    }
+  }, []);
 
   const toggleGridLayout = () => {
     setGridLayout(!gridLayout);
