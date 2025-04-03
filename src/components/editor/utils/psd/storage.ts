@@ -1,44 +1,63 @@
+import axios from "axios";
 
 /**
- * Utility functions for handling PSD storage in localStorage
+ * Faz upload de uma imagem extraída para o backend e retorna a URL do CDN
+ * @param imageBuffer Buffer da imagem extraída
+ * @param filename Nome do arquivo
  */
+const uploadImageToCDN = async (imageBuffer: ArrayBuffer, filename: string): Promise<string> => {
+  try {
+    const formData = new FormData();
+    formData.append('image', new Blob([imageBuffer]), filename);
 
-// Armazenamento em memória para dados de imagem
-const imageStorage: Record<string, string> = {};
+    const response = await axios.post('http://localhost:3333/api/cdn/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
 
-/**
- * Salva dados de imagem no armazenamento e retorna uma chave de acesso
- * @param imageData Dados da imagem (dataURL ou src)
- * @param layerName Nome da camada para gerar uma chave única
- * @returns Chave para acessar a imagem posteriormente
- */
-export const saveImageToStorage = (imageData: string, layerName: string): string => {
-  // Gera uma chave única baseada no nome da camada e timestamp
-  const timestamp = Date.now();
-  const key = `img_${layerName.replace(/[^a-z0-9]/gi, '_')}_${timestamp}`;
-  
-  // Armazena os dados da imagem
-  imageStorage[key] = imageData;
-  
-  return key;
+    if (response.data?.url) {
+      console.log(`Imagem enviada para o CDN com sucesso: ${response.data.url}`);
+      return response.data.url;
+    } else {
+      throw new Error('Resposta do backend não contém uma URL válida.');
+    }
+  } catch (error) {
+    console.error('Erro ao enviar imagem para o CDN:', error);
+    throw error;
+  }
 };
 
 /**
- * Recupera dados de imagem do armazenamento
- * @param key Chave de acesso à imagem
- * @returns Dados da imagem ou string vazia se não encontrada
+ * Salva dados de imagem no BunnyCDN e retorna a URL
+ * @param imageData Dados da imagem (ArrayBuffer)
+ * @param layerName Nome da camada para gerar um nome de arquivo único
+ * @returns URL da imagem no CDN
  */
-export const getImageFromStorage = (key: string): string => {
-  return imageStorage[key] || '';
+export const saveImageToStorage = async (imageData: ArrayBuffer, layerName: string): Promise<string> => {
+  try {
+    const timestamp = Date.now();
+    const filename = `${layerName.replace(/[^a-z0-9]/gi, '_')}_${timestamp}.png`;
+    const cdnUrl = await uploadImageToCDN(imageData, filename);
+    return cdnUrl;
+  } catch (error) {
+    console.error(`Erro ao salvar imagem no BunnyCDN para a camada ${layerName}:`, error);
+    throw error;
+  }
 };
 
 /**
- * Remove uma imagem do armazenamento
- * @param key Chave da imagem a ser removida
+ * Remove uma imagem do BunnyCDN
+ * @param imageUrl URL da imagem a ser removida
  */
-export const removeImageFromStorage = (key: string): void => {
-  if (key in imageStorage) {
-    delete imageStorage[key];
+export const removeImageFromStorage = async (imageUrl: string): Promise<void> => {
+  try {
+    await axios.delete('http://localhost:3333/api/cdn/images', {
+      data: { url: imageUrl },
+    });
+    console.log(`Imagem removida do CDN: ${imageUrl}`);
+  } catch (error) {
+    console.error(`Erro ao remover imagem do CDN: ${imageUrl}`, error);
   }
 };
 
@@ -53,20 +72,29 @@ const PSD_STORAGE_PREFIX = 'psd-';
  */
 export const savePSDDataToStorage = (fileName: string, psdData: any): string => {
   try {
+    // Remover qualquer dado de imagem base64 antes de salvar
+    const sanitizedData = {
+      ...psdData,
+      layers: psdData.layers.map((layer: any) => ({
+        ...layer,
+        imageData: undefined, // Remover dados de imagem base64
+      })),
+    };
+
     // Gera uma chave única baseada no nome do arquivo e timestamp
     const timestamp = Date.now();
     const key = `${PSD_STORAGE_PREFIX}${fileName.replace(/[^a-z0-9]/gi, '_')}_${timestamp}`;
-    
+
     // Converte os dados para string JSON
     const psdDataString = JSON.stringify({
       fileName,
       createdAt: new Date().toISOString(),
-      data: psdData
+      data: sanitizedData,
     });
-    
+
     // Armazena no localStorage
     localStorage.setItem(key, psdDataString);
-    
+
     return key;
   } catch (error) {
     console.error('Erro ao salvar dados do PSD no localStorage:', error);
@@ -111,12 +139,29 @@ export const storePSDData = (key: string, data: any): boolean => {
   }
 };
 
+/**
+ * Recupera dados do PSD do localStorage
+ * @param key Chave para recuperar os dados
+ * @returns Dados do PSD ou null
+ */
 export const getPSDDataFromStorage = (key: string): any => {
   try {
     const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : null;
+    if (!data) return null;
+
+    const parsedData = JSON.parse(data);
+
+    // Garantir que não haja dados de imagem base64 no retorno
+    if (parsedData?.data?.layers) {
+      parsedData.data.layers = parsedData.data.layers.map((layer: any) => ({
+        ...layer,
+        imageData: undefined, // Remover dados de imagem base64
+      }));
+    }
+
+    return parsedData;
   } catch (error) {
-    console.error(`Failed to retrieve PSD data with key ${key}:`, error);
+    console.error(`Erro ao recuperar dados do PSD com a chave ${key}:`, error);
     return null;
   }
 };

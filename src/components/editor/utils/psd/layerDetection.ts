@@ -1,6 +1,7 @@
-// Layer type detection utility functions
-import { saveImageToStorage } from './storage';
+import axios from "axios";
+import { toast } from "sonner";
 
+// Layer type detection utility functions
 type LayerType = 'text' | 'image' | 'generic';
 
 /**
@@ -121,254 +122,102 @@ export const shouldBeImageLayer = (layer: any): boolean => {
 };
 
 /**
- * Creates a temporary canvas element for image data extraction
- * @param width Canvas width
- * @param height Canvas height
- * @returns HTMLCanvasElement
+ * Faz upload de uma imagem extraída para o backend e retorna a URL do CDN
+ * @param imageBuffer Buffer da imagem extraída
+ * @param filename Nome do arquivo
  */
-const createTempCanvas = (width: number, height: number): HTMLCanvasElement => {
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  return canvas;
-};
-
-/**
- * Create a placeholder image with layer name when extraction fails
- * @param layerName The name of the layer
- * @param width Image width
- * @param height Image height
- * @returns Data URL of the generated placeholder image
- */
-const createPlaceholderImage = (layerName: string, width: number, height: number): string => {
+const uploadImageToCDN = async (imageBuffer: ArrayBuffer, filename: string): Promise<string> => {
   try {
-    const canvas = createTempCanvas(width, height);
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return '';
-    
-    // Fill background
-    ctx.fillStyle = '#e5e7eb';
-    ctx.fillRect(0, 0, width, height);
-    
-    // Add text
-    ctx.fillStyle = '#000000';
-    ctx.font = 'bold 16px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(layerName, width / 2, height / 2);
-    
-    return canvas.toDataURL('image/png');
+    const formData = new FormData();
+    formData.append('image', new Blob([imageBuffer]), filename);
+
+    const response = await axios.post('http://localhost:3333/api/cdn/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    if (response.data?.url) {
+      console.log(`Imagem enviada para o CDN com sucesso: ${response.data.url}`);
+      return response.data.url;
+    } else {
+      throw new Error('Resposta do backend não contém uma URL válida.');
+    }
   } catch (error) {
-    console.error('Error creating placeholder image:', error);
-    return '';
+    console.error('Erro ao enviar imagem para o CDN:', error);
+    toast.error('Erro ao enviar imagem para o CDN.');
+    throw error;
   }
 };
 
 /**
- * Extract image data from a PSD layer using the most reliable approach
- * @param layer The PSD layer
- * @param layerName The layer name for reference
- * @returns Promise resolving to an object containing the image data URL and storage key
+ * Extrai os dados da imagem de uma camada do PSD e faz upload para o CDN
+ * @param layer A camada do PSD
+ * @param layerName O nome da camada
+ * @returns Promise resolvendo para a URL da imagem no CDN
  */
-export const extractLayerImageData = async (layer: any, layerName: string): Promise<{imageData: string, imageKey: string}> => {
+export const extractLayerImageData = async (layer: any, layerName: string): Promise<string> => {
   try {
-    console.log(`Extracting image data for layer: ${layerName}`);
-    
-    // Get layer dimensions
+    console.log(`Extraindo dados da imagem para a camada: ${layerName}`);
+
+    // Obter dimensões da camada
     const exportData = layer.export();
     const { width, height } = exportData;
-    
-    let resultImageData = '';
-    
-    // Method 1: First try to use direct image.toPng() approach (most reliable)
-    if (layer.image) {
+
+    // Método 1: Usar toPng() diretamente
+    if (layer.image && typeof layer.image.toPng === "function") {
       try {
-        console.log("Using direct image.toPng() method");
-        const pngData = layer.image.toPng();
-        if (pngData) {
-          console.log("Successfully extracted PNG with image.toPng()");
-          // The result might be an object with src or a direct data URL
-          resultImageData = pngData.src || pngData;
-        }
-      } catch (toPngError) {
-        console.error("Error using direct image.toPng() method:", toPngError);
+        const pngBuffer = layer.image.toPng().buffer;
+        return await uploadImageToCDN(pngBuffer, `${layerName}.png`);
+      } catch (error) {
+        console.error(`Erro ao usar toPng() para a camada ${layerName}:`, error);
       }
     }
-    
-    // Method 2: Use canvas() function if available
-    if (!resultImageData && typeof layer.canvas === 'function') {
+
+    // Método 2: Usar canvas() se disponível
+    if (typeof layer.canvas === "function") {
       try {
-        console.log("Using canvas() function method");
         const canvas = layer.canvas();
-        resultImageData = canvas.toDataURL('image/png');
-        console.log("Successfully created canvas for layer");
-      } catch (canvasError) {
-        console.error("Error using canvas method:", canvasError);
+        const dataUrl = canvas.toDataURL("image/png");
+        const buffer = await fetch(dataUrl).then(res => res.arrayBuffer());
+        return await uploadImageToCDN(buffer, `${layerName}.png`);
+      } catch (error) {
+        console.error(`Erro ao usar canvas() para a camada ${layerName}:`, error);
       }
     }
-    
-    // Method 3: Use toPng() function if available on the layer itself
-    if (!resultImageData && layer.toPng && typeof layer.toPng === 'function') {
-      try {
-        console.log("Using layer.toPng() method");
-        const pngData = layer.toPng();
-        if (pngData) {
-          console.log("Successfully extracted PNG with layer.toPng()");
-          // Check if it's a string (data URL) or an object with src property
-          if (typeof pngData === 'string') {
-            resultImageData = pngData;
-          } else if (pngData.src) {
-            resultImageData = pngData.src;
-          } else if (pngData instanceof Blob) {
-            resultImageData = URL.createObjectURL(pngData);
-          } else {
-            const blob = new Blob([pngData], { type: 'image/png' });
-            resultImageData = URL.createObjectURL(blob);
-          }
-        }
-      } catch (pngError) {
-        console.error("Error using toPng method:", pngError);
-      }
-    }
-    
-    // Method 4: Try to extract using saveAsPng if available
-    if (!resultImageData && layer.saveAsPng && typeof layer.saveAsPng === 'function') {
-      try {
-        console.log("Using saveAsPng method");
-        // This might return a Promise with the file path or the data directly
-        const pngData = await layer.saveAsPng(`${layerName}.png`);
-        if (pngData) {
-          console.log("Successfully saved PNG with saveAsPng()", pngData);
-          if (typeof pngData === 'string') {
-            resultImageData = pngData;
-          }
-        }
-      } catch (saveError) {
-        console.error("Error using saveAsPng method:", saveError);
-      }
-    }
-    
-    // Method 5: Manual pixel extraction if available
-    if (!resultImageData && layer.pixelData && Array.isArray(layer.pixelData)) {
-      try {
-        console.log("Using manual pixel extraction");
-        const canvas = createTempCanvas(width, height);
-        const ctx = canvas.getContext('2d');
-        
-        if (ctx) {
-          const canvasImageData = ctx.createImageData(width, height);
-          // Copy pixel data
-          for (let i = 0; i < layer.pixelData.length && i < canvasImageData.data.length; i++) {
-            canvasImageData.data[i] = layer.pixelData[i];
-          }
-          
-          ctx.putImageData(canvasImageData, 0, 0);
-          resultImageData = canvas.toDataURL('image/png');
-          console.log("Successfully extracted image with pixel data");
-        }
-      } catch (pixelError) {
-        console.error("Error during manual pixel extraction:", pixelError);
-      }
-    }
-    
-    // Method 6: Try to extract from layer.image property
-    if (!resultImageData && layer.image) {
-      try {
-        console.log("Layer has image property");
-        if (typeof layer.image === 'function') {
-          const imageObj = layer.image();
-          console.log("Image function result:", imageObj);
-          
-          // Try to convert the image object to data URL
-          if (imageObj) {
-            if (imageObj.toDataURL) {
-              resultImageData = imageObj.toDataURL('image/png');
-            } else if (imageObj.data && imageObj.width && imageObj.height) {
-              // Create canvas and put image data
-              const canvas = createTempCanvas(imageObj.width, imageObj.height);
-              const ctx = canvas.getContext('2d');
-              
-              if (ctx) {
-                const imgData = ctx.createImageData(imageObj.width, imageObj.height);
-                // Copy pixel data
-                for (let i = 0; i < imageObj.data.length && i < imgData.data.length; i++) {
-                  imgData.data[i] = imageObj.data[i];
-                }
-                
-                ctx.putImageData(imgData, 0, 0);
-                resultImageData = canvas.toDataURL('image/png');
-              }
-            }
-          }
-        }
-      } catch (imageError) {
-        console.error("Error extracting from image property:", imageError);
-      }
-    }
-    
-    // Method 7: Create placeholder image if all other methods fail
-    if (!resultImageData) {
-      console.log("Using placeholder image as fallback");
-      resultImageData = createPlaceholderImage(layerName, width, height);
-    }
-    
-    // Store the image data
-    const imageKey = saveImageToStorage(resultImageData, layerName);
-    
-    return { imageData: resultImageData, imageKey };
+
+    throw new Error(`Não foi possível extrair ou enviar a imagem da camada ${layerName}`);
   } catch (error) {
-    console.error(`Error extracting image data:`, error);
-    // Create and return a placeholder image
-    const placeholder = createPlaceholderImage(layerName, 200, 200);
-    const imageKey = saveImageToStorage(placeholder, layerName);
-    return { imageData: placeholder, imageKey };
+    console.error(`Erro ao extrair dados da imagem para ${layerName}:`, error);
+    throw error;
   }
 };
 
 /**
- * Process all image layers in a PSD tree
- * @param node The current PSD tree node
- * @param onImageExtracted Callback function receiving the image data URL and node
+ * Processa todas as camadas de imagem em uma árvore PSD
+ * @param node O nó atual da árvore PSD
+ * @param onImageExtracted Callback recebendo a URL da imagem no CDN e o nome do nó
  */
-export const processImageLayers = async (node: any, onImageExtracted: (imageData: string, nodeName: string) => void) => {
+export const processImageLayers = async (node: any, onImageExtracted: (imageUrl: string, nodeName: string) => void) => {
   if (!node) return;
-  
+
   try {
-    // Process this node if it's an image layer
     if (node.isLayer && !node.isGroup()) {
       if (shouldBeImageLayer(node)) {
-        console.log(`Processing image layer: ${node.name}`);
-        
-        // Try to use the direct toPng method from the example
-        if (node.layer && node.layer.image && node.layer.image.toPng) {
-          try {
-            const png = node.layer.image.toPng();
-            const imageData = png.src || png;
-            console.log(`Successfully extracted image using toPng for ${node.name}`);
-            onImageExtracted(imageData, node.name);
-          } catch (pngError) {
-            console.error(`Error using direct toPng for ${node.name}:`, pngError);
-            
-            // Fallback to our regular extraction method
-            const { imageData } = await extractLayerImageData(node.layer, node.name);
-            if (imageData) {
-              onImageExtracted(imageData, node.name);
-            }
-          }
-        } else {
-          // Use regular extraction method
-          const { imageData } = await extractLayerImageData(node.layer, node.name);
-          if (imageData) {
-            onImageExtracted(imageData, node.name);
-          }
+        console.log(`Processando camada de imagem: ${node.name}`);
+
+        try {
+          const imageUrl = await extractLayerImageData(node, node.name);
+          onImageExtracted(imageUrl, node.name);
+        } catch (error) {
+          console.error(`Erro ao processar camada de imagem ${node.name}:`, error);
         }
       }
     }
-  } catch (nodeError) {
-    console.error(`Error processing node ${node?.name}:`, nodeError);
+  } catch (error) {
+    console.error(`Erro ao processar nó ${node?.name}:`, error);
   }
-  
-  // Process children recursively
+
   if (node.children && node.children.length > 0) {
     for (const child of node.children) {
       await processImageLayers(child, onImageExtracted);

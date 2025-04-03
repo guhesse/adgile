@@ -25,7 +25,7 @@ export const initializeDB = (): Promise<IDBDatabase> => {
       
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: 'key' });
-      }
+      };
     };
   });
 };
@@ -33,23 +33,32 @@ export const initializeDB = (): Promise<IDBDatabase> => {
 export const saveToIndexedDB = async (key: string, data: any): Promise<boolean> => {
   try {
     const db = await initializeDB();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([STORE_NAME], 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
-      
-      const request = store.put({ key, data });
-      
+
+      // Sanitizar dados antes de salvar
+      const sanitizedData = {
+        ...data,
+        layers: data.layers?.map((layer: any) => ({
+          ...layer,
+          imageData: undefined, // Remover dados de imagem base64
+        })),
+      };
+
+      const request = store.put({ key, data: sanitizedData });
+
       request.onsuccess = () => {
         console.log(`Dados salvos com sucesso para '${key}' no IndexedDB`);
         resolve(true);
       };
-      
+
       request.onerror = (event) => {
         console.error(`Erro ao salvar dados para '${key}':`, event);
         reject(false);
       };
-      
+
       transaction.oncomplete = () => {
         db.close();
       };
