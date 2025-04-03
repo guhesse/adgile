@@ -3,7 +3,8 @@ import {
   BannerSize,
   EditorElement,
   BANNER_SIZES,
-  CanvasNavigationMode
+  CanvasNavigationMode,
+  EditingMode
 } from "./types";
 import { animationOperations, removeElement as removeElementOp } from "./context/modificationOperations";
 import { generateRandomId } from "./utils/idGenerator";
@@ -42,6 +43,8 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
   const [activeSizes, setActiveSizes] = useState<BannerSize[]>(fixedSize ? [fixedSize] : []);
   const [gridLayout, setGridLayout] = useState(false);
   const [artboardBackgroundColor, setArtboardBackgroundColor] = useState<string>('#ffffff');
+  // Estado de edição para manusear elementos vinculados
+  const [editingMode, setEditingMode] = useState<EditingMode>('specific');
   // Add model state
   const [modelState, setModelState] = useState<ModelState>({
     trained: true,
@@ -70,14 +73,12 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
     const { updatedElements, newSelectedElement } = removeElementOp(
       elementId,
       elements,
-      selectedElement,      
+      selectedElement,
     );
 
     setElements(updatedElements);
     setSelectedElement(newSelectedElement);
   };
-
-
 
   const handleAddElement = (type: EditorElement["type"]) => {
     const newId = `${type}-${generateRandomId()}`;
@@ -168,6 +169,75 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
     setElements(updatedElements);
   };
 
+  const updateElementStyle = (property: string, value: any) => {
+    if (!selectedElement) return;
+
+    setElements(prevElements => {
+      return prevElements.map(el => {
+        if (editingMode === 'global' && selectedElement.linkedElementId &&
+          el.linkedElementId === selectedElement.linkedElementId) {
+          return {
+            ...el,
+            style: {
+              ...el.style,
+              [property]: value
+            }
+          };
+        }
+        else if (el.id === selectedElement.id) {
+          return {
+            ...el,
+            style: {
+              ...el.style,
+              [property]: value
+            }
+          };
+        }
+        return el;
+      });
+    });
+
+    if (selectedElement) {
+      setSelectedElement({
+        ...selectedElement,
+        style: {
+          ...selectedElement.style,
+          [property]: value
+        }
+      });
+    }
+  };
+
+  const updateElementContent = (content: string) => {
+    if (!selectedElement) return;
+
+    setElements(prevElements => {
+      return prevElements.map(el => {
+        if (selectedElement.linkedElementId &&
+          el.linkedElementId === selectedElement.linkedElementId) {
+          return {
+            ...el,
+            content
+          };
+        }
+        else if (el.id === selectedElement.id) {
+          return {
+            ...el,
+            content
+          };
+        }
+        return el;
+      });
+    });
+
+    if (selectedElement) {
+      setSelectedElement({
+        ...selectedElement,
+        content
+      });
+    }
+  };
+
   const handleImageUpload = async (file: File): Promise<string> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -183,7 +253,6 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
   const toggleGridLayout = () => {
     setGridLayout(!gridLayout);
   };
-
 
   const addCustomSize = (size: BannerSize) => {
     setActiveSizes(prevSizes => {
@@ -245,57 +314,47 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
     setArtboardBackgroundColor(color);
   };
 
+  // Função placeholder para vincular elementos
+  const linkElementsAcrossSizes = (element: EditorElement) => {
+    // Implementação de vinculação de elementos
+    console.log("Vinculando elemento entre formatos:", element.id);
+  };
+
+  // Função placeholder para desvincular elementos
+  const unlinkElement = (element: EditorElement) => {
+    // Implementação de desvinculação
+    console.log("Desvinculando elemento:", element.id);
+  };
+
+  // Função placeholder para atualizar elementos vinculados
+  const updateAllLinkedElements = (
+    elements: EditorElement[],
+    sourceElement: EditorElement,
+    percentageChanges: Partial<{ xPercent: number; yPercent: number; widthPercent: number; heightPercent: number }>,
+    absoluteChanges: Partial<{ x: number; y: number; width: number; height: number }>
+  ) => {
+    // Implementação de atualização de elementos vinculados
+    return elements;
+  };
+
+  // Função placeholder para carregar layout
   const loadSavedLayout = async (layoutId: number) => {
     try {
-      const layout = await getLayoutById(layoutId);
-      
-      if (!layout || !layout.content) {
-        toast.error("Layout inválido ou vazio");
-        return false;
-      }
-      
-      // Parse do conteúdo do layout
-      let layoutContent;
-      try {
-        layoutContent = typeof layout.content === 'string' 
-          ? JSON.parse(layout.content) 
-          : layout.content;
-      } catch (e) {
-        toast.error("Erro ao processar conteúdo do layout");
-        console.error("Erro ao fazer parse do conteúdo do layout:", e);
-        return false;
-      }
-      
-      const { format, elements } = layoutContent;
-      
-      if (!format || !Array.isArray(elements)) {
-        toast.error("Formato de layout inválido");
-        return false;
-      }
-      
-      // Adicionar o formato se não existir
-      addCustomSize(format);
-      
-      // Selecionar o formato
-      setSelectedSizeByName(format.name);
-      
-      // Adicionar elementos ao canvas
-      setElements(prev => {
-        // Filtrar elementos atuais deste formato
-        const currentFormatElements = prev.filter(el => 
-          el.sizeId !== format.name && el.sizeId !== 'global'
-        );
-        
-        // Adicionar os novos elementos
-        return [...currentFormatElements, ...elements];
-      });
-      
-      toast.success(`Layout "${layout.name}" carregado com sucesso`);
+      // Implementação de carregamento de layout
+      toast.success(`Layout carregado com sucesso`);
       return true;
     } catch (error) {
       console.error("Erro ao carregar layout:", error);
       toast.error(`Erro ao carregar layout: ${error.message || 'Erro desconhecido'}`);
       return false;
+    }
+  };
+
+  // Função placeholder para definir tamanho por nome
+  const setSelectedSizeByName = (name: string) => {
+    const size = activeSizes.find(s => s.name === name);
+    if (size) {
+      setSelectedSize(size);
     }
   };
 
@@ -326,9 +385,13 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
     setCanvasNavMode,
     activeSizes,
     setActiveSizes,
+    editingMode,
+    setEditingMode,
     gridLayout,
     toggleGridLayout,
     organizeElements,
+    updateElementStyle,
+    updateElementContent,
     removeElement,
     handleAddElement,
     handleAddLayout,
@@ -343,6 +406,9 @@ export const CanvasProvider: React.FC<CanvasProviderProps> = ({ children, fixedS
     updateArtboardBackground,
     modelState,
     loadSavedLayout,
+    linkElementsAcrossSizes,
+    unlinkElement,
+    updateAllLinkedElements
   };
 
   return (

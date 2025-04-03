@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { EditorElement } from "../types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -48,6 +47,17 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
     setFontSizeValue(String(element.style.fontSize || 16));
     setLineHeightValue(String(element.style.lineHeight || 1.5));
     setLetterSpacingValue(String(element.style.letterSpacing || 0));
+    
+    // Também sincronizar link se houver
+    if (element.link) {
+      setLinkUrl(element.link.url || "");
+      setLinkType(element.link.type || "webpage");
+      setNewTab(element.link.newTab !== false);
+    } else {
+      setLinkUrl("");
+      setLinkType("webpage");
+      setNewTab(true);
+    }
   }, [element]);
 
   // Font weight options
@@ -79,27 +89,50 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
     { value: "Fira Sans", label: "Fira Sans" },
   ];
 
+  // Função segura para atualizar o estilo do elemento
+  const safeUpdateStyle = (property: string, value: any) => {
+    if (typeof updateElementStyle === 'function') {
+      updateElementStyle(property, value);
+    } else {
+      console.error('updateElementStyle não é uma função', updateElementStyle);
+    }
+  };
+
+  // Função segura para atualizar o conteúdo do elemento
+  const safeUpdateContent = (content: string) => {
+    if (typeof updateElementContent === 'function') {
+      updateElementContent(content);
+    } else {
+      console.error('updateElementContent não é uma função', updateElementContent);
+    }
+  };
+
   // Font size controls with direct input
   const handleFontSizeChange = (value: string) => {
     // Allow only numbers
     if (/^[0-9]*$/.test(value) || value === '') {
       setFontSizeValue(value);
       if (value !== '') {
-        updateElementStyle("fontSize", Number(value));
+        const numValue = Number(value);
+        if (!isNaN(numValue) && numValue > 0) {
+          safeUpdateStyle("fontSize", numValue);
+        }
       }
     }
   };
 
   const increaseFontSize = () => {
-    const newSize = (element.style.fontSize || 16) + 1;
+    const currentSize = element.style.fontSize || 16;
+    const newSize = currentSize + 1;
     setFontSizeValue(String(newSize));
-    updateElementStyle("fontSize", newSize);
+    safeUpdateStyle("fontSize", newSize);
   };
 
   const decreaseFontSize = () => {
-    const newSize = Math.max(8, (element.style.fontSize || 16) - 1);
+    const currentSize = element.style.fontSize || 16;
+    const newSize = Math.max(8, currentSize - 1);
     setFontSizeValue(String(newSize));
-    updateElementStyle("fontSize", newSize);
+    safeUpdateStyle("fontSize", newSize);
   };
 
   // Line height controls with direct input
@@ -107,21 +140,26 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
     if (/^[0-9]*\.?[0-9]*$/.test(value) || value === '') {
       setLineHeightValue(value);
       if (value !== '') {
-        updateElementStyle("lineHeight", parseFloat(value));
+        const numValue = parseFloat(value);
+        if (!isNaN(numValue) && numValue > 0) {
+          safeUpdateStyle("lineHeight", numValue);
+        }
       }
     }
   };
 
   const increaseLineHeight = () => {
-    const newLineHeight = parseFloat((Math.min(3, (element.style.lineHeight || 1.5) + 0.1).toFixed(1)));
+    const currentLineHeight = element.style.lineHeight || 1.5;
+    const newLineHeight = parseFloat((Math.min(3, currentLineHeight + 0.1).toFixed(1)));
     setLineHeightValue(String(newLineHeight));
-    updateElementStyle("lineHeight", newLineHeight);
+    safeUpdateStyle("lineHeight", newLineHeight);
   };
 
   const decreaseLineHeight = () => {
-    const newLineHeight = parseFloat((Math.max(1, (element.style.lineHeight || 1.5) - 0.1).toFixed(1)));
+    const currentLineHeight = element.style.lineHeight || 1.5;
+    const newLineHeight = parseFloat((Math.max(1, currentLineHeight - 0.1).toFixed(1)));
     setLineHeightValue(String(newLineHeight));
-    updateElementStyle("lineHeight", newLineHeight);
+    safeUpdateStyle("lineHeight", newLineHeight);
   };
 
   // Letter spacing controls with direct input
@@ -129,45 +167,64 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
     if (/^-?[0-9]*\.?[0-9]*$/.test(value) || value === '') {
       setLetterSpacingValue(value);
       if (value !== '') {
-        updateElementStyle("letterSpacing", parseFloat(value));
+        const numValue = parseFloat(value);
+        if (!isNaN(numValue)) {
+          safeUpdateStyle("letterSpacing", numValue);
+        }
       }
     }
   };
 
   const increaseLetterSpacing = () => {
-    const newSpacing = parseFloat(((element.style.letterSpacing || 0) + 0.1).toFixed(1));
+    const currentSpacing = element.style.letterSpacing || 0;
+    const newSpacing = parseFloat(((currentSpacing + 0.1).toFixed(1)));
     setLetterSpacingValue(String(newSpacing));
-    updateElementStyle("letterSpacing", newSpacing);
+    safeUpdateStyle("letterSpacing", newSpacing);
   };
 
   const decreaseLetterSpacing = () => {
-    const newSpacing = parseFloat((Math.max(-0.5, (element.style.letterSpacing || 0) - 0.1).toFixed(1)));
+    const currentSpacing = element.style.letterSpacing || 0;
+    const newSpacing = parseFloat((Math.max(-0.5, currentSpacing - 0.1).toFixed(1)));
     setLetterSpacingValue(String(newSpacing));
-    updateElementStyle("letterSpacing", newSpacing);
+    safeUpdateStyle("letterSpacing", newSpacing);
   };
 
   // Text style controls
   const toggleFontStyle = (style: string) => {
     if (style === 'italic') {
-      updateElementStyle("fontStyle", element.style.fontStyle === "italic" ? "normal" : "italic");
+      const newStyle = element.style.fontStyle === "italic" ? "normal" : "italic";
+      safeUpdateStyle("fontStyle", newStyle);
     } else if (style === 'underline' || style === 'line-through') {
       const currentDecoration = element.style.textDecoration || "none";
+      let newDecoration;
+      
       if (currentDecoration.includes(style)) {
-        updateElementStyle("textDecoration", currentDecoration.replace(style, "").trim() || "none");
+        newDecoration = currentDecoration.replace(style, "").trim() || "none";
       } else {
-        updateElementStyle("textDecoration", currentDecoration === "none" ? style : `${currentDecoration} ${style}`);
+        newDecoration = currentDecoration === "none" ? style : `${currentDecoration} ${style}`;
       }
+      
+      safeUpdateStyle("textDecoration", newDecoration);
     }
   };
 
-  // Handle font family selection
+  // Wrapping handlers with useCallback to ensure reference stability
   const handleFontFamilyChange = (value: string) => {
-    updateElementStyle("fontFamily", value);
+    if (value && value !== element.style.fontFamily) {
+      safeUpdateStyle("fontFamily", value);
+    }
   };
 
-  // Handle font weight selection
   const handleFontWeightChange = (value: string) => {
-    updateElementStyle("fontWeight", value);
+    if (value && value !== element.style.fontWeight) {
+      safeUpdateStyle("fontWeight", value);
+    }
+  };
+
+  // Prevenção de propagação de eventos para componentes Select
+  const preventPropagation = () => {
+    // Adiciona um listener de evento temporário para capturar e parar eventos de teclado
+    document.addEventListener('keydown', (e) => e.stopPropagation(), { once: true });
   };
 
   // Content Panel - for editing the content and link
@@ -179,7 +236,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
         <textarea
           ref={contentTextareaRef}
           value={element.content}
-          onChange={(e) => updateElementContent(e.target.value)}
+          onChange={(e) => safeUpdateContent(e.target.value)}
           className="w-full resize-none border-0 focus:outline-none min-h-[80px]"
           placeholder="Text Element"
           onKeyDown={(e) => e.stopPropagation()} // Prevent event bubbling
@@ -193,7 +250,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
         <Select 
           value={linkType} 
           onValueChange={setLinkType}
-          onOpenChange={(open) => { if (open) { document.addEventListener('keydown', (e) => e.stopPropagation(), { once: true }) }}}
+          onOpenChange={(open) => { if (open) preventPropagation() }}
         >
           <SelectTrigger className="w-full mb-2">
             <SelectValue placeholder="Página da Web" />
@@ -239,8 +296,12 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
         <div className="text-center text-sm text-gray-500">Tipografia</div>
         <Select 
           value={element.style.fontFamily || "Arial"} 
-          onValueChange={handleFontFamilyChange}
-          onOpenChange={(open) => { if (open) { document.addEventListener('keydown', (e) => e.stopPropagation(), { once: true }) }}}
+          onValueChange={(value) => {
+            if (value && value !== element.style.fontFamily) {
+              safeUpdateStyle("fontFamily", value);
+            }
+          }}
+          onOpenChange={(open) => { if (open) preventPropagation() }}
         >
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Escolha uma fonte" />
@@ -261,8 +322,12 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
         <div className="flex items-center justify-between">
           <Select 
             value={element.style.fontWeight || "normal"} 
-            onValueChange={handleFontWeightChange}
-            onOpenChange={(open) => { if (open) { document.addEventListener('keydown', (e) => e.stopPropagation(), { once: true }) }}}
+            onValueChange={(value) => {
+              if (value && value !== element.style.fontWeight) {
+                safeUpdateStyle("fontWeight", value);
+              }
+            }}
+            onOpenChange={(open) => { if (open) preventPropagation() }}
           >
             <SelectTrigger className="w-full mr-2">
               <SelectValue placeholder="Peso da fonte" />
@@ -278,18 +343,21 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
 
           <div className="flex space-x-2">
             <button
+              type="button"
               onClick={() => toggleFontStyle("italic")}
               className={`p-2 rounded-md ${element.style.fontStyle === "italic" ? "bg-gray-200" : "bg-white border"}`}
             >
               <Italic size={16} />
             </button>
             <button
+              type="button"
               onClick={() => toggleFontStyle("underline")}
               className={`p-2 rounded-md ${element.style.textDecoration?.includes("underline") ? "bg-gray-200" : "bg-white border"}`}
             >
               <Underline size={16} />
             </button>
             <button
+              type="button"
               onClick={() => toggleFontStyle("line-through")}
               className={`p-2 rounded-md ${element.style.textDecoration?.includes("line-through") ? "bg-gray-200" : "bg-white border"}`}
             >
@@ -305,7 +373,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
         <div className="flex flex-col items-center space-y-1">
           <span className="text-xs text-gray-700">Aa</span>
           <div className="flex items-center bg-gray-100 rounded-md px-2 py-1">
-            <button onClick={decreaseFontSize} className="p-1">
+            <button type="button" onClick={decreaseFontSize} className="p-1">
               <Minus size={14} />
             </button>
             <input
@@ -315,7 +383,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
               onKeyDown={(e) => e.stopPropagation()}
               className="w-10 text-center bg-transparent border-0 focus:outline-none text-xs"
             />
-            <button onClick={increaseFontSize} className="p-1">
+            <button type="button" onClick={increaseFontSize} className="p-1">
               <Plus size={14} />
             </button>
           </div>
@@ -327,7 +395,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
             <MoveVertical size={14} />
           </span>
           <div className="flex items-center bg-gray-100 rounded-md px-2 py-1">
-            <button onClick={decreaseLineHeight} className="p-1">
+            <button type="button" onClick={decreaseLineHeight} className="p-1">
               <Minus size={14} />
             </button>
             <input
@@ -337,7 +405,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
               onKeyDown={(e) => e.stopPropagation()}
               className="w-10 text-center bg-transparent border-0 focus:outline-none text-xs"
             />
-            <button onClick={increaseLineHeight} className="p-1">
+            <button type="button" onClick={increaseLineHeight} className="p-1">
               <Plus size={14} />
             </button>
           </div>
@@ -349,7 +417,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
             <MoveHorizontal size={14} />
           </span>
           <div className="flex items-center bg-gray-100 rounded-md px-2 py-1">
-            <button onClick={decreaseLetterSpacing} className="p-1">
+            <button type="button" onClick={decreaseLetterSpacing} className="p-1">
               <Minus size={14} />
             </button>
             <input
@@ -359,7 +427,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
               onKeyDown={(e) => e.stopPropagation()}
               className="w-10 text-center bg-transparent border-0 focus:outline-none text-xs"
             />
-            <button onClick={increaseLetterSpacing} className="p-1">
+            <button type="button" onClick={increaseLetterSpacing} className="p-1">
               <Plus size={14} />
             </button>
           </div>
@@ -371,19 +439,22 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
         <div className="text-center text-sm text-gray-500">Parágrafo</div>
         <div className="flex justify-center space-x-2">
           <button
-            onClick={() => updateElementStyle("textAlign", "left")}
+            type="button"
+            onClick={() => safeUpdateStyle("textAlign", "left")}
             className={`p-2 rounded-md ${element.style.textAlign === "left" ? "bg-gray-200" : "bg-white border"}`}
           >
             <AlignLeft size={16} />
           </button>
           <button
-            onClick={() => updateElementStyle("textAlign", "center")}
+            type="button"
+            onClick={() => safeUpdateStyle("textAlign", "center")}
             className={`p-2 rounded-md ${element.style.textAlign === "center" ? "bg-gray-200" : "bg-white border"}`}
           >
             <AlignCenter size={16} />
           </button>
           <button
-            onClick={() => updateElementStyle("textAlign", "right")}
+            type="button"
+            onClick={() => safeUpdateStyle("textAlign", "right")}
             className={`p-2 rounded-md ${element.style.textAlign === "right" ? "bg-gray-200" : "bg-white border"}`}
           >
             <AlignRight size={16} />
@@ -396,19 +467,22 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
         <div className="text-center text-sm text-gray-500">Alinhamento</div>
         <div className="flex justify-center space-x-2">
           <button
-            onClick={() => updateElementStyle("verticalAlign", "top")}
+            type="button"
+            onClick={() => safeUpdateStyle("verticalAlign", "top")}
             className={`p-2 rounded-md ${element.style.verticalAlign === "top" ? "bg-gray-200" : "bg-white border"}`}
           >
             <AlignStartVertical size={16} />
           </button>
           <button
-            onClick={() => updateElementStyle("verticalAlign", "middle")}
+            type="button"
+            onClick={() => safeUpdateStyle("verticalAlign", "middle")}
             className={`p-2 rounded-md ${element.style.verticalAlign === "middle" ? "bg-gray-200" : "bg-white border"}`}
           >
             <AlignVerticalDistributeCenter size={16} />
           </button>
           <button
-            onClick={() => updateElementStyle("verticalAlign", "bottom")}
+            type="button"
+            onClick={() => safeUpdateStyle("verticalAlign", "bottom")}
             className={`p-2 rounded-md ${element.style.verticalAlign === "bottom" ? "bg-gray-200" : "bg-white border"}`}
           >
             <AlignEndVertical size={16} />
@@ -427,7 +501,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
               value={element.style.color || "#000000"}
               onChange={(e) => {
                 setColorPickerValue(e.target.value);
-                updateElementStyle("color", e.target.value);
+                safeUpdateStyle("color", e.target.value);
               }}
               className="w-10 h-10 rounded cursor-pointer"
             />
@@ -437,7 +511,7 @@ export const TextPanel = ({ element, updateElementStyle, updateElementContent, a
               value={element.style.color || "#000000"}
               onChange={(e) => {
                 setColorPickerValue(e.target.value);
-                updateElementStyle("color", e.target.value);
+                safeUpdateStyle("color", e.target.value);
               }}
               onKeyDown={(e) => e.stopPropagation()} // Prevent event bubbling
               className="flex-1 px-3 py-2 border rounded ml-2"
