@@ -8,6 +8,7 @@ import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import LoginForm from "./pages/LoginForm";
 import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
 import { useState, useEffect } from "react";
 
 const queryClient = new QueryClient();
@@ -66,13 +67,16 @@ const App = () => {
             {!isAuthenticated ? (
               <>
                 <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<LoginForm />} />
                 <Route path="*" element={<Navigate to="/login" replace />} />
               </>
             ) : (
               <>
-                <Route path="/" element={<Index />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/editor/:layoutId?" element={<Index />} />
                 <Route path="/admin" element={<Admin />} />
-                <Route path="/login" element={<Navigate to="/" replace />} />
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/login" element={<Navigate to="/dashboard" replace />} />
                 <Route path="*" element={<NotFound />} />
               </>
             )}
