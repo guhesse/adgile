@@ -22,7 +22,7 @@ enum LogLevel {
 }
 
 // Configuração de log - altere para controlar o nível de informações
-const LOG_LEVEL = LogLevel.DEBUG;
+const LOG_LEVEL = LogLevel.NONE;
 
 /**
  * Função de log centralizada para PSD Import
